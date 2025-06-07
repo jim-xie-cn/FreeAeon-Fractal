@@ -43,22 +43,5 @@ class CFAVisual(object):
             value = img[:,3]
         scatter = ax.scatter(x, y, z, value*10, marker='.', cmap='viridis')
 
-def test():
-    from JFSample import CJFSample
-    points_2d_1,points_2d_2,points_3d_1,points_10d_1 = CJFSample.get_test_sample()
-
-    fig = plt.figure(figsize=(24,6))
-    ax1 = fig.add_subplot(131)
-    ax2 = fig.add_subplot(132)
-    ax3 = fig.add_subplot(133, projection='3d')
-    CJFCommon.plot_2d_data(points_2d_1,ax=ax1)
-    CJFCommon.plot_2d_data(points_2d_2,ax=ax2)
-    CJFCommon.plot_3d_data(points_3d_1,ax=ax3)
-    
-    plt.show()
-
-def main():
-    test()
-
 if __name__ == "__main__":
     main()
