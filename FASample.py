@@ -53,7 +53,7 @@ class CFASample(object):
 
         return np.array(result_points)
     
-    '''Cantor Set which dimension is 1.58'''
+    '''Cantor Set which dimension is 0.6309'''
     @staticmethod
     def get_Cantor_Set(init_point = np.array([0.0]), iterations = 256 ):
         return CFASample.generate(init_point,iterations,g_m_Cantor_Set,g_p_Cantor_Set)
