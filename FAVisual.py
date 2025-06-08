@@ -43,5 +43,8 @@ class CFAVisual(object):
             value = img[:,3]
         scatter = ax.scatter(x, y, z, value*10, marker='.', cmap='viridis')
 
+def main():
+    pass
+
 if __name__ == "__main__":
     main()

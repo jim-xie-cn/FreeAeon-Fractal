@@ -8,10 +8,7 @@ from tqdm import tqdm
 from FAVisual import CFAVisual
 
 # Cantor Set
-g_m_Cantor_Set = np.array([
-    [[1/3, 0]],        # 缩放1/3，不平移
-    [[1/3, 2/3]]       # 缩放1/3，平移2/3
-])
+g_m_Cantor_Set = np.array([[[1/3, 0]],[[1/3, 2/3]]])
 g_p_Cantor_Set = np.array([0.5, 0.5])
 
 #Sierpinski Triangle
@@ -107,38 +104,28 @@ class CFASample(object):
     def get_4D_Points(init_point = np.array([0.0, 0.0, 0.0,0.0]), iterations = 4096):
         return CFASample.generate(init_point,iterations,g_m_4,g_p_4)
     
+    '''
+    convert points to an 2d image
+    '''
     @staticmethod
     def get_image_from_points(points, img_size=(512, 512), margin=0.05):
-        """
-        把二维点集合映射到img_size大小的二维数组图像（黑白图）
-        points: (N,2) np.array，点坐标，坐标范围任意
-        img_size: 输出图像分辨率 (height, width)
-        margin: 在坐标范围外多留点边距，防止点贴边
-
-        返回:
-        img: np.uint8数组，shape (height, width)，0=黑，255=白（点）
-        """
-        # 取点坐标范围，扩展边距
         min_xy = points.min(axis=0)
         max_xy = points.max(axis=0)
         range_xy = max_xy - min_xy
         min_xy = min_xy - range_xy * margin
         max_xy = max_xy + range_xy * margin
 
-        # 归一化点坐标到[0,1]
         norm_points = (points - min_xy) / (max_xy - min_xy)
 
-        # 映射到图像像素坐标
         px = (norm_points[:, 0] * (img_size[1] - 1)).astype(int)
         py = (norm_points[:, 1] * (img_size[0] - 1)).astype(int)
 
-        # 生成空白图像
         img = np.zeros(img_size, dtype=np.uint8)
 
-        # 点的位置设为255白色
         img[py, px] = 255
 
         return img
+
 def main():
     points_1 = CFASample.get_Cantor_Set()
     points_2 = CFASample.get_Sierpinski_Triangle()
