@@ -9,7 +9,7 @@ import cv2,math,json,os,sys
 from tqdm import tqdm
 from scipy.stats import linregress
 import pandas as pd
-from FAImage import CFAImage
+from .FAImage import CFAImage
 import seaborn as sns
 import matplotlib.ticker as mticker
 '''

@@ -6,7 +6,7 @@ import numpy as np
 from skimage.util import view_as_blocks
 from tqdm import tqdm
 from scipy.stats import linregress
-from FASample import CFASample
+from .FASample import CFASample
 
 class CFAImage(object):
     """

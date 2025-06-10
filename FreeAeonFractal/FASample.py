@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 from tqdm import tqdm
-from FAVisual import CFAVisual
+from .FAVisual import CFAVisual
 
 # Cantor Set
 g_m_Cantor_Set = np.array([[[1/3, 0]],[[1/3, 2/3]]])
