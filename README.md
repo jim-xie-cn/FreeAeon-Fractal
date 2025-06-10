@@ -53,6 +53,7 @@ This project is licensed under the MIT License. See [LICENSE](./LICENSE) for det
 
 Jim Xie  
 📧 E-Mail: jim.xie.cn@outlook.com, xiewenwei@sina.com
+
 🔗 GitHub: https://github.com/jim-xie-cn/FreeAeon-Fractal
 
 ---
