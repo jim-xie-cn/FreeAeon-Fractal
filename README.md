@@ -24,7 +24,7 @@ Example:
 
 ![Multifractal Spectrum Input](./images/mfs.png)
 
-### Calculate the **Fractal Dimensions** (Box-Counting, DBC, SDBC)
+### Calculate the **Fractal Dimensions** (Box-Counting, DBC, SDBC) of an image
 
 ```bash
 python demo.py --image ./images/face.png --mode fd
