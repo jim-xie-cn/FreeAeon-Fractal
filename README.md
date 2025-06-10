@@ -20,11 +20,19 @@ pip install FreeAeon-Fractal
 python demo.py --image ./images/face.png --mode mfs
 ```
 
+Example:
+
+![Multifractal Spectrum Input](./images/mfs.png)
+
 ### Calculate the **Fractal Dimensions** (Box-Counting, DBC, SDBC)
 
 ```bash
 python demo.py --image ./images/face.png --mode fd
 ```
+
+Example:
+
+![Fractal Dimension Input](./images/fd.png)
 
 ### Parameters
 
