@@ -1,6 +1,6 @@
 # FreeAeon-Fractal Project
 
-This is a toolkit for Multifractal Analysis or .
+This is a toolkit for Multifractal Analysis or Fractal Dimension calculating.
 
 ## Installation
 
