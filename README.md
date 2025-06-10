@@ -6,3 +6,5 @@ This is a toolkit for or Multifractal Analysis.
 
 ```bash
 pip install FreeAeon-Fractal
+
+python demo.py --image=./images/face.png --mode=mfs
