@@ -36,7 +36,7 @@ Example:
 
 ### Parameters
 
-- `--image`: Path to the input grayscale image  
+- `--image`: Path to the input image  
 - `--mode`: Analysis mode:  
   - `fd` – Fractal Dimension  
   - `mfs` – Multifractal Spectrum (default)
