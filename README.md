@@ -55,7 +55,7 @@ FreeAeon-Fractal/
 
 ## 📄 License
 
-This project is licensed under the MIT License. See [LICENSE](https://github.com/jim-xie-cn/FreeAeon-Fractal/raw/main/images/LICENSE) for details.
+This project is licensed under the MIT License. See [LICENSE](https://github.com/jim-xie-cn/FreeAeon-Fractal/blob/main/LICENSE) for details.
 
 ## ✍️ Author
 
