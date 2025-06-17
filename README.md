@@ -22,7 +22,7 @@ python demo.py --image ./images/face.png --mode mfs
 
 Example:
 
-![Multifractal Spectrum Input](./images/mfs.png)
+![Multifractal Spectrum Input](https://github.com/jim-xie-cn/FreeAeon-Fractal/tree/main/images/mfs.png)
 
 ### Calculate the **Fractal Dimensions** (Box-Counting, DBC, SDBC) of an image
 
@@ -32,7 +32,7 @@ python demo.py --image ./images/fractal.png --mode fd
 
 Example:
 
-![Fractal Dimension Input](./images/fd.png)
+![Fractal Dimension Input](https://github.com/jim-xie-cn/FreeAeon-Fractal/tree/main/images/fd.png)
 
 ### Parameters
 
@@ -55,7 +55,7 @@ FreeAeon-Fractal/
 
 ## 📄 License
 
-This project is licensed under the MIT License. See [LICENSE](./LICENSE) for details.
+This project is licensed under the MIT License. See [LICENSE](https://github.com/jim-xie-cn/FreeAeon-Fractal/tree/main/LICENSE) for details.
 
 ## ✍️ Author
 
