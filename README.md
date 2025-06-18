@@ -65,6 +65,10 @@ Jim Xie
 
 🔗 GitHub: https://github.com/jim-xie-cn/FreeAeon-Fractal
 
+Yin Jie
+
+📧 E-Mail: yinjiejspi@163.com
+
 ---
 
 ## 🧠 Citation
