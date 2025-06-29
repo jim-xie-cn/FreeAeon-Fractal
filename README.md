@@ -34,12 +34,22 @@ Example:
 
 ![Fractal Dimension Input](https://github.com/jim-xie-cn/FreeAeon-Fractal/raw/main/images/fd.png)
 
+```bash
+python demo.py --image ./images/face.png  --mode fourier
+```
+
+Example:
+
+![Fractal Dimension Input](https://github.com/jim-xie-cn/FreeAeon-Fractal/raw/main/images/fourier.png)
+
+
 ### Parameters
 
 - `--image`: Path to the input image  
 - `--mode`: Analysis mode:  
   - `fd` – Fractal Dimension  
   - `mfs` – Multifractal Spectrum (default)
+  - `fourier` - Fourier analysis
 
 ## 📁 Directory Structure
 
