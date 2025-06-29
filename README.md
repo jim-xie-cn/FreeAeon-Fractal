@@ -34,6 +34,8 @@ Example:
 
 ![Fractal Dimension Input](https://github.com/jim-xie-cn/FreeAeon-Fractal/raw/main/images/fd.png)
 
+### Fourier analysis of an image
+
 ```bash
 python demo.py --image ./images/face.png  --mode fourier
 ```

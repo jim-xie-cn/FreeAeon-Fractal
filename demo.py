@@ -47,7 +47,7 @@ def main(image_path, mode):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Compute fractal dimension or multifractal spectrum from an image.")
-    parser.add_argument("--image", type=str, help="Path to the input image")
+    parser.add_argument("--image", type=str,required=True, help="Path to the input image")
     parser.add_argument("--mode", choices=['fd', 'mfs', 'fourier'], default='mfs',
                         help="Choose 'fd' to compute fractal dimension, 'mfs' for multifractal spectrum or 'fourier' for Fourier analysis. (default: mfs)")
 
