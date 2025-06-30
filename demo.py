@@ -24,6 +24,9 @@ def main(image_path, mode):
         # Create CFAImageFourier instance
         fourier = CFAImageFourier(raw_image)
 
+        # Get raw spectrum
+        mag_raw, phase_raw = fourier.get_raw_spectrum()
+
         # Get display spectrum
         mag_disp, phase_disp = fourier.get_display_spectrum(alpha=1.5)
 
