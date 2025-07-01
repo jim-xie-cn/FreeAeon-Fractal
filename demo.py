@@ -48,16 +48,23 @@ def demo_fourier(image):
     fourier.plot(mag_disp, phase_disp, reconstructed, region_mag, region_phase,region_mag_phase,reconstructed_masked)
 
 def main(image_path, mode):
-    raw_image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-    if raw_image is None:
-        raise FileNotFoundError(f"Cannot load image at {image_path}")
+    rgb_image = cv2.imread(image_path)
+    if rgb_image is None:
+        raise FileNotFoundError(f"Cannot load image")
     
     if mode == 'fd':
-        demo_fd(raw_image)
+        gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
+        demo_fd(gray_image)
     elif mode == 'mfs':
-        demo_mfs(raw_image)
+        gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
+        demo_mfs(gray_image)
     elif mode == 'fourier':
-        demo_fourier(raw_image)
+        #fourier for grayscale
+        #gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
+        #demo_fourier(gray_image)
+
+        #fourier for RGB
+        demo_fourier(rgb_image)
     else:
         raise ValueError("Invalid mode. Use 'fd' or 'mfs' or 'fourier'.")
 
