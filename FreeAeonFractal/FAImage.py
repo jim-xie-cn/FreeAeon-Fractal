@@ -3,10 +3,12 @@ Segmenting and Merging the Image
 '''
 import matplotlib.pyplot as plt
 import numpy as np
+import cv2
+import scipy.ndimage
 from skimage.util import view_as_blocks
 from tqdm import tqdm
 from scipy.stats import linregress
-from .FASample import CFASample
+from FreeAeonFractal.FASample import CFASample
 
 class CFAImage(object):
     """
@@ -156,8 +158,81 @@ class CFAImage(object):
         
         mask_block = np.array(mask_block)
         return CFAImage.get_image_from_boxes(mask_block)
+    
+    """
+    Extracts joint regions with high μ^q values over a range of q values.
+    Supports both grayscale and RGB images.
 
-def main():
+    Args:
+        image (ndarray): Input image (grayscale or RGB).
+        q_range (tuple): Range of q values (q_min, q_max).
+        step (float): Step size for iterating through q values.
+        window_size (int): Smoothing window size.
+        target_mass (float): Cumulative mass threshold to retain.
+
+    Returns:
+        masked_image (ndarray): Image with only the significant regions (others set to 0).
+        mask_union (ndarray): Final combined binary mask (2D boolean array).
+    """
+    @staticmethod
+    def get_roi_by_q(image, q_range=(-10, 10), step=1, window_size=9, target_mass=0.95):
+        if image is None:
+            raise ValueError("image is None")
+
+        # Determine if image is grayscale or RGB
+        if image.ndim == 2:  # Grayscale
+            channels = [image]
+        elif image.ndim == 3 and image.shape[2] == 3:  # RGB
+            channels = [image[:, :, i] for i in range(3)]
+        else:
+            raise ValueError("Unsupported image shape")
+
+        q_min, q_max = q_range
+        q_list = np.arange(q_min, q_max + step, step)
+
+        masks_all_channels = []
+        for ch_img in channels:
+            img = ch_img.astype(np.float32)
+            mu = scipy.ndimage.uniform_filter(img ** 2, size=window_size)
+
+            masks = []
+            for q_val in q_list:
+                mu_q = np.power(mu, q_val)
+                mu_q_norm = mu_q / mu_q.sum()
+
+                flat = mu_q_norm.flatten()
+                sorted_indices = np.argsort(flat)[::-1]
+                sorted_vals = flat[sorted_indices]
+                cumsum = np.cumsum(sorted_vals)
+                cutoff_idx = np.searchsorted(cumsum, target_mass)
+
+                mask_flat = np.zeros_like(flat, dtype=bool)
+                mask_flat[sorted_indices[:cutoff_idx]] = True
+                mask = mask_flat.reshape(mu_q_norm.shape)
+
+                masks.append(mask)
+
+            # Combine all masks from different q values in this channel (using union)
+            mask_channel = np.logical_or.reduce(masks)
+            masks_all_channels.append(mask_channel)
+
+        # Combine masks across all channels using intersection
+        mask_union = np.logical_and.reduce(masks_all_channels)
+
+        # Apply final mask to the original image
+        masked_image = np.zeros_like(image)
+        if image.ndim == 2:
+            masked_image[mask_union] = image[mask_union]
+        else:
+            for i in range(3):
+                ch = image[:, :, i]
+                ch_masked = np.zeros_like(ch)
+                ch_masked[mask_union] = ch[mask_union]
+                masked_image[:, :, i] = ch_masked        
+
+        return mask_union, masked_image.astype(np.uint8)
+
+def demo_boxes():
     points = CFASample.get_Sierpinski_Triangle(iterations = 1024)
     image = CFASample.get_image_from_points(points)
 
@@ -191,7 +266,43 @@ def main():
     plt.tight_layout()
     plt.show()
 
+def demo_roi():
+    file_name = './images/face.png'
+    image  = cv2.imread(file_name, cv2.IMREAD_COLOR)
+    b,g,r = cv2.split(image)
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    q_range = (2,5)
+    mask_union,masked_image = CFAImage.get_roi_by_q(image=image,q_range=q_range,      step=1.0,target_mass=0.95)
+
+    plt.figure(figsize=(12, 4))
+        
+    plt.subplot(1, 3, 1)
+    if image.ndim == 2:
+        plt.imshow(image, cmap='gray')
+    else:
+        plt.imshow(cv2.cvtColor(image.astype(np.uint8), cv2.COLOR_BGR2RGB))
+    plt.title("Original")
+    plt.axis("off")
+
+    plt.subplot(1, 3, 2)
+    plt.imshow(mask_union.astype(np.uint8)*255, cmap='gray')
+    plt.title(f"Union Mask (q ∈ [{q_range[0]}, {q_range[1]}])")
+    plt.axis("off")
+
+    plt.subplot(1, 3, 3)
+    if masked_image.ndim == 2:
+        plt.imshow(masked_image, cmap='gray')
+    else:
+        plt.imshow(cv2.cvtColor(masked_image.astype(np.uint8), cv2.COLOR_BGR2RGB))
+    plt.title("Extracted Region")
+    plt.axis("off")
+
+    plt.tight_layout()
+    plt.show()
+
+def main():
+    demo_boxes()
+    demo_roi()
+
 if __name__ == "__main__":
     main()
-
-plt.show()
