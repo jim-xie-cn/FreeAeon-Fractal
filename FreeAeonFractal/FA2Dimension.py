@@ -9,7 +9,7 @@ import cv2,math,json,os,sys
 from tqdm import tqdm
 from scipy.stats import linregress
 import pandas as pd
-from .FAImage import CFAImage
+from FreeAeonFractal.FAImage import CFAImage
 import seaborn as sns
 import matplotlib.ticker as mticker
 '''
@@ -416,37 +416,42 @@ class CFA2DMFS:
         axs[0, 0].grid(True)
 
         #  tau(q) vs. q
-        sns.lineplot(data=df_mfs, x='q', y='t(q)', ax=axs[0, 1])
+        df_tmp = df_mfs.groupby("q").mean().reset_index().sort_values(by = "q").reset_index()
+        sns.lineplot(data=df_tmp, x='q', y='t(q)', ax=axs[0, 1])
         axs[0, 1].set(xlabel='$q$', ylabel=r'$\tau(q)$', title=r'$\tau(q)$ vs. $q$')
         axs[0, 1].grid(True)
 
         #  D(q) vs. q
-        sns.lineplot(data=df_mfs, x='q', y='d(q)', ax=axs[0, 2])
+        df_tmp = df_mfs.groupby("q").mean().reset_index().sort_values(by = "q").reset_index()
+        sns.lineplot(data=df_tmp, x='q', y='d(q)', ax=axs[0, 2])
         axs[0, 2].set(xlabel='$q$', ylabel=r'$D(q)$', title=r'$D(q)$ vs. $q$')
         axs[0, 2].grid(True)
 
         #  α(q) vs. q
-        sns.lineplot(data=df_mfs, x='q', y='a(q)', ax=axs[1, 0])
+        df_tmp = df_mfs.groupby("q").mean().reset_index().sort_values(by = "q").reset_index()
+        sns.lineplot(data=df_tmp, x='q', y='a(q)', ax=axs[1, 0])
         axs[1, 0].set(xlabel='$q$', ylabel=r'$\alpha$', title=r'$\alpha(q)$ vs. $q$')
         axs[1, 0].grid(True)
 
         #  f(α) vs. α
-        sns.lineplot(data=df_mfs, x='a(q)', y='f(a)', ax=axs[1, 1])
+        df_tmp = df_mfs.groupby("a(q)").mean().reset_index().sort_values(by = "a(q)").reset_index()
+        sns.lineplot(data=df_tmp, x='a(q)', y='f(a)', ax=axs[1, 1])
         axs[1, 1].set(xlabel=r'$\alpha$', ylabel=r'f$(\alpha)$', title=r'$f(\alpha)$ vs. $\alpha$')
         axs[1, 1].grid(True)
 
         #  f(α) vs. d
-        df_mfs['tmp'] = (df_mfs['t(q)'] - df_mfs['t(q)'].min()) / (df_mfs['t(q)'].std())
-        sns.lineplot(data=df_mfs, x='q', y='tmp', ax=axs[1, 2],label=r'$t(q)$')
+        df_tmp = df_mfs.groupby("q").mean().reset_index().sort_values(by = "q").reset_index()
+        df_tmp['tmp'] = (df_tmp['t(q)'] - df_tmp['t(q)'].min()) / (df_tmp['t(q)'].std())
+        sns.lineplot(data=df_tmp, x='q', y='tmp', ax=axs[1, 2],label=r'$t(q)$')
 
-        df_mfs['tmp'] = (df_mfs['d(q)'] - df_mfs['d(q)'].min()) / (df_mfs['d(q)'].std())
-        sns.lineplot(data=df_mfs, x='q', y='tmp', ax=axs[1, 2],label=r'$d(q)$')
+        df_tmp['tmp'] = (df_tmp['d(q)'] - df_tmp['d(q)'].min()) / (df_tmp['d(q)'].std())
+        sns.lineplot(data=df_tmp, x='q', y='tmp', ax=axs[1, 2],label=r'$d(q)$')
 
-        df_mfs['tmp'] = (df_mfs['a(q)'] - df_mfs['a(q)'].min()) / (df_mfs['a(q)'].std())
-        sns.lineplot(data=df_mfs, x='q', y='tmp', ax=axs[1, 2],label=r'$a(q)$')
+        df_tmp['tmp'] = (df_tmp['a(q)'] - df_tmp['a(q)'].min()) / (df_tmp['a(q)'].std())
+        sns.lineplot(data=df_tmp, x='q', y='tmp', ax=axs[1, 2],label=r'$a(q)$')
 
-        df_mfs['tmp'] = (df_mfs['f(a)'] - df_mfs['f(a)'].min()) / (df_mfs['f(a)'].std())
-        sns.lineplot(data=df_mfs, x='q', y='tmp', ax=axs[1, 2],label=r'$f(a)$')
+        df_tmp['tmp'] = (df_tmp['f(a)'] - df_tmp['f(a)'].min()) / (df_tmp['f(a)'].std())
+        sns.lineplot(data=df_tmp, x='q', y='tmp', ax=axs[1, 2],label=r'$f(a)$')
 
         axs[1, 2].set(xlabel=r'$q$', ylabel=r'$mix$', title=r'$overview$ vs. $q$')
         axs[1, 2].grid(True)

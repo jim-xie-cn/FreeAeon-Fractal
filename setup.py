@@ -7,7 +7,7 @@ def parse_requirements(filename):
 
 setup(
     name="FreeAeon-Fractal",
-    version="0.1.8",
+    version="0.1.9",
     author="Jim Xie",
     author_email="jim.xie.cn@outlook.com",
     description="Toolkit for Multifractal Analysis",
