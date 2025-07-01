@@ -1,7 +1,51 @@
 import cv2
 import argparse
+import numpy as np
 from FreeAeonFractal.FA2Dimension import CFA2Dimension,CFA2DMFS
 from FreeAeonFractal.FAImageFourier import CFAImageFourier
+
+def demo_fd(image):
+    bin_image = (image >= 64).astype(int)
+    fd_bc = CFA2Dimension(bin_image).get_bc_fd(corp_type=-1)
+    fd_dbc = CFA2Dimension(image).get_dbc_fd(corp_type=-1)
+    fd_sdbc = CFA2Dimension(image).get_sdbc_fd(corp_type=-1)
+    CFA2Dimension.plot(image, bin_image, fd_bc, fd_dbc, fd_sdbc)
+
+def demo_mfs(image):
+    MFS = CFA2DMFS(image)
+    df_mass, df_mfs = MFS.get_mfs()
+    MFS.plot(df_mass, df_mfs) 
+
+def demo_fourier(image):
+    # Create CFAImageFourier instance
+    fourier = CFAImageFourier(image)
+
+    # Get raw spectrum
+    mag_raw, phase_raw = fourier.get_raw_spectrum()
+
+    # Get display spectrum
+    mag_disp, phase_disp = fourier.get_display_spectrum(alpha=1.5)
+
+    # Reconstruct full image
+    reconstructed = fourier.get_reconstruct()
+
+    # Reconstructet image by frequency mask (reserve odd frequencies))
+    h, w = mag_raw[0].shape
+    Y, X = np.ogrid[:h, :w]
+    mask = ((X % 2 == 1) & (Y % 2 == 1)).astype(np.uint8)
+    reconstructed_masked = fourier.extract_by_freq_mask(mask)
+
+    # Get ROI by frequency or phase
+    h, w = image.shape[0], image.shape[1]
+    freq_box = (0,0,w//2,h//2)
+    phase_box = (0,0,w,h)
+
+    region_mag = fourier.extract_by_freq(box=freq_box)
+    region_phase = fourier.extract_by_phase(box=phase_box)
+    region_mag_phase = fourier.extract_by_freq_phase(freq_box,phase_box)
+
+    # Show full result
+    fourier.plot(mag_disp, phase_disp, reconstructed, region_mag, region_phase,region_mag_phase,reconstructed_masked)
 
 def main(image_path, mode):
     raw_image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
@@ -9,42 +53,11 @@ def main(image_path, mode):
         raise FileNotFoundError(f"Cannot load image at {image_path}")
     
     if mode == 'fd':
-        bin_image = (raw_image >= 64).astype(int)
-        fd_bc = CFA2Dimension(bin_image).get_bc_fd(corp_type=-1)
-        fd_dbc = CFA2Dimension(raw_image).get_dbc_fd(corp_type=-1)
-        fd_sdbc = CFA2Dimension(raw_image).get_sdbc_fd(corp_type=-1)
-        CFA2Dimension.plot(raw_image, bin_image, fd_bc, fd_dbc, fd_sdbc)
-
+        demo_fd(raw_image)
     elif mode == 'mfs':
-        MFS = CFA2DMFS(raw_image)
-        df_mass, df_mfs = MFS.get_mfs()
-        MFS.plot(df_mass, df_mfs)
-
+        demo_mfs(raw_image)
     elif mode == 'fourier':
-        # Create CFAImageFourier instance
-        fourier = CFAImageFourier(raw_image)
-
-        # Get raw spectrum
-        mag_raw, phase_raw = fourier.get_raw_spectrum()
-
-        # Get display spectrum
-        mag_disp, phase_disp = fourier.get_display_spectrum(alpha=1.5)
-
-        # Reconstruct full image
-        reconstructed = fourier.get_reconstruct()
-
-        # Get region by maq or phase
-        h, w = raw_image.shape[0], raw_image.shape[1]
-        mag_box = (0,0,w//2,h//2)
-        phase_box = (0,0,w,h)
-
-        region_mag = fourier.extract_by_freq(box=mag_box)
-        region_phase = fourier.extract_by_phase(box=phase_box)
-        region_mag_phase = fourier.extract_by_freq_phase(mag_box,phase_box)
-   
-        # Show full result
-        fourier.show(mag_disp, phase_disp, reconstructed, region_mag, region_phase,region_mag_phase)
-
+        demo_fourier(raw_image)
     else:
         raise ValueError("Invalid mode. Use 'fd' or 'mfs' or 'fourier'.")
 

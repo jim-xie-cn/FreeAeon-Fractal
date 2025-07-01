@@ -261,9 +261,40 @@ class CFAImageFourier(object):
             return reconstructed_channels[0]
         else:
             return cv2.merge(reconstructed_channels)
+        
+    def extract_by_freq_mask(self, mask):
+        """
+        Use a custom binary mask (same size as frequency map) to select which frequency components to retain.
+        
+        Args:
+            mask (ndarray): Binary mask (1: keep, 0: remove), same shape as frequency maps
+        
+        Returns:
+            ndarray: Reconstructed image using the masked frequency domain
+        """
+        reconstructed_channels = []
+        for mag, phase in zip(self.m_magnitude, self.m_phase):
+            assert mask.shape == mag.shape, "Mask shape mismatch."
+            complex_spectrum = mag * np.exp(1j * phase)
+            filtered_spectrum = complex_spectrum * mask
+            fft_unshifted = np.fft.ifftshift(filtered_spectrum)
+            img_reconstructed = np.fft.ifft2(fft_unshifted)
+            img_reconstructed = np.real(img_reconstructed)
+            img_reconstructed = cv2.normalize(img_reconstructed, None, 0, 255, cv2.NORM_MINMAX)
+            reconstructed_channels.append(np.uint8(img_reconstructed))
+        if len(reconstructed_channels) == 1:
+            return reconstructed_channels[0]
+        else:
+            return cv2.merge(reconstructed_channels)
 
-    def show(self, magnitude=[], phase=[], reconstructed=np.array([]),
-         region_by_freq=np.array([]), region_by_phase=np.array([]), region_by_freq_phase=np.array([])):
+    def plot(self,
+             magnitude=[], 
+             phase=[], 
+             reconstructed=np.array([]),
+             region_by_freq=np.array([]), 
+             region_by_phase=np.array([]),
+             region_by_freq_phase=np.array([]),
+             reconstructed_masked=np.array([])):
         """
         Display original, magnitude, phase, reconstructed images,
         and optionally regions extracted from frequency and phase.
@@ -275,6 +306,7 @@ class CFAImageFourier(object):
             region_by_freq (ndarray): Extracted region from magnitude spectrum
             region_by_phase (ndarray): Extracted region from phase spectrum
             region_by_freq_phase (ndarray): Extracted region from freq and phase spectrum
+            reconstructed_masked (ndarray): Reconstructed by frequency mask
         """
         def enhance_contrast(image, beta=0, min_scale=1, max_scale=1.8):
             std = np.std(image)
@@ -284,81 +316,48 @@ class CFAImageFourier(object):
             enhanced = cv2.convertScaleAbs(image, alpha=scale, beta=beta)
             return enhanced
         
-        n_cols = 4
+        def enhance_contrast(image, beta=0, min_scale=1, max_scale=1.8):
+            std = np.std(image)
+            max_std = 160.0  
+            scale = max_scale - (std / max_std) * (max_scale - min_scale)
+            scale = np.clip(scale, min_scale, max_scale)
+            enhanced = cv2.convertScaleAbs(image, alpha=scale, beta=beta)
+            return enhanced
+
+        # Collect all images to display
+        images = [
+            ("Original", self.m_image),
+            ("Magnitude", cv2.merge(magnitude) if len(magnitude) > 1 else magnitude[0] if magnitude else None),
+            ("Phase", cv2.merge(phase) if len(phase) > 1 else phase[0] if phase else None),
+            ("Reconstructed", reconstructed),
+        ]
+
         if region_by_freq.size != 0:
-            n_cols += 1
+            images.append(("Region from Freq", region_by_freq))
         if region_by_phase.size != 0:
-            n_cols += 1
+            images.append(("Region from Phase", region_by_phase))
         if region_by_freq_phase.size != 0:
-            n_cols += 1
-    
-        plt.figure(figsize=(4 * n_cols, 6))
-    
-        plt.subplot(1, n_cols, 1)
-        if self.m_image.ndim == 2:
-            plt.imshow(self.m_image, cmap='gray')
-        else:
-            plt.imshow(cv2.cvtColor(self.m_image, cv2.COLOR_BGR2RGB))
-        plt.title("Original")
-        plt.axis('off')
-    
-        plt.subplot(1, n_cols, 2)
-        if len(magnitude) != 0:
-            if len(magnitude) == 1:
-                plt.imshow(magnitude[0], cmap='gray')
+            images.append(("Region from Freq & Phase", region_by_freq_phase))
+        if reconstructed_masked.size != 0:
+            images.append(("Reconstructed (Freq Mask)", reconstructed_masked))
+
+        n_total = len(images)
+        n_cols = (n_total + 1) // 2
+        #plt.figure(figsize=(4 * n_cols, 6 * 2))  # 2 rows
+        plt.figure(figsize=(14, 8))
+
+        for idx, (title, img) in enumerate(images):
+            plt.subplot(2, n_cols, idx + 1)
+            if img is None:
+                plt.axis('off')
+                continue
+            if img.ndim == 2:
+                plt.imshow(enhance_contrast(img), cmap='gray', vmin=0, vmax=255)
             else:
-                plt.imshow(cv2.merge(magnitude))
-        plt.title("Magnitude")
-        plt.axis('off')
-    
-        plt.subplot(1, n_cols, 3)
-        if len(phase) != 0:
-            if len(phase) == 1:
-                plt.imshow(phase[0], cmap='gray')
-            else:
-                plt.imshow(cv2.merge(phase))
-        plt.title("Phase")
-        plt.axis('off')
-    
-        plt.subplot(1, n_cols, 4)
-        if reconstructed.size != 0:
-            if reconstructed.ndim == 2:
-                plt.imshow(reconstructed, cmap='gray')
-            else:
-                plt.imshow(cv2.cvtColor(reconstructed, cv2.COLOR_BGR2RGB))
-        plt.title("Reconstructed")
-        plt.axis('off')
-    
-        col_idx = 5
-        if region_by_freq.size != 0:
-            plt.subplot(1, n_cols, col_idx)
-            if region_by_freq.ndim == 2:
-                plt.imshow(enhance_contrast(region_by_freq), cmap='gray')
-            else:
-                plt.imshow(cv2.cvtColor(enhance_contrast(region_by_freq), cv2.COLOR_BGR2RGB))
-            plt.title("Region from Freq")
+                plt.imshow(cv2.cvtColor(enhance_contrast(img), cv2.COLOR_BGR2RGB), vmin=0, vmax=255)
+            plt.title(title)
             plt.axis('off')
-            col_idx += 1
-    
-        if region_by_phase.size != 0:
-            plt.subplot(1, n_cols, col_idx)
-            if region_by_phase.ndim == 2:
-                plt.imshow(enhance_contrast(region_by_phase), cmap='gray')
-            else:
-                plt.imshow(cv2.cvtColor(enhance_contrast(region_by_phase), cv2.COLOR_BGR2RGB))
-            plt.title("Region from Phase")
-            plt.axis('off')
-            col_idx += 1
-    
-        if region_by_freq_phase.size != 0:
-            plt.subplot(1, n_cols, col_idx)
-            if region_by_freq_phase.ndim == 2:
-                plt.imshow(enhance_contrast(region_by_freq_phase), cmap='gray', vmin=0, vmax=255)
-            else:
-                plt.imshow(cv2.cvtColor(region_by_freq_phase, cv2.COLOR_BGR2RGB), vmin=0, vmax=255)
-            plt.title("Region from Freq & Phase")
-            plt.axis('off')
-    
+
         plt.tight_layout()
         plt.show()
 
@@ -371,13 +370,22 @@ def main():
     # Create CFAImageFourier instance
     fourier = CFAImageFourier(image)
 
+    # Get raw spectrum
+    mag_raw, phase_raw = fourier.get_raw_spectrum()
+
     # Get display spectrum
     mag_disp, phase_disp = fourier.get_display_spectrum(alpha=1.5)
 
     # Reconstruct full image
     reconstructed = fourier.get_reconstruct()
 
-    # Get image size
+    # Reconstructet image by frequency mask (reserve odd frequencies))
+    h, w = mag_raw[0].shape
+    Y, X = np.ogrid[:h, :w]
+    mask = ((X % 2 == 1) & (Y % 2 == 1)).astype(np.uint8)
+    reconstructed_masked = fourier.extract_by_freq_mask(mask)
+
+    # Get ROI by frequency or phase
     h, w = image.shape[0], image.shape[1]
     freq_box = (0,0,w//2,h//2)
     phase_box = (0,0,w,h)
@@ -385,9 +393,9 @@ def main():
     region_mag = fourier.extract_by_freq(box=freq_box)
     region_phase = fourier.extract_by_phase(box=phase_box)
     region_mag_phase = fourier.extract_by_freq_phase(freq_box,phase_box)
-    
+
     # Show full result
-    fourier.show(mag_disp, phase_disp, reconstructed, region_mag, region_phase,region_mag_phase)
+    fourier.plot(mag_disp, phase_disp, reconstructed, region_mag, region_phase,region_mag_phase,reconstructed_masked)
 
 if __name__ == "__main__":
     main()
