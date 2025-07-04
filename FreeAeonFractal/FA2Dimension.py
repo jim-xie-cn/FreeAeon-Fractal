@@ -227,77 +227,63 @@ class CFA2DMFS:
     max_size: max box size for partitioning
     Returns: generalized mass distribution
     '''
-    def get_mass(self,max_size = None , max_scales = 200 ):
+    def get_mass(self, max_size=None, max_scales=200):
         all_data = []
-        if max_size == None:
-            max_size = min(self.m_image.shape) // 1  # max partition scale
-        scales = np.logspace(1, np.log2(max_size), num = max_scales, base=2, dtype=int)  # generate scale list
-        scales = np.unique(scales)  # remove duplicates
-        
-        if self.m_with_progress:
-            for size in tqdm(scales, desc="Calculating mass"):
-                block_size = (size, size)
-                boxes,raw_blocks = CFAImage.get_boxes_from_image(self.m_image, block_size, corp_type= self.m_corp_type)
-                # Calculate mass distribution for each block (sum of pixels per block)
-                num_blocks = len(boxes)
-                mass_distribution = np.array([np.sum(box) for box in boxes])  # mass distribution
 
-                # Normalize mass distribution (avoid negative values by setting to zero)
-                mass_distribution = np.where(mass_distribution < 0, 0, mass_distribution)
-                total_mass = np.sum(mass_distribution)
-                if total_mass > 0:
-                    mass_distribution = mass_distribution / total_mass  # normalization
-                    mass_distribution = np.where(mass_distribution < 0, 0, mass_distribution)
-                
-                # Calculate generalized mass index M(q, ε)
-                for q in self.m_q_list:
-                    if np.all(mass_distribution == 0):
-                        mass_q = 0
-                    else:
-                        if q == 0:
-                            mass_q = np.count_nonzero(mass_distribution)
-                        else:
-                            valid = mass_distribution[mass_distribution > 0]
-                            mass_q = np.sum(valid ** q)
-                    tmp = {}
-                    tmp['scale'] = size
-                    tmp['q'] = q
-                    tmp['mass'] = mass_q
-                    tmp['boxes'] = raw_blocks
+        if max_size is None:
+            max_size = min(self.m_image.shape)  
+
+        # get box size ( ε ) list
+        scales = np.logspace(1, np.log2(max_size), num=max_scales, base=2, dtype=int)
+        scales = np.unique(scales)
+
+        q_list = self.m_q_list
+        image = self.m_image.astype(np.float64)  # for large numbers
+        progress_iter = tqdm(scales, desc="Calculating mass") if self.m_with_progress else scales
+
+        for size in progress_iter:
+            block_size = (size, size)
+            boxes, raw_blocks = CFAImage.get_boxes_from_image(image, block_size, corp_type=self.m_corp_type)
+
+            # Step 1: Calculate boxes mass
+            mass_distribution = np.array([np.sum(box) for box in boxes], dtype=np.float64)
+            mass_distribution = np.where(mass_distribution < 0, 0, mass_distribution)
+
+            total_mass = np.sum(mass_distribution)
+            if total_mass <= 0 or np.isnan(total_mass) or np.isinf(total_mass):
+                continue
+
+            mass_distribution /= total_mass
+            mass_distribution = np.clip(mass_distribution, 1e-12, 1.0) # Prevent zero or extreme values
+
+            # Step 2: Calculate M(q, ε)
+            for q in q_list:
+                tmp = {'scale': size, 'q': q, 'boxes': raw_blocks}
+
+                if np.all(mass_distribution == 0):
+                    tmp['mass'] = 0
                     all_data.append(tmp)
-        else:
-            for size in scales:
-                block_size = (size, size)
-                boxes,raw_blocks = CFAImage.get_boxes_from_image(self.m_image, block_size, corp_type= self.m_corp_type)
-                # Calculate mass distribution for each block (sum of pixels per block)
-                num_blocks = len(boxes)
-                mass_distribution = np.array([np.sum(box) for box in boxes])  # mass distribution
+                    continue
 
-                # Normalize mass distribution (avoid negative values by setting to zero)
-                mass_distribution = np.where(mass_distribution < 0, 0, mass_distribution)
-                total_mass = np.sum(mass_distribution)
-                if total_mass > 0:
-                    mass_distribution = mass_distribution / total_mass  # normalization
-                    mass_distribution = np.where(mass_distribution < 0, 0, mass_distribution)
-                
-                # Calculate generalized mass index M(q, ε)
-                for q in self.m_q_list:
-                    if np.all(mass_distribution == 0):
+                if q == 0:
+                    tmp['mass'] = np.count_nonzero(mass_distribution)
+                else:
+                    # Numerically stable computation: mass^q = exp(q * log(mass))
+                    log_mass = np.log(mass_distribution)
+                    q_log_mass = q * log_mass
+
+                    # Limit extreme values to prevent exp overflow
+                    q_log_mass = np.clip(q_log_mass, a_min=-700, a_max=700)
+                    mass_q = np.sum(np.exp(q_log_mass))
+
+                    if np.isnan(mass_q) or np.isinf(mass_q):
                         mass_q = 0
-                    else:
-                        if q == 0:
-                            mass_q = np.count_nonzero(mass_distribution)
-                        else:
-                            valid = mass_distribution[mass_distribution > 0]
-                            mass_q = np.sum(valid ** q)
-                    tmp = {}
-                    tmp['scale'] = size
-                    tmp['q'] = q
                     tmp['mass'] = mass_q
-                    tmp['boxes'] = raw_blocks
-                    all_data.append(tmp)
 
-        return pd.DataFrame(all_data).sort_values(by=['q','scale']).reset_index(drop=True)
+                all_data.append(tmp)
+
+        df = pd.DataFrame(all_data)
+        return df.sort_values(by=['q', 'scale']).reset_index(drop=True)
     
     '''Calculate scaling exponent tau
     df_mass: generalized mass distribution dataframe
