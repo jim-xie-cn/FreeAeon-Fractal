@@ -175,11 +175,10 @@ class CFAImage(object):
         mask_union (ndarray): Final combined binary mask (2D boolean array).
     """
     @staticmethod
-    def get_roi_by_q(image, q_range=(-10, 10), step=1, window_size=9, target_mass=0.95):
+    def get_roi_by_q(image, q_range=(-5, 5), step=1, box_size=16, target_mass=0.95):
         if image is None:
             raise ValueError("image is None")
 
-        # Determine if image is grayscale or RGB
         if image.ndim == 2:  # Grayscale
             channels = [image]
         elif image.ndim == 3 and image.shape[2] == 3:  # RGB
@@ -189,37 +188,59 @@ class CFAImage(object):
 
         q_min, q_max = q_range
         q_list = np.arange(q_min, q_max + step, step)
+        eps = 1e-12
 
         masks_all_channels = []
+
         for ch_img in channels:
-            img = ch_img.astype(np.float32)
-            mu = scipy.ndimage.uniform_filter(img ** 2, size=window_size)
+            img = ch_img.astype(np.float64)  # 使用float64避免溢出
+            h, w = img.shape
+            h_crop = h - (h % box_size)
+            w_crop = w - (w % box_size)
+            img_cropped = img[:h_crop, :w_crop]
+
+            blocks = view_as_blocks(img_cropped, block_shape=(box_size, box_size))
+            block_sum = np.sum(blocks, axis=(2, 3))
+            block_sum = np.maximum(block_sum, eps)
+            log_block_sum = np.log(block_sum)
 
             masks = []
-            for q_val in q_list:
-                mu_q = np.power(mu, q_val)
-                mu_q_norm = mu_q / mu_q.sum()
 
-                flat = mu_q_norm.flatten()
+            for q_val in q_list:
+                exp_val = q_val * log_block_sum
+                max_exp_val = np.max(exp_val)
+                exp_val_stable = exp_val - max_exp_val  # 数值稳定化
+
+                mass_q = np.exp(exp_val_stable)
+                mass_q = np.nan_to_num(mass_q, nan=0.0, posinf=np.finfo(np.float64).max, neginf=0.0)
+
+                sum_mass_q = np.sum(mass_q)
+                if sum_mass_q <= 0 or np.isnan(sum_mass_q):
+                    continue
+
+                mass_q_norm = mass_q / sum_mass_q
+
+                flat = mass_q_norm.flatten()
                 sorted_indices = np.argsort(flat)[::-1]
                 sorted_vals = flat[sorted_indices]
                 cumsum = np.cumsum(sorted_vals)
                 cutoff_idx = np.searchsorted(cumsum, target_mass)
 
-                mask_flat = np.zeros_like(flat, dtype=bool)
-                mask_flat[sorted_indices[:cutoff_idx]] = True
-                mask = mask_flat.reshape(mu_q_norm.shape)
+                block_mask_flat = np.zeros_like(flat, dtype=bool)
+                block_mask_flat[sorted_indices[:cutoff_idx]] = True
+                block_mask = block_mask_flat.reshape(mass_q.shape)
 
-                masks.append(mask)
+                mask_img = np.kron(block_mask, np.ones((box_size, box_size), dtype=bool))
 
-            # Combine all masks from different q values in this channel (using union)
+                full_mask = np.zeros_like(img, dtype=bool)
+                full_mask[:h_crop, :w_crop] = mask_img
+                masks.append(full_mask)
+
             mask_channel = np.logical_or.reduce(masks)
             masks_all_channels.append(mask_channel)
 
-        # Combine masks across all channels using intersection
         mask_union = np.logical_and.reduce(masks_all_channels)
 
-        # Apply final mask to the original image
         masked_image = np.zeros_like(image)
         if image.ndim == 2:
             masked_image[mask_union] = image[mask_union]
@@ -228,7 +249,7 @@ class CFAImage(object):
                 ch = image[:, :, i]
                 ch_masked = np.zeros_like(ch)
                 ch_masked[mask_union] = ch[mask_union]
-                masked_image[:, :, i] = ch_masked        
+                masked_image[:, :, i] = ch_masked
 
         return mask_union, masked_image.astype(np.uint8)
 
