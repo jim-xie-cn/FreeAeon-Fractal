@@ -193,7 +193,7 @@ class CFAImage(object):
         masks_all_channels = []
 
         for ch_img in channels:
-            img = ch_img.astype(np.float64)  # 使用float64避免溢出
+            img = ch_img.astype(np.float64)  
             h, w = img.shape
             h_crop = h - (h % box_size)
             w_crop = w - (w % box_size)
@@ -209,7 +209,7 @@ class CFAImage(object):
             for q_val in q_list:
                 exp_val = q_val * log_block_sum
                 max_exp_val = np.max(exp_val)
-                exp_val_stable = exp_val - max_exp_val  # 数值稳定化
+                exp_val_stable = exp_val - max_exp_val  # handle extreme large number
 
                 mass_q = np.exp(exp_val_stable)
                 mass_q = np.nan_to_num(mass_q, nan=0.0, posinf=np.finfo(np.float64).max, neginf=0.0)
