@@ -41,8 +41,10 @@ class CFA2Dimension(object):
         s_list = np.array(scale_list)
         b_list = np.array(box_count_list)
         b_list = np.where(b_list == 0, np.finfo(float).eps, b_list)
-        
-        log_scales = np.log(1 / np.array(s_list))
+ 
+        s_list = np.where(s_list == 0, np.finfo(float).eps, s_list)
+        log_scales = -np.log(s_list)
+        #log_scales = np.log(1 / np.array(s_list))
         log_counts = np.log(b_list)
 
         slope, intercept, r_value, p_value, std_err = linregress(log_scales, log_counts)
@@ -92,7 +94,8 @@ class CFA2Dimension(object):
         scale_list = []
         box_count_list = []
         H = max(self.m_image.shape)
-        Gray_max = np.max(self.m_image)
+        #Gray_max = np.max(self.m_image)
+        Gray_max = np.percentile(self.m_image, 99)
         if self.m_with_progress:
             for size in tqdm(self.m_scales,desc="Calculating by DBC"):
                 block_size = (size,size)
@@ -103,9 +106,14 @@ class CFA2Dimension(object):
                     I_min = np.min(box)
                     I_max = np.max(box)
                     # Calculate normalized height
-                    Z_min = (I_min / Gray_max) * H if I_min > 0 else 0
-                    Z_max = (I_max / Gray_max) * H if I_max > 0 else 0
-                    box_count += np.ceil((Z_max - Z_min) / size).astype(int)
+                    #Z_min = (I_min / Gray_max) * H if I_min > 0 else 0
+                    #Z_max = (I_max / Gray_max) * H if I_max > 0 else 0
+                    Z_min = (I_min / Gray_max) * H
+                    Z_max = (I_max / Gray_max) * H
+                    #box_count += np.ceil((Z_max - Z_min) / size).astype(int)
+                    delta_z = max(Z_max - Z_min, 0)
+                    box_count += np.ceil((delta_z + 1e-6) / size).astype(int)
+
                 scale_list.append(size)
                 box_count_list.append(box_count)
         else:
@@ -118,9 +126,13 @@ class CFA2Dimension(object):
                     I_min = np.min(box)
                     I_max = np.max(box)
                     # Calculate normalized height
-                    Z_min = (I_min / Gray_max) * H if I_min > 0 else 0
-                    Z_max = (I_max / Gray_max) * H if I_max > 0 else 0
-                    box_count += np.ceil((Z_max - Z_min) / size).astype(int)
+                    #Z_min = (I_min / Gray_max) * H if I_min > 0 else 0
+                    #Z_max = (I_max / Gray_max) * H if I_max > 0 else 0
+                    Z_min = (I_min / Gray_max) * H
+                    Z_max = (I_max / Gray_max) * H
+                    #box_count += np.ceil((Z_max - Z_min) / size).astype(int)
+                    delta_z = max(Z_max - Z_min, 0)
+                    box_count += np.ceil((delta_z + 1e-6) / size).astype(int)
                 scale_list.append(size)
                 box_count_list.append(box_count)
         return self.get_fd(scale_list,box_count_list)
@@ -132,7 +144,8 @@ class CFA2Dimension(object):
         scale_list = []
         box_count_list = []
         H = max(self.m_image.shape)
-        Gray_max = np.max(self.m_image)
+        #Gray_max = np.max(self.m_image)
+        Gray_max = np.percentile(self.m_image, 99)
         if self.m_with_progress:
             for size in tqdm(self.m_scales,desc="Calculating by SDBC"):
                 block_size = (size,size)
@@ -143,9 +156,13 @@ class CFA2Dimension(object):
                     I_min = np.min(box)
                     I_max = np.max(box)
                     # Calculate normalized height
-                    Z_min = (I_min / Gray_max) * H if I_min > 0 else 0
-                    Z_max = (I_max / Gray_max) * H if I_max > 0 else 0
-                    box_count += np.ceil(((Z_max-Z_min+1) * H ) / size).astype(int)
+                    #Z_min = (I_min / Gray_max) * H if I_min > 0 else 0
+                    #Z_max = (I_max / Gray_max) * H if I_max > 0 else 0
+                    Z_min = (I_min / Gray_max) * H
+                    Z_max = (I_max / Gray_max) * H
+                    #box_count += np.ceil(((Z_max-Z_min+1) * H ) / size).astype(int)
+                    delta_z = max(Z_max - Z_min, 0)
+                    box_count += np.ceil((delta_z + 1e-6) / size).astype(int)
                 scale_list.append(size)
                 box_count_list.append(box_count)
         else:
@@ -158,9 +175,14 @@ class CFA2Dimension(object):
                     I_min = np.min(box)
                     I_max = np.max(box)
                     # Calculate normalized height
-                    Z_min = (I_min / Gray_max) * H if I_min > 0 else 0
-                    Z_max = (I_max / Gray_max) * H if I_max > 0 else 0
-                    box_count += np.ceil(((Z_max-Z_min+1) * H ) / size).astype(int)
+                    #Z_min = (I_min / Gray_max) * H if I_min > 0 else 0
+                    #Z_max = (I_max / Gray_max) * H if I_max > 0 else 0
+                    Z_min = (I_min / Gray_max) * H
+                    Z_max = (I_max / Gray_max) * H
+                    #box_count += np.ceil(((Z_max-Z_min+1) * H ) / size).astype(int)
+                    delta_z = max(Z_max - Z_min, 0)
+                    box_count += np.ceil((delta_z + 1e-6) / size).astype(int)
+
                 scale_list.append(size)
                 box_count_list.append(box_count)
 
@@ -174,18 +196,38 @@ class CFA2Dimension(object):
             plt.title(text,fontsize=8)
             plt.axis('off') 
         def show_fit(text,result):
+            #x = np.array(result['log_scales'])
+            #y = np.array(result['log_counts'])
+            #fd = result['fd']
+            #b = result['intercept']
+            #plt.title('%s: FD=%0.4f PV=%.4f' % (text,fd,result['p_value']),fontsize=8)
+            #b = result['intercept']
+            #plt.plot(x, y, 'ro',label='Calculated points',markersize=1)
+            #plt.plot(x, fd*x+b, 'k--', label='Linear fit')
+            #plt.legend(loc=4,fontsize=8)
+            #plt.xlabel('$log(1/r)$',fontsize=8)
+            #plt.ylabel('$log(Nr)$',fontsize=8)
+            #plt.legend(fontsize=8)
             x = np.array(result['log_scales'])
             y = np.array(result['log_counts'])
             fd = result['fd']
             b = result['intercept']
-            plt.title('%s: FD=%0.4f PV=%.4f' % (text,fd,result['p_value']),fontsize=8)
-            b = result['intercept']
-            plt.plot(x, y, 'ro',label='Calculated points',markersize=1)
-            plt.plot(x, fd*x+b, 'k--', label='Linear fit')
-            plt.legend(loc=4,fontsize=8)
-            plt.xlabel('$log(1/r)$',fontsize=8)
-            plt.ylabel('$log(Nr)$',fontsize=8)
-            plt.legend(fontsize=8)
+            r2 = result['r_value'] ** 2
+            scale_range = f"[{min(result['scales'])}, {max(result['scales'])}]"
+
+            plt.plot(x, y, 'ro', label='Calculated points', markersize=2)
+            plt.plot(x, fd * x + b, 'k--', label='Linear fit')
+            plt.fill_between(x, fd*x + b - 2*result['std_err'], fd*x + b + 2*result['std_err'],
+                 color='gray', alpha=0.2, label='±2σ band')
+
+            textstr = '\n'.join((r'$D=%.4f$' % (fd,), r'$R^2=%.4f$' % (r2,),r'Scale: ' + scale_range))
+
+            plt.gca().text(0.95, 0.95, textstr, transform=plt.gca().transAxes,fontsize=7, verticalalignment='top', horizontalalignment='right',bbox=dict(boxstyle='round,pad=0.2', facecolor='white', alpha=0.5))
+            plt.title('%s: FD=%0.4f PV=%.4f' % (text,fd,result['p_value']),fontsize=7)
+            plt.xlabel(r'$\log(1/r)$', fontsize=7)
+            plt.ylabel(r'$\log(N(r))$', fontsize=7)
+            plt.legend(fontsize=7)
+            plt.grid(True, which='both', ls='--', lw=0.3)
 
         plt.figure(1,figsize=(10,5))
         plt.subplot(2, 3, 1)
