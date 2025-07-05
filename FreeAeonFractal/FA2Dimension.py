@@ -12,6 +12,7 @@ import pandas as pd
 from FreeAeonFractal.FAImage import CFAImage
 import seaborn as sns
 import matplotlib.ticker as mticker
+from scipy.interpolate import UnivariateSpline
 '''
 Calculation of fractal dimensions for 2D shapes
 '''
@@ -232,6 +233,8 @@ class CFA2DMFS:
 
         if max_size is None:
             max_size = min(self.m_image.shape)  
+        if max_size < 4:
+            raise ValueError("max_size too small: must be >= 4")
 
         # get box size ( ε ) list
         scales = np.logspace(1, np.log2(max_size), num=max_scales, base=2, dtype=int)
@@ -242,8 +245,13 @@ class CFA2DMFS:
         progress_iter = tqdm(scales, desc="Calculating mass") if self.m_with_progress else scales
 
         for size in progress_iter:
+            if size < 4:
+                continue
             block_size = (size, size)
             boxes, raw_blocks = CFAImage.get_boxes_from_image(image, block_size, corp_type=self.m_corp_type)
+            no_zero_box = [box for box in boxes if np.count_nonzero(box) > 0]
+            if len(no_zero_box) == 0:
+                continue
 
             # Step 1: Calculate boxes mass
             mass_distribution = np.array([np.sum(box) for box in boxes], dtype=np.float64)
@@ -295,11 +303,32 @@ class CFA2DMFS:
             for q, df_q in tqdm(df_mass.groupby("q"),desc="Calculating τ(q)"):
                 tmp = {}
                 if q == 1:
-                    mass = np.array(df_q['mass'].tolist())
-                    mass = mass[mass>0]
-                    tau = -np.sum(mass * np.log(mass))
-                    tmp['q'] = q
-                    tmp['t(q)'] = tau
+                    #mass = np.array(df_q['mass'].tolist())
+                    #mass = mass[mass>0]
+                    #tau = -np.sum(mass * np.log(mass))
+                    #tmp['q'] = q
+                    #tmp['t(q)'] = tau
+                    entropy_list = []
+                    log_scales = []
+                    for scale, df_scale in df_q.groupby('scale'):
+                        mass = np.array(df_scale['mass'])
+                        mass = mass[mass > 0]
+                        entropy = -np.sum(mass * np.log(mass))
+                        entropy_list.append(entropy)
+                        log_scales.append(np.log(scale))
+                    if len(log_scales) > 5:
+                        slope, intercept, r_value, p_value, std_err = linregress(log_scales, entropy_list)
+                        tau = slope
+                        tmp['q'] = q
+                        tmp['t(q)'] = slope
+                        tmp['intercept'] = intercept
+                        tmp['r_value'] = r_value
+                        tmp['p_value'] = p_value
+                        tmp['std_err'] = std_err
+                    else:
+                        tau = np.nan
+                        tmp['q'] = q
+                        tmp['t(q)'] = tau
                 else:
                     log_scales = np.log(df_q['scale'])
                     log_mass = np.log(df_q['mass'])
@@ -356,22 +385,36 @@ class CFA2DMFS:
     Returns: generalized fractal dimension (D)
     '''
     def get_generalized_dimension(self,df_tau):
+        df_tau = self.get_alpha_f_alpha(df_tau)
         def calc_dimension(item):
             if item['q'] == 1:
-                return item['t(q)']  # use tau(q) when q is 1
+                return item['a(q)']  # 用 alpha(1) 作为 d(1)
             else:
                 return item['t(q)'] / (item['q'] - 1)
-        #df_tau['d(q)'] = df_tau.progress_apply(calc_dimension, axis=1)
         df_tau['d(q)'] = df_tau.apply(calc_dimension, axis=1)
         return df_tau
+        #def calc_dimension(item):
+        #    if item['q'] == 1:
+        #        return item['t(q)']  # use tau(q) when q is 1
+        #    else:
+        #        return item['t(q)'] / (item['q'] - 1)
+        #df_tau['d(q)'] = df_tau.progress_apply(calc_dimension, axis=1)
+        #df_tau['d(q)'] = df_tau.apply(calc_dimension, axis=1)
+        #return df_tau
 
     '''Calculate the local singularity exponent and singularity spectrum
     df_tau: scaling data DataFrame df_tau
     Returns: list of local singularity exponents (alpha) and singularity spectrum (f(alpha))
     '''
     def get_alpha_f_alpha(self,df_tau):
-        alpha_list = np.gradient(df_tau['t(q)'], df_tau['q'])
-        f_alpha_list = df_tau['q'] * alpha_list - df_tau['t(q)']
+        #alpha_list = np.gradient(df_tau['t(q)'], df_tau['q'])
+        #f_alpha_list = df_tau['q'] * alpha_list - df_tau['t(q)']
+        q_vals = df_tau['q'].values
+        tq_vals = df_tau['t(q)'].values
+        spl = UnivariateSpline(q_vals, tq_vals, k=3, s=0)
+        alpha_list = spl.derivative()(q_vals)
+        f_alpha_list = q_vals * alpha_list - tq_vals
+
         df_tau['a(q)'] = alpha_list
         df_tau['f(a)'] = f_alpha_list
         return df_tau
