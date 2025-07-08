@@ -168,14 +168,18 @@ class CFAImage(object):
         q_range (tuple): Range of q values (q_min, q_max).
         step (float): Step size for iterating through q values.
         window_size (int): Smoothing window size.
-        target_mass (float): Cumulative mass threshold to retain.
+        target_mass (float): Cumulative mass threshold to retain. 
+                             Is it selecting the top 95 percentile of blocks based on the sorted mass values。
+                             Less target_mass, Less boxes selected.
+
+        combine_mode ('and'|'or'): Merge method for each channel.
 
     Returns:
         masked_image (ndarray): Image with only the significant regions (others set to 0).
         mask_union (ndarray): Final combined binary mask (2D boolean array).
     """
     @staticmethod
-    def get_roi_by_q(image, q_range=(-5, 5), step=1, box_size=16, target_mass=0.95):
+    def get_roi_by_q(image, q_range=(-5, 5), step=1, box_size=16, target_mass=0.95,combine_mode='and'):
         if image is None:
             raise ValueError("image is None")
 
@@ -239,7 +243,12 @@ class CFAImage(object):
             mask_channel = np.logical_or.reduce(masks)
             masks_all_channels.append(mask_channel)
 
-        mask_union = np.logical_and.reduce(masks_all_channels)
+        if combine_mode == 'and':
+            mask_union = np.logical_and.reduce(masks_all_channels)
+        elif combine_mode == 'or':
+            mask_union = np.logical_or.reduce(masks_all_channels)
+        else:
+            raise ValueError("combine_mode must be 'and' or 'or'")
 
         masked_image = np.zeros_like(image)
         if image.ndim == 2:
@@ -293,7 +302,11 @@ def demo_roi():
     b,g,r = cv2.split(image)
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     q_range = (2,5)
-    mask_union,masked_image = CFAImage.get_roi_by_q(image=image,q_range=q_range,      step=1.0,target_mass=0.95)
+    mask_union,masked_image = CFAImage.get_roi_by_q(image=image,
+                                                    q_range=q_range,
+                                                    step=1.0,
+                                                    target_mass=0.90,
+                                                    combine_mode='or')
 
     plt.figure(figsize=(12, 4))
         
