@@ -316,16 +316,6 @@ class CFAImageFourier(object):
             result.astype(np.float64)
             return result 
 
-    def plot1(self,
-             display_magnitude=[], 
-             display_phase=[], 
-
-             reconstructed=np.array([]),
-             region_by_freq=np.array([]), 
-             region_by_phase=np.array([]),
-             region_by_freq_phase=np.array([]),
-             reconstructed_masked=np.array([])):
-        pass
     def plot(self,
              raw_magnitude_disp=[],
              raw_phase_disp = [], 
