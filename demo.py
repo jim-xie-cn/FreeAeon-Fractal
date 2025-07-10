@@ -21,32 +21,36 @@ def demo_fourier(image):
     fourier = CFAImageFourier(image)
 
     # Get raw spectrum
-    mag_raw, phase_raw = fourier.get_raw_spectrum()
+    raw_mag, raw_phase = fourier.get_raw_spectrum()
 
     # Get display spectrum
-    mag_disp, phase_disp = fourier.get_display_spectrum(alpha=1.5)
+    raw_mag_disp, raw_phase_disp = fourier.get_display_spectrum(alpha=1.5)
 
-    # Reconstruct full image
-    reconstructed = fourier.get_reconstruct()
-
-    # Reconstructet image by frequency mask (reserve odd frequencies))
-    h, w = mag_raw[0].shape
+    # Fake mask (reserve odd frequencies))
+    h, w = raw_mag[0].shape
     Y, X = np.ogrid[:h, :w]
     mask = ((X % 2 == 1) & (Y % 2 == 1)).astype(np.uint8)
-    reconstructed_masked = fourier.extract_by_freq_mask(mask)
 
-    # Get ROI by frequency or phase
-    h, w = image.shape[0], image.shape[1]
-    freq_box = (0,0,w//2,h//2)
-    phase_box = (0,0,w,h)
+    # Get masked display spectrum
+    customized_mag_list = raw_mag * mask
+    customized_phase_list = raw_phase * mask
+    customized_mag_disp, customized_phase_disp = fourier.get_display_spectrum(alpha=1.5,
+                                                                              magnitude = customized_mag_list, 
+                                                                              phase = customized_phase_list)
+    # Reconstruct full image
+    full_reconstructed = fourier.get_reconstruct()
 
-    region_mag = fourier.extract_by_freq(box=freq_box)
-    region_phase = fourier.extract_by_phase(box=phase_box)
-    region_mag_phase = fourier.extract_by_freq_phase(freq_box,phase_box)
+    #Reconstructet image by frequency mask 
+    masked_reconstructed = fourier.extract_by_freq_mask(mask)
 
     # Show full result
-    fourier.plot(mag_disp, phase_disp, reconstructed, region_mag, region_phase,region_mag_phase,reconstructed_masked)
-
+    fourier.plot(raw_mag_disp, 
+                 raw_phase_disp, 
+                 customized_mag_disp,
+                 customized_phase_disp,
+                 full_reconstructed, 
+                 masked_reconstructed)
+    
 def main(image_path, mode):
     rgb_image = cv2.imread(image_path)
     if rgb_image is None:

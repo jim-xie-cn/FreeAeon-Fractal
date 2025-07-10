@@ -103,15 +103,11 @@ class CFAImageFourier(object):
         Returns:
             tuple: (magnitude images, phase images)
         """
+        tmp_magnitude =  magnitude if np.array(magnitude).any() else self.m_magnitude
+        tmp_phase =  phase if np.array(phase).any() else self.m_phase
+
         display_mag = []
         display_phase = []
-        if (not np.array(magnitude).any()) or (not np.array(phase).any()):
-            tmp_magnitude = self.m_magnitude
-            tmp_phase = self.m_phase
-        else:
-            tmp_magnitude = magnitude
-            tmp_phase = phase
-
         for mag_raw, phase_raw in zip(tmp_magnitude, tmp_phase):
             with np.errstate(divide='ignore', invalid='ignore'):
                 mag_log = np.log1p(np.abs(mag_raw))
@@ -124,16 +120,22 @@ class CFAImageFourier(object):
 
         return display_mag, display_phase
 
-    def get_reconstruct(self):
+    def get_reconstruct(self, magnitude = np.array([]), phase = np.array([])):
         """
         Reconstruct the spatial-domain image from stored magnitude and phase.
         
         Returns:
             ndarray: Reconstructed image
         """
+        tmp_magnitude = self.m_magnitude
+        tmp_phase = self.m_phase
+        if np.array(magnitude).any():
+            tmp_magnitude = magnitude
+        if np.array(phase).any():
+            tmp_phase = phase
         reconstructed_channels = []
-        for mag, phase in zip(self.m_magnitude, self.m_phase):
-            complex_spectrum = mag * np.exp(1j * phase)
+        for mag, pha in zip(tmp_magnitude, tmp_phase):
+            complex_spectrum = mag * np.exp(1j * pha)
             fft_unshifted = np.fft.ifftshift(complex_spectrum)
             img_reconstructed = np.fft.ifft2(fft_unshifted)
             img_reconstructed = np.real(img_reconstructed)
@@ -144,150 +146,8 @@ class CFAImageFourier(object):
             return reconstructed_channels[0]
         else:
             return cv2.merge(reconstructed_channels)
-            
-    def extract_by_freq(self, box):
-        """
-        Extract a rectangular region from the frequency domain and reconstruct the corresponding spatial image.
-    
-        Args:
-            box (tuple): (x1, y1, x2, y2) coordinates in the frequency domain
-    
-        Returns:
-            ndarray: Reconstructed image from selected frequency region
-        """
-        x1, y1, x2, y2 = box
-        reconstructed_channels = []
-    
-        for mag, phase in zip(self.m_magnitude, self.m_phase):
-            h, w = mag.shape
-    
-            # Clamp box coordinates within image bounds
-            x1_clamped = max(0, min(w, x1))
-            x2_clamped = max(0, min(w, x2))
-            y1_clamped = max(0, min(h, y1))
-            y2_clamped = max(0, min(h, y2))
-    
-            # Create mask
-            mask = np.zeros((h, w), dtype=np.uint8)
-            mask[y1_clamped:y2_clamped, x1_clamped:x2_clamped] = 1
-    
-            # Apply mask and reconstruct
-            complex_spectrum = mag * np.exp(1j * phase)
-            filtered_spectrum = complex_spectrum * mask
-    
-            fft_unshifted = np.fft.ifftshift(filtered_spectrum)
-            img_reconstructed = np.fft.ifft2(fft_unshifted)
-            img_reconstructed = np.real(img_reconstructed)
-    
-            img_reconstructed = cv2.normalize(img_reconstructed, None, 0, 255, cv2.NORM_MINMAX)
-            reconstructed_channels.append(np.uint8(img_reconstructed))
-    
-        if len(reconstructed_channels) == 1:
-            result =  reconstructed_channels[0]
-            result.astype(np.float64)
-            return result 
-        else:
-            result = cv2.merge(reconstructed_channels)
-            result.astype(np.float64)
-            return result 
 
-    def extract_by_phase(self, box):
-        """
-        Extract region from phase spectrum only (assuming unit magnitude elsewhere).
-        Works for both grayscale and RGB images.
-        
-        Args:
-            box (tuple): (x1, y1, x2, y2) region in frequency domain
-    
-        Returns:
-            ndarray: Reconstructed image from masked phase
-        """
-        x1, y1, x2, y2 = box
-        reconstructed_channels = []
-    
-        for phase in self.m_phase:
-            h, w = phase.shape
-    
-            # Clamp box boundaries
-            x1_clamped = max(0, min(w, x1))
-            x2_clamped = max(0, min(w, x2))
-            y1_clamped = max(0, min(h, y1))
-            y2_clamped = max(0, min(h, y2))
-    
-            # Default: unit magnitude + zero phase (neutral complex)
-            complex_spectrum = np.ones((h, w), dtype=np.complex128)
-    
-            # Inject real phase in selected region
-            complex_spectrum[y1_clamped:y2_clamped, x1_clamped:x2_clamped] = np.exp(
-                1j * phase[y1_clamped:y2_clamped, x1_clamped:x2_clamped])
-    
-            # Inverse FFT
-            fft_unshifted = np.fft.ifftshift(complex_spectrum)
-            img_reconstructed = np.fft.ifft2(fft_unshifted)
-            img_reconstructed = np.real(img_reconstructed)
-    
-            # Normalize
-            img_reconstructed = cv2.normalize(img_reconstructed, None, 0, 255, cv2.NORM_MINMAX)
-            reconstructed_channels.append(np.uint8(img_reconstructed))
-    
-        # Merge for RGB or return grayscale
-        if len(reconstructed_channels) == 1:
-            result = reconstructed_channels[0]
-            result.astype(np.float64)
-            return result 
-        else:
-            result = cv2.merge(reconstructed_channels)
-            result.astype(np.float64)
-            return result 
-        
-    def extract_by_freq_phase(self, mag_box, phase_box):
-        """
-        Extract image region by masking magnitude and phase spectra separately,
-        then reconstruct spatial image.
-    
-        Args:
-            mag_box (tuple): (x1, y1, x2, y2) region in magnitude spectrum
-            phase_box (tuple): (x1, y1, x2, y2) region in phase spectrum
-    
-        Returns:
-            ndarray: Reconstructed spatial-domain image from masked magnitude and phase regions
-        """
-        mag_x1, mag_y1, mag_x2, mag_y2 = mag_box
-        phase_x1, phase_y1, phase_x2, phase_y2 = phase_box
-    
-        reconstructed_channels = []
-        
-        for mag, phase in zip(self.m_magnitude, self.m_phase):
-            h, w = mag.shape
-    
-            mag_mask = np.zeros((h, w), dtype=np.uint8)
-            mag_mask[mag_y1:mag_y2, mag_x1:mag_x2] = 1
-    
-            phase_mask = np.zeros((h, w), dtype=np.uint8)
-            phase_mask[phase_y1:phase_y2, phase_x1:phase_x2] = 1
-    
-            mag_masked = mag * mag_mask
-            phase_masked = phase * phase_mask
-    
-            complex_spectrum = mag_masked * np.exp(1j * phase_masked)
-    
-            fft_unshifted = np.fft.ifftshift(complex_spectrum)
-            img_reconstructed = np.fft.ifft2(fft_unshifted)
-            img_reconstructed = np.real(img_reconstructed)
-    
-            img_reconstructed = cv2.normalize(img_reconstructed, None, 0, 255, cv2.NORM_MINMAX)
-            reconstructed_channels.append(np.uint8(img_reconstructed))
-    
-        if len(reconstructed_channels) == 1:
-            result = reconstructed_channels[0]
-            result.astype(np.float64)
-            return result 
-        else:
-            result = cv2.merge(reconstructed_channels)
-            result.astype(np.float64)
-            return result 
-        
-    def extract_by_freq_mask(self, mask):
+    def extract_by_freq_mask(self, mask_mag = np.array([]), mask_phase = np.array([])):
         """
         Use a custom binary mask (same size as frequency map) to select which frequency components to retain.
         
@@ -297,24 +157,15 @@ class CFAImageFourier(object):
         Returns:
             ndarray: Reconstructed image using the masked frequency domain
         """
-        reconstructed_channels = []
-        for mag, phase in zip(self.m_magnitude, self.m_phase):
-            assert mask.shape == mag.shape, "Mask shape mismatch."
-            complex_spectrum = mag * np.exp(1j * phase)
-            filtered_spectrum = complex_spectrum * mask
-            fft_unshifted = np.fft.ifftshift(filtered_spectrum)
-            img_reconstructed = np.fft.ifft2(fft_unshifted)
-            img_reconstructed = np.real(img_reconstructed)
-            img_reconstructed = cv2.normalize(img_reconstructed, None, 0, 255, cv2.NORM_MINMAX)
-            reconstructed_channels.append(np.uint8(img_reconstructed))
-        if len(reconstructed_channels) == 1:
-            result = reconstructed_channels[0]
-            result.astype(np.float64)
-            return result 
+        if np.array(mask_mag).any():
+            magnitude = mask_mag * self.m_magnitude
         else:
-            result = cv2.merge(reconstructed_channels)
-            result.astype(np.float64)
-            return result 
+            magnitude = self.m_magnitude
+        if np.array(mask_phase).any():
+            phase = mask_phase * self.m_phase
+        else:
+            phase = self.m_phase
+        return self.get_reconstruct(magnitude = magnitude, phase = phase)
 
     def plot(self,
              raw_magnitude_disp=[],
@@ -322,10 +173,7 @@ class CFAImageFourier(object):
              customized_magnitude_disp = [],
              customized_phase_disp = [],
              full_reconstructed=np.array([]),
-             mask_reconstructed=np.array([]),
-             roi_by_mag_phase_box=np.array([]),
-             roi_by_mag_box=np.array([]),
-             roi_by_phase_box=np.array([])):
+             mask_reconstructed=np.array([])):
         """
         Display original, magnitude, phase, reconstructed images,
         and optionally regions extracted from frequency and phase.
@@ -337,9 +185,6 @@ class CFAImageFourier(object):
             customized_phase_disp (list): List of customized visualized phase images
             full_reconstructed (ndarray): Reconstructed from raw magnitude and phase
             mask_reconstructed (ndarray): Reconstructed from masked magnitude and phase
-            roi_by_mag_phase_box (ndarray): Extracted region by magnitude and phase fiter box
-            roi_by_mag_box (ndarray): Extracted region by freq fiter box
-            roi_by_phase_box (ndarray): Reconstructed by phase fiter box
         """
         def enhance_contrast(image, beta=0, min_scale=1, max_scale=1.8):
             std = np.std(image)
@@ -362,7 +207,7 @@ class CFAImageFourier(object):
             ("Original", self.m_image),
             ("Raw Magnitude", cv2.merge(raw_magnitude_disp) if len(raw_magnitude_disp) > 1 else raw_magnitude_disp[0] if raw_magnitude_disp else None),
             ("Raw Phase", cv2.merge(raw_phase_disp) if len(raw_phase_disp) > 1 else raw_phase_disp[0] if raw_phase_disp else None),
-            ("Customized Magnitude", cv2.merge(customized_phase_disp) if len(customized_phase_disp) > 1 else customized_phase_disp[0] if customized_phase_disp else None),
+            ("Customized Magnitude", cv2.merge(customized_magnitude_disp) if len(customized_magnitude_disp) > 1 else customized_magnitude_disp[0] if customized_magnitude_disp else None),
             ("Customized Phase", cv2.merge(customized_phase_disp) if len(customized_phase_disp) > 1 else customized_phase_disp[0] if customized_phase_disp else None),
         ]
 
@@ -370,16 +215,10 @@ class CFAImageFourier(object):
             images.append(("Full Reconstruced", full_reconstructed))
         if mask_reconstructed.size != 0:
             images.append(("Masked Reconstruced", mask_reconstructed))
-        if roi_by_mag_phase_box.size != 0:
-            images.append(("ROI from Freq & Phase", roi_by_mag_phase_box))
-        if roi_by_mag_box.size != 0:
-            images.append(("ROI from Freq", roi_by_mag_box))
-        if roi_by_phase_box.size != 0:
-            images.append(("ROI from Phase", roi_by_phase_box))
 
         n_total = len(images)
         n_cols = (n_total + 1) // 2
-        plt.figure(figsize=(14, 8))
+        plt.figure(figsize=(8, 6))
 
         for idx, (title, img) in enumerate(images):
             plt.subplot(2, n_cols, idx + 1)
@@ -406,19 +245,19 @@ def main():
     fourier = CFAImageFourier(image)
 
     # Get raw spectrum
-    mag_raw, phase_raw = fourier.get_raw_spectrum()
+    raw_mag, raw_phase = fourier.get_raw_spectrum()
 
     # Get display spectrum
     raw_mag_disp, raw_phase_disp = fourier.get_display_spectrum(alpha=1.5)
 
     # Fake mask (reserve odd frequencies))
-    h, w = mag_raw[0].shape
+    h, w = raw_mag[0].shape
     Y, X = np.ogrid[:h, :w]
     mask = ((X % 2 == 1) & (Y % 2 == 1)).astype(np.uint8)
 
     # Get masked display spectrum
-    customized_mag_list = mask * mag_raw
-    customized_phase_list = mask * phase_raw
+    customized_mag_list = raw_mag * mask
+    customized_phase_list = raw_phase * mask
     customized_mag_disp, customized_phase_disp = fourier.get_display_spectrum(alpha=1.5,
                                                                               magnitude = customized_mag_list, 
                                                                               phase = customized_phase_list)
@@ -428,25 +267,13 @@ def main():
     #Reconstructet image by frequency mask 
     masked_reconstructed = fourier.extract_by_freq_mask(mask)
 
-    # Get ROI by frequency or phase
-    h, w = image.shape[0], image.shape[1]
-    freq_box = (0,0,w//2,h//2)
-    phase_box = (0,0,w,h)
-
-    roi_by_mag_box = fourier.extract_by_freq(box=freq_box)
-    roi_by_phase_box = fourier.extract_by_phase(box=phase_box)
-    roi_by_mag_phase_box = fourier.extract_by_freq_phase(freq_box,phase_box)
-
     # Show full result
     fourier.plot(raw_mag_disp, 
                  raw_phase_disp, 
                  customized_mag_disp,
                  customized_phase_disp,
                  full_reconstructed, 
-                 masked_reconstructed,
-                 roi_by_mag_phase_box, 
-                 roi_by_mag_box,
-                 roi_by_phase_box)
+                 masked_reconstructed)
     
 if __name__ == "__main__":
     main()
