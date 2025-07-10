@@ -362,8 +362,8 @@ class CFAImageFourier(object):
             ("Original", self.m_image),
             ("Raw Magnitude", cv2.merge(raw_magnitude_disp) if len(raw_magnitude_disp) > 1 else raw_magnitude_disp[0] if raw_magnitude_disp else None),
             ("Raw Phase", cv2.merge(raw_phase_disp) if len(raw_phase_disp) > 1 else raw_phase_disp[0] if raw_phase_disp else None),
-            ("Custoized Magnitude", cv2.merge(customized_phase_disp) if len(customized_phase_disp) > 1 else customized_phase_disp[0] if customized_phase_disp else None),
-            ("Custoized Phase", cv2.merge(customized_phase_disp) if len(customized_phase_disp) > 1 else customized_phase_disp[0] if customized_phase_disp else None),
+            ("Customized Magnitude", cv2.merge(customized_phase_disp) if len(customized_phase_disp) > 1 else customized_phase_disp[0] if customized_phase_disp else None),
+            ("Customized Phase", cv2.merge(customized_phase_disp) if len(customized_phase_disp) > 1 else customized_phase_disp[0] if customized_phase_disp else None),
         ]
 
         if full_reconstructed.size != 0:
