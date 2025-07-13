@@ -44,7 +44,7 @@ Example:
 
 ![Fractal Dimension Input](https://github.com/jim-xie-cn/FreeAeon-Fractal/raw/main/images/fourier.png)
 
-### Calculate the **Multifractal Spectrum** of an Series
+### Calculate the **Multifractal Spectrum** of a Series
 
 ```bash
 python demo.py --mode series
