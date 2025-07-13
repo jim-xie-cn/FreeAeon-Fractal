@@ -17,7 +17,7 @@ pip install FreeAeon-Fractal
 ### Calculate the **Multifractal Spectrum** of an image
 
 ```bash
-python demo.py --image ./images/face.png --mode mfs
+python demo.py --mode mfs --image ./images/face.png
 ```
 
 Example:
@@ -27,7 +27,7 @@ Example:
 ### Calculate the **Fractal Dimensions** (Box-Counting, DBC, SDBC) of an image
 
 ```bash
-python demo.py --image ./images/fractal.png --mode fd
+python demo.py --mode fd --image ./images/fractal.png
 ```
 
 Example:
@@ -37,13 +37,22 @@ Example:
 ### Fourier analysis of an image
 
 ```bash
-python demo.py --image ./images/face.png  --mode fourier
+python demo.py --mode fourier --image ./images/face.png
 ```
 
 Example:
 
 ![Fractal Dimension Input](https://github.com/jim-xie-cn/FreeAeon-Fractal/raw/main/images/fourier.png)
 
+### Calculate the **Multifractal Spectrum** of an Series
+
+```bash
+python demo.py --mode series
+```
+
+Example:
+
+![Fractal Dimension Input](https://github.com/jim-xie-cn/FreeAeon-Fractal/raw/main/images/fourier.png)
 
 ### Parameters
 
@@ -52,6 +61,7 @@ Example:
   - `fd` – Fractal Dimension  
   - `mfs` – Multifractal Spectrum (default)
   - `fourier` - Fourier analysis
+  - `series` - Multifractal Spectrum for Series analysis
 
 ## 📁 Directory Structure
 
