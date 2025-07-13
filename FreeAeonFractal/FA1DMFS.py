@@ -81,7 +81,7 @@ class CFA1DMFS:
         df_result['q'] = pd.Series(q)
         log_s = np.log2(lag_used)
         Hq = []
-        progress_iter = tqdm(range(len(q)), desc="Calculating mass") if self.m_with_progress else scales
+        progress_iter = tqdm(range(len(q)), desc="Calculating mass") if self.m_with_progress else range(len(q))
 
         for i in progress_iter:
             fq = dfa[:, i]
