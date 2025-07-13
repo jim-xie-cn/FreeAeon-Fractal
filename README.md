@@ -52,7 +52,7 @@ python demo.py --mode series
 
 Example:
 
-![Fractal Dimension Input](https://github.com/jim-xie-cn/FreeAeon-Fractal/raw/main/images/fourier.png)
+![Fractal Dimension Input](https://github.com/jim-xie-cn/FreeAeon-Fractal/raw/main/images/series.png)
 
 ### Parameters
 
