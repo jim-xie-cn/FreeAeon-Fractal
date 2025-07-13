@@ -75,7 +75,7 @@ class CFA1DMFS:
             dfa = dfa[:, np.newaxis]
         
         if dfa.shape[1] != len(q):
-            print(f"Warning: dfa.shape[1]={dfa.shape[1]} != len(q)={len(q)}, trimming q.")
+            #print(f"Warning: dfa.shape[1]={dfa.shape[1]} != len(q)={len(q)}, trimming q.")
             q = q[:dfa.shape[1]]
 
         df_result['q'] = pd.Series(q)
