@@ -23,7 +23,11 @@ class CFA2DMFS:
     corp_type: image cropping method (-1: crop, 0: no processing, 1: padding)
     '''
     def __init__(self, image, corp_type = -1, q_list=np.linspace(-5, 5, 51) , with_progress= True ):
-        self.m_image = image / np.max(image)  # normalize image
+        tmp_img = image.astype(np.float64)
+        tmp_img -= np.min(tmp_img)
+        tmp_img /= (np.max(tmp_img) + 1e-12)
+        self.m_image = tmp_img / np.max(tmp_img)  # normalize image
+
         self.m_corp_type = corp_type  # image cropping mode: -1 crop, 0 no processing, 1 padding
         self.m_q_list = []
         # avoid q == 1 case (ignored)
