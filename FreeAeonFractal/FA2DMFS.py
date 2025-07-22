@@ -233,7 +233,61 @@ class CFA2DMFS:
         df_tau['a(q)'] = alpha_list
         df_tau['f(a)'] = f_alpha_list
         return df_tau
-    
+    """
+    Compute the local Hölder exponent α(x, y) map.
+
+    Returns:
+        alpha_map: Local α(x, y) map, same shape as the input image, dtype=float32.
+        count_map: Count of how many times each pixel was covered during multi-scale scanning.
+    """
+    def get_alpha_map(self, max_size=None, max_scales=200):
+        """
+        Use get_boxes_from_image + view_as_blocks to compute local alpha map efficiently.
+        """
+        if max_size is None:
+            max_size = min(self.m_image.shape)  
+        if max_size < 4:
+            raise ValueError("max_size too small: must be >= 4")
+
+        # get box size ( ε ) list
+        scales = np.logspace(1, np.log2(max_size), num=max_scales, base=2, dtype=int)
+        scales = np.unique(scales)
+        image = self.m_image
+        h, w = image.shape
+        total_mass = np.sum(image)
+        alpha_map = np.zeros((h, w), dtype=np.float32)
+        count_map = np.zeros((h, w), dtype=np.uint16)
+
+        for size in scales:
+            block_size = (size, size)
+            blocks_reshaped, raw_blocks = CFAImage.get_boxes_from_image(image, block_size, corp_type=self.m_corp_type)
+
+            if blocks_reshaped.size == 0:
+                continue
+
+            block_sums = np.sum(blocks_reshaped, axis=(1, 2))
+            mu_blocks = block_sums / total_mass
+            log_mu = np.log(mu_blocks + 1e-12)
+            log_eps = np.log(size)
+            alpha_vals = log_mu / log_eps  # shape: (num_blocks, )
+
+            # reshape alpha_vals to grid shape
+            grid_shape = raw_blocks.shape[:2]  # (num_blocks_row, num_blocks_col)
+            alpha_grid = alpha_vals.reshape(grid_shape)
+
+            # Broadcast alpha_grid back to full image space
+            for i in range(grid_shape[0]):
+                for j in range(grid_shape[1]):
+                    y0 = i * size
+                    x0 = j * size
+                    alpha_map[y0:y0+size, x0:x0+size] += alpha_grid[i, j]
+                    count_map[y0:y0+size, x0:x0+size] += 1
+
+        with np.errstate(divide='ignore', invalid='ignore'):
+            alpha_map = np.where(count_map > 0, alpha_map / count_map, 0)
+
+        return alpha_map, count_map
+
     '''Calculate multifractal spectrum from tau(q)
     df_tau: dataframe of tau(q)
     Returns: dataframe with q, alpha, f(alpha)
@@ -246,7 +300,7 @@ class CFA2DMFS:
         return df_mass,df_mfs
     
     '''Plot multifractal spectrum'''
-    def plot(self, df_mass,df_mfs):
+    def plot(self, df_mass,df_mfs, alpha_map = np.array([])):
         fig, axs = plt.subplots(2, 3, figsize=(16, 8))
         
         #  mass vs scale vs. q
@@ -284,31 +338,40 @@ class CFA2DMFS:
         axs[1, 1].grid(True)
 
         #  f(α) vs. d
-        df_tmp = df_mfs.groupby("q").mean().reset_index().sort_values(by = "q").reset_index()
-        df_tmp['tmp'] = (df_tmp['t(q)'] - df_tmp['t(q)'].min()) / (df_tmp['t(q)'].std())
-        sns.lineplot(data=df_tmp, x='q', y='tmp', ax=axs[1, 2],label=r'$t(q)$')
+        if alpha_map.any():
+            alpha_map_normalized = (alpha_map - np.min(alpha_map)) / (np.max(alpha_map) - np.min(alpha_map))
+            im = axs[1, 2].imshow(self.m_image, cmap='gray', alpha=0.5)
+            im = axs[1, 2].imshow(alpha_map_normalized, cmap='jet', alpha=0.5, vmin=0, vmax=1)
+            cbar = fig.colorbar(im, ax=axs[1, 2], fraction=0.046, pad=0.04)
+            cbar.set_label('Normalized Local Hölder exponent α(x, y)')
+            axs[1, 2].set_title('Overlayed Local Hölder Exponent Map')
+            axs[1, 2].axis('off')
+        else:
+            df_tmp = df_mfs.groupby("q").mean().reset_index().sort_values(by = "q").reset_index()
+            df_tmp['tmp'] = (df_tmp['t(q)'] - df_tmp['t(q)'].min()) / (df_tmp['t(q)'].std())
+            sns.lineplot(data=df_tmp, x='q', y='tmp', ax=axs[1, 2],label=r'$t(q)$')
 
-        df_tmp['tmp'] = (df_tmp['d(q)'] - df_tmp['d(q)'].min()) / (df_tmp['d(q)'].std())
-        sns.lineplot(data=df_tmp, x='q', y='tmp', ax=axs[1, 2],label=r'$d(q)$')
+            df_tmp['tmp'] = (df_tmp['d(q)'] - df_tmp['d(q)'].min()) / (df_tmp['d(q)'].std())
+            sns.lineplot(data=df_tmp, x='q', y='tmp', ax=axs[1, 2],label=r'$d(q)$')
 
-        df_tmp['tmp'] = (df_tmp['a(q)'] - df_tmp['a(q)'].min()) / (df_tmp['a(q)'].std())
-        sns.lineplot(data=df_tmp, x='q', y='tmp', ax=axs[1, 2],label=r'$a(q)$')
+            df_tmp['tmp'] = (df_tmp['a(q)'] - df_tmp['a(q)'].min()) / (df_tmp['a(q)'].std())
+            sns.lineplot(data=df_tmp, x='q', y='tmp', ax=axs[1, 2],label=r'$a(q)$')
 
-        df_tmp['tmp'] = (df_tmp['f(a)'] - df_tmp['f(a)'].min()) / (df_tmp['f(a)'].std())
-        sns.lineplot(data=df_tmp, x='q', y='tmp', ax=axs[1, 2],label=r'$f(a)$')
+            df_tmp['tmp'] = (df_tmp['f(a)'] - df_tmp['f(a)'].min()) / (df_tmp['f(a)'].std())
+            sns.lineplot(data=df_tmp, x='q', y='tmp', ax=axs[1, 2],label=r'$f(a)$')
 
-        axs[1, 2].set(xlabel=r'$q$', ylabel=r'$mix$', title=r'$overview$ vs. $q$')
-        axs[1, 2].grid(True)
+            axs[1, 2].set(xlabel=r'$q$', ylabel=r'$mix$', title=r'$overview$ vs. $q$')
+            axs[1, 2].grid(True)
         
         plt.tight_layout()
         plt.show()
 
 def main():
-    image = cv2.imread("../images/fractal.png", cv2.IMREAD_GRAYSCALE)
+    image = cv2.imread("../images/face.png", cv2.IMREAD_GRAYSCALE)
     MFS = CFA2DMFS(image)
     df_mass,df_mfs = MFS.get_mfs()
-    MFS.plot(df_mass,df_mfs)
-
+    alpha_map, count_map = MFS.get_alpha_map()
+    MFS.plot(df_mass,df_mfs,alpha_map)
 
 if __name__ == "__main__":
     main()

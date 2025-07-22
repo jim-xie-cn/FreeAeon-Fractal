@@ -31,7 +31,8 @@ def demo_2d_mfs(image_path):
     gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
     MFS = CFA2DMFS(gray_image)
     df_mass, df_mfs = MFS.get_mfs()
-    MFS.plot(df_mass, df_mfs) 
+    alpha_map, count_map = MFS.get_alpha_map()
+    MFS.plot(df_mass,df_mfs,alpha_map)
 
 def demo_fourier(image_path):  
     rgb_image = cv2.imread(image_path)
