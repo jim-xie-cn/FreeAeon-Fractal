@@ -227,7 +227,7 @@ class CFA2DMFSBoxCounting:
                 if np.isclose(q, 0.0):
                     records.append({"scale": int(size), "eps": eps, "q": 0.0, "value": float(mu_pos.size), "kind": "Mq"})
                     continue
-
+                        
                 mu_floor = np.maximum(mu_pos, self._mu_floor)
                 log_mu_floor = np.log(mu_floor + self._log_eps)
 
@@ -595,8 +595,8 @@ def main():
         corp_type=-1,
         q_list=q_list,
         with_progress=True,
-        bg_threshold=0.75,  # 这个参数很重要
-        bg_otsu=True,
+        bg_threshold=0.75,  # 这个参数很重要 小于该值当像素直接置 0
+        bg_otsu=False,
         mu_floor=1e-12
     )
     
