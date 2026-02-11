@@ -1,14 +1,9 @@
 """
-Multifractal (box-counting) analysis for 2D grayscale images with consistent fitting across q,
-including a robust treatment for q=1 (information dimension D1).
+Improved Multifractal (box-counting) analysis for 2D grayscale images.
 
-Main fixes vs your version
-1) Use the SAME scale set for all q in regression (intersection of available scales).
-2) Use x = log(1/ε) for ALL regressions (standard sign convention, D1 positive).
-3) For alpha,f(alpha): fit spline on tau(q) EXCLUDING q=1 by default to avoid artifacts.
-
-Requirements:
-    numpy, opencv-python, pandas, scipy, tqdm, matplotlib, seaborn, scikit-image
+Fixes:
+- q=1 entropy uses original μ (no floor, no log_eps).
+- Negative q stability via logsumexp and μ floor only for q!=1.
 """
 
 import numpy as np
@@ -17,13 +12,15 @@ import pandas as pd
 from tqdm import tqdm
 from scipy.stats import linregress
 from scipy.interpolate import UnivariateSpline
+from scipy.special import logsumexp
 import matplotlib.pyplot as plt
 import seaborn as sns
 import matplotlib.ticker as mticker
 from skimage.util import view_as_blocks
 
+
 # ============================================================
-# Image blocking utilities (2D only, for MFS we use grayscale)
+# Image blocking utilities (2D only)
 # ============================================================
 class CFAImage:
     @staticmethod
@@ -103,12 +100,11 @@ class CFA2DMFSBoxCounting:
         self.m_image = img
         self.m_corp_type = corp_type
         self.m_with_progress = with_progress
-
-        # Keep q as float64 and treat q==1 robustly
         self.m_q_list = np.array(q_list, dtype=np.float64)
 
-        # Small epsilon only used inside logs (not for changing μ algebra)
+        # Small epsilon only used inside logs for q!=1 (not for changing μ algebra)
         self._log_eps = 1e-300
+        self._mu_floor = 1e-300  # for log stability with negative q
 
     # ------------------------------------------------------------
     # Core: compute per-scale measures μ_i(ε)
@@ -150,7 +146,7 @@ class CFA2DMFSBoxCounting:
         Compute per-(scale,q) table needed for τ(q) and D1.
 
         Output columns:
-            scale, q, value, kind
+            scale, eps, q, value, kind
         where:
             kind = "Mq" for q!=1 (value = Σ μ^q or N_nonzero for q==0)
             kind = "S"  for q==1 (value = -Σ μ log μ)
@@ -181,24 +177,33 @@ class CFA2DMFSBoxCounting:
             if mu_pos.size == 0:
                 continue
 
-            log_mu_pos = np.log(mu_pos + self._log_eps)
+            eps = size / float(min(h, w))  # normalized scale
 
             for q in self.m_q_list:
                 if np.isclose(q, 1.0):
-                    S = float(-np.sum(mu_pos * log_mu_pos))
+                    # IMPORTANT: no floor or log_eps for q=1
+                    log_mu = np.log(mu_pos)
+                    S = float(-np.sum(mu_pos * log_mu))
                     if np.isfinite(S):
-                        records.append({"scale": int(size), "q": 1.0, "value": S, "kind": "S"})
+                        records.append({"scale": int(size), "eps": eps, "q": 1.0, "value": S, "kind": "S"})
                     continue
 
                 if np.isclose(q, 0.0):
-                    records.append({"scale": int(size), "q": 0.0, "value": float(mu_pos.size), "kind": "Mq"})
+                    records.append({"scale": int(size), "eps": eps, "q": 0.0, "value": float(mu_pos.size), "kind": "Mq"})
                     continue
 
-                # For any q != 0,1: safe to use mu_pos only; mu=0 contributes 0 for q>0 and excluded for q<0
-                vals = np.exp(q * log_mu_pos)  # = mu_pos**q
-                Mq = float(np.sum(vals))
+                # q != 1: stabilize negative q
+                mu_floor = np.maximum(mu_pos, self._mu_floor)
+                log_mu_floor = np.log(mu_floor + self._log_eps)
+
+                logMq = float(logsumexp(q * log_mu_floor))
+                if not np.isfinite(logMq):
+                    continue
+                if logMq > 700:
+                    continue
+                Mq = float(np.exp(logMq))
                 if np.isfinite(Mq) and Mq > 0:
-                    records.append({"scale": int(size), "q": float(q), "value": Mq, "kind": "Mq"})
+                    records.append({"scale": int(size), "eps": eps, "q": float(q), "value": Mq, "kind": "Mq"})
 
         df = pd.DataFrame(records)
         if df.empty:
@@ -214,14 +219,11 @@ class CFA2DMFSBoxCounting:
         Return a sorted numpy array of scales that are present for:
           - every q in Mq-kind (q!=1), and
           - (optionally) q=1 in S-kind.
-
-        This enforces consistent regression x-points across q and prevents a D(q) jump at q=1.
         """
         df_mq = df_mass[df_mass["kind"] == "Mq"].copy()
         if df_mq.empty:
             return np.array([], dtype=int)
 
-        # Intersection across all q groups in Mq
         common = None
         for q, g in df_mq.groupby("q"):
             scales_q = set(g["scale"].astype(int).tolist())
@@ -236,8 +238,7 @@ class CFA2DMFSBoxCounting:
                 return np.array([], dtype=int)
             common = common & set(df_s["scale"].astype(int).tolist())
 
-        common = np.array(sorted(common), dtype=int)
-        return common
+        return np.array(sorted(common), dtype=int)
 
     # ------------------------------------------------------------
     # Fit τ(q) and D1 (consistent scales + x=log(1/ε))
@@ -248,8 +249,8 @@ class CFA2DMFSBoxCounting:
             - For q != 1:
                 log M(q,ε) ~ -τ(q) * log(1/ε) + c
                 so if x = log(1/ε), slope = d logM / d x = -τ(q)  => τ(q) = -slope
-      	    - For q == 1:
-       	        S(ε) ~ D1 * log(1/ε) + c
+            - For q == 1:
+                S(ε) ~ D1 * log(1/ε) + c
                 so D1 is directly the slope (no minus sign)
 
             - For q == 0 (where value=N(ε)):
@@ -262,8 +263,11 @@ class CFA2DMFSBoxCounting:
         df_mass = df_mass.copy()
         df_mass["scale"] = df_mass["scale"].astype(int)
 
+        require_q1 = np.any(np.isclose(self.m_q_list, 1.0))
         if require_common_scales:
-            common_scales = self._common_scales_for_fit(df_mass, require_q1=True)
+            common_scales = self._common_scales_for_fit(df_mass, require_q1=require_q1)
+            if common_scales.size == 0:
+                common_scales = None
         else:
             common_scales = None
 
@@ -274,15 +278,15 @@ class CFA2DMFSBoxCounting:
 
         out = []
 
-        # ---- q != 1: tau(q) from log Mq vs log(1/scale)
+        # ---- q != 1: tau(q) from log Mq vs log(1/eps)
         df_mq = _filter_common(df_mass[df_mass["kind"] == "Mq"])
         for q, df_q in df_mq.groupby("q"):
             qv = float(q)
             if np.isclose(qv, 1.0):
                 continue
 
-            scale = df_q["scale"].astype(np.float64).values
-            x = np.log(1.0 / scale)
+            eps = df_q["eps"].astype(np.float64).values
+            x = np.log(1.0 / eps)
             y = np.log(df_q["value"].astype(np.float64).values)
 
             mask = np.isfinite(x) & np.isfinite(y)
@@ -297,28 +301,22 @@ class CFA2DMFSBoxCounting:
 
             slope, intercept, r_value, p_value, std_err = linregress(x, y)
 
-            # >>> MOD-1: tau sign fix for x=log(1/ε)
-            tau = float(-slope)   # τ(q) = - slope  (because log M ~ -τ log(1/ε))
-            # <<< MOD-1
-
-            # >>> MOD-2: special handling for q=0
+            tau = float(-slope)
             if np.isclose(qv, 0.0):
-                # here value stored in df is N(ε), so D0 is directly slope of log N vs log(1/ε)
-                Dq = float(slope)   # D0 = slope
+                Dq = float(slope)  # D0 = slope
             else:
-                Dq = float(tau / (qv - 1.0))  # valid for q!=0,1 under this τ convention
-            # <<< MOD-2
+                Dq = float(tau / (qv - 1.0))
 
             out.append({"q": qv, "tau": tau, "Dq": Dq, "D1": np.nan,
                         "intercept": float(intercept), "r_value": float(r_value),
                         "p_value": float(p_value), "std_err": float(std_err),
                         "n_points": int(x.size)})
 
-        # ---- q == 1: D1 from S(ε) vs log(1/scale)
+        # ---- q == 1: D1 from S(ε) vs log(1/eps)
         df_s = _filter_common(df_mass[(df_mass["kind"] == "S") & (np.isclose(df_mass["q"], 1.0))])
         if not df_s.empty:
-            scale = df_s["scale"].astype(np.float64).values
-            x = np.log(1.0 / scale)
+            eps = df_s["eps"].astype(np.float64).values
+            x = np.log(1.0 / eps)
             y = df_s["value"].astype(np.float64).values  # entropy S(ε)
 
             mask = np.isfinite(x) & np.isfinite(y)
@@ -327,11 +325,7 @@ class CFA2DMFSBoxCounting:
 
             if x.size >= min_points:
                 slope, intercept, r_value, p_value, std_err = linregress(x, y)
-
-                # >>> MOD-3 (comment only): D1 uses +slope (no sign flip)
                 D1 = float(slope)
-                # <<< MOD-3
-
                 out.append({"q": 1.0, "tau": 0.0, "Dq": D1, "D1": D1,
                             "intercept": float(intercept), "r_value": float(r_value),
                             "p_value": float(p_value), "std_err": float(std_err),
@@ -352,9 +346,6 @@ class CFA2DMFSBoxCounting:
     def alpha_falpha_from_tau(self, df_fit, spline_k=3, exclude_q1=True, spline_s=0):
         """
         Compute alpha(q)=dτ/dq and f(α)=qα-τ(q) using a spline on τ(q).
-
-        exclude_q1=True is recommended: τ(1)=0 is a hard constraint and can create
-        spline curvature artifacts around q=1 when s=0.
         """
         if df_fit is None or df_fit.empty:
             return pd.DataFrame()
@@ -384,8 +375,8 @@ class CFA2DMFSBoxCounting:
     # ------------------------------------------------------------
     # Full pipeline
     # ------------------------------------------------------------
-    def get_mfs(self, max_size=None, max_scales=80, min_points=6):
-        df_mass = self.get_mass_table(max_size=max_size, max_scales=max_scales)
+    def get_mfs(self, max_size=None, max_scales=80, min_points=6, min_box=2):
+        df_mass = self.get_mass_table(max_size=max_size, max_scales=max_scales, min_box=min_box)
         df_fit = self.fit_tau_and_D1(df_mass, min_points=min_points, require_common_scales=True)
         df_spec = self.alpha_falpha_from_tau(df_fit, exclude_q1=True, spline_s=0)
         return df_mass, df_fit, df_spec
@@ -401,13 +392,17 @@ class CFA2DMFSBoxCounting:
         if not df_mq.empty:
             df_mq["log_value"] = np.log(df_mq["value"].astype(np.float64))
             pivot = df_mq.pivot_table(index="scale", columns="q", values="log_value", aggfunc="mean")
-            vmin = np.nanpercentile(pivot.values, 10)
-            vmax = np.nanpercentile(pivot.values, 90)
-            sns.heatmap(pivot, ax=axs[0, 0], cmap="coolwarm", vmin=vmin, vmax=vmax, cbar=True)
-            axs[0, 0].set_xlabel("q")
-            axs[0, 0].set_ylabel("scale (box size ε)")
-            axs[0, 0].set_title("Heatmap: log M(q, ε) vs scale and q")
-            axs[0, 0].xaxis.set_major_formatter(mticker.FormatStrFormatter("%.2f"))
+            vals = pivot.values
+            if np.any(np.isfinite(vals)):
+                vmin = np.nanpercentile(vals, 10)
+                vmax = np.nanpercentile(vals, 90)
+                sns.heatmap(pivot, ax=axs[0, 0], cmap="coolwarm", vmin=vmin, vmax=vmax, cbar=True)
+                axs[0, 0].set_xlabel("q")
+                axs[0, 0].set_ylabel("scale (box size ε)")
+                axs[0, 0].set_title("Heatmap: log M(q, ε) vs scale and q")
+                axs[0, 0].xaxis.set_major_formatter(mticker.FormatStrFormatter("%.2f"))
+            else:
+                axs[0, 0].set_title("Heatmap: (all NaN)")
         else:
             axs[0, 0].set_title("Heatmap: (no data)")
 
@@ -449,9 +444,10 @@ class CFA2DMFSBoxCounting:
 # Demo
 # ============================================================
 def main():
-    image = cv2.imread("../images/face.png", cv2.IMREAD_GRAYSCALE)
+    image_path = "../images/face.png"
+    image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
     if image is None:
-        raise FileNotFoundError("../images/face.png")
+        raise FileNotFoundError(image_path)
 
     q_list = np.linspace(-5, 5, 51)
 
@@ -477,4 +473,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
