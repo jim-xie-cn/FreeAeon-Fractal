@@ -1,377 +1,480 @@
-'''
-Basic operations for 2D shapes
-1. Calculation of multifractal spectra
-'''
-import matplotlib.pyplot as plt
+"""
+Multifractal (box-counting) analysis for 2D grayscale images with consistent fitting across q,
+including a robust treatment for q=1 (information dimension D1).
+
+Main fixes vs your version
+1) Use the SAME scale set for all q in regression (intersection of available scales).
+2) Use x = log(1/ε) for ALL regressions (standard sign convention, D1 positive).
+3) For alpha,f(alpha): fit spline on tau(q) EXCLUDING q=1 by default to avoid artifacts.
+
+Requirements:
+    numpy, opencv-python, pandas, scipy, tqdm, matplotlib, seaborn, scikit-image
+"""
+
 import numpy as np
-import cv2,math,json,os,sys
+import cv2
+import pandas as pd
 from tqdm import tqdm
 from scipy.stats import linregress
-import pandas as pd
-from FreeAeonFractal.FAImage import CFAImage
+from scipy.interpolate import UnivariateSpline
+import matplotlib.pyplot as plt
 import seaborn as sns
 import matplotlib.ticker as mticker
-from scipy.interpolate import UnivariateSpline
+from skimage.util import view_as_blocks
 
-'''
-Calculation of multifractal spectrum for 2D shapes
-'''
-class CFA2DMFS:
-    '''
-    image: input image (single channel)
-    q_list: range of q values
-    corp_type: image cropping method (-1: crop, 0: no processing, 1: padding)
-    '''
-    def __init__(self, image, corp_type = -1, q_list=np.linspace(-5, 5, 51) , with_progress= True ):
-        tmp_img = image.astype(np.float64)
-        tmp_img -= np.min(tmp_img)
-        tmp_img /= (np.max(tmp_img) + 1e-12)
-        self.m_image = tmp_img / np.max(tmp_img)  # normalize image
+# ============================================================
+# Image blocking utilities (2D only, for MFS we use grayscale)
+# ============================================================
+class CFAImage:
+    @staticmethod
+    def crop_data(data, block_size):
+        """Crop spatial dimensions so H and W are multiples of block_size."""
+        if data is None:
+            raise ValueError("data is None")
+        bh, bw = block_size
+        h, w = data.shape[:2]
+        new_h = (h // bh) * bh
+        new_w = (w // bw) * bw
+        return data[:new_h, :new_w]
 
-        self.m_corp_type = corp_type  # image cropping mode: -1 crop, 0 no processing, 1 padding
-        self.m_q_list = []
-        # avoid q == 1 case (ignored)
-        for q in q_list:
-           if q == 1:
-               self.m_q_list.append( q )
-               #self.m_q_list.append( q - np.finfo(float).eps )
-           else:
-               self.m_q_list.append( q )
+    @staticmethod
+    def get_boxes_from_image(image, block_size, corp_type=-1):
+        """
+        Split a 2D grayscale image into blocks.
+
+        Returns:
+            blocks_reshaped: (num_blocks, bh, bw)
+            raw_blocks:      (nY, nX, bh, bw)
+        """
+        if image.ndim != 2:
+            raise ValueError("For MFS, image must be 2D grayscale (H,W).")
+
+        if corp_type == -1:
+            img = CFAImage.crop_data(image, block_size)
+        elif corp_type == 0:
+            img = image
+        else:
+            img = CFAImage.crop_data(image, block_size)
+
+        bh, bw = block_size
+        if img.shape[0] < bh or img.shape[1] < bw:
+            return np.empty((0, bh, bw), dtype=img.dtype), np.empty((0, 0, bh, bw), dtype=img.dtype)
+
+        raw_blocks = view_as_blocks(img, block_shape=(bh, bw))  # (nY, nX, bh, bw)
+        nY, nX = raw_blocks.shape[:2]
+        blocks_reshaped = raw_blocks.reshape(nY * nX, bh, bw)
+        return blocks_reshaped, raw_blocks
+
+
+# ============================================================
+# Box-counting multifractal spectrum (MFS)
+# ============================================================
+class CFA2DMFSBoxCounting:
+    """
+    Box-counting multifractal analysis on a grayscale image.
+
+    Parameters
+    ----------
+    image : 2D array
+        Input grayscale image.
+    corp_type : int
+        -1 crop to multiples of box size (recommended).
+    q_list : array-like
+        q values. Can include 1; we compute D1 specially.
+    with_progress : bool
+        Show progress bars.
+    """
+
+    def __init__(self, image, corp_type=-1, q_list=np.linspace(-5, 5, 51), with_progress=True):
+        if image is None:
+            raise ValueError("image is None")
+        if image.ndim != 2:
+            raise ValueError("image must be a 2D grayscale array (H,W).")
+
+        img = image.astype(np.float64)
+
+        # Normalize to [0,1] and ensure nonnegative measure
+        img -= np.nanmin(img)
+        mx = np.nanmax(img)
+        img /= (mx + 1e-12)
+        img = np.where(np.isfinite(img), img, 0.0)
+        img = np.clip(img, 0.0, 1.0)
+
+        self.m_image = img
+        self.m_corp_type = corp_type
         self.m_with_progress = with_progress
 
-    '''Get generalized mass distribution
-    max_size: max box size for partitioning
-    Returns: generalized mass distribution
-    '''
-    def get_mass(self, max_size=None, max_scales=200):
-        all_data = []
+        # Keep q as float64 and treat q==1 robustly
+        self.m_q_list = np.array(q_list, dtype=np.float64)
 
+        # Small epsilon only used inside logs (not for changing μ algebra)
+        self._log_eps = 1e-300
+
+    # ------------------------------------------------------------
+    # Core: compute per-scale measures μ_i(ε)
+    # ------------------------------------------------------------
+    def _mu_at_scale(self, box_size):
+        """
+        Compute box probabilities μ_i at a given box size.
+
+        Returns:
+            mu : 1D float64 array, μ_i >= 0, sum(mu)=1 (on cropped region)
+        """
+        boxes, _ = CFAImage.get_boxes_from_image(
+            self.m_image, (box_size, box_size), corp_type=self.m_corp_type
+        )
+        if boxes.size == 0:
+            return np.array([], dtype=np.float64)
+
+        block_mass = np.sum(boxes, axis=(1, 2)).astype(np.float64)
+        block_mass = np.where(block_mass < 0, 0.0, block_mass)
+
+        total = float(np.sum(block_mass))
+        if (not np.isfinite(total)) or total <= 0:
+            return np.array([], dtype=np.float64)
+
+        mu = block_mass / total
+        mu = np.where(np.isfinite(mu) & (mu >= 0), mu, 0.0)
+
+        s = float(np.sum(mu))
+        if s <= 0 or (not np.isfinite(s)):
+            return np.array([], dtype=np.float64)
+        mu /= s
+        return mu
+
+    # ------------------------------------------------------------
+    # Compute M(q,ε) or S(ε) per scale
+    # ------------------------------------------------------------
+    def get_mass_table(self, max_size=None, max_scales=80, min_box=2):
+        """
+        Compute per-(scale,q) table needed for τ(q) and D1.
+
+        Output columns:
+            scale, q, value, kind
+        where:
+            kind = "Mq" for q!=1 (value = Σ μ^q or N_nonzero for q==0)
+            kind = "S"  for q==1 (value = -Σ μ log μ)
+        """
+        img = self.m_image
+        h, w = img.shape
         if max_size is None:
-            max_size = min(self.m_image.shape)  
-        if max_size < 4:
-            raise ValueError("max_size too small: must be >= 4")
+            max_size = min(h, w)
 
-        # get box size ( ε ) list
-        scales = np.logspace(1, np.log2(max_size), num=max_scales, base=2, dtype=int)
-        scales = np.unique(scales)
+        if max_size < min_box:
+            raise ValueError("max_size too small.")
 
-        q_list = self.m_q_list
-        image = self.m_image.astype(np.float64)  # for large numbers
-        progress_iter = tqdm(scales, desc="Calculating mass") if self.m_with_progress else scales
+        scales = np.logspace(np.log2(min_box), np.log2(max_size), num=max_scales, base=2.0)
+        scales = np.unique(np.maximum(min_box, np.round(scales).astype(int)))
 
-        for size in progress_iter:
-            if size < 4:
-                continue
-            block_size = (size, size)
-            boxes, raw_blocks = CFAImage.get_boxes_from_image(image, block_size, corp_type=self.m_corp_type)
-            no_zero_box = [box for box in boxes if np.count_nonzero(box) > 0]
-            if len(no_zero_box) == 0:
+        records = []
+        iterator = tqdm(scales, desc="Computing per-scale μ") if self.m_with_progress else scales
+
+        for size in iterator:
+            if size < min_box:
                 continue
 
-            # Step 1: Calculate boxes mass
-            mass_distribution = np.array([np.sum(box) for box in boxes], dtype=np.float64)
-            mass_distribution = np.where(mass_distribution < 0, 0, mass_distribution)
-
-            total_mass = np.sum(mass_distribution)
-            if total_mass <= 0 or np.isnan(total_mass) or np.isinf(total_mass):
+            mu = self._mu_at_scale(size)
+            if mu.size == 0:
                 continue
 
-            mass_distribution /= total_mass
-            mass_distribution = np.clip(mass_distribution, 1e-12, 1.0) # Prevent zero or extreme values
+            mu_pos = mu[mu > 0]
+            if mu_pos.size == 0:
+                continue
 
-            # Step 2: Calculate M(q, ε)
-            for q in q_list:
-                tmp = {'scale': size, 'q': q, 'boxes': raw_blocks}
+            log_mu_pos = np.log(mu_pos + self._log_eps)
 
-                if np.all(mass_distribution == 0):
-                    tmp['mass'] = 0
-                    all_data.append(tmp)
+            for q in self.m_q_list:
+                if np.isclose(q, 1.0):
+                    S = float(-np.sum(mu_pos * log_mu_pos))
+                    if np.isfinite(S):
+                        records.append({"scale": int(size), "q": 1.0, "value": S, "kind": "S"})
                     continue
 
-                if q == 0:
-                    tmp['mass'] = np.count_nonzero(mass_distribution)
-                else:
-                    # Numerically stable computation: mass^q = exp(q * log(mass))
-                    log_mass = np.log(mass_distribution)
-                    q_log_mass = q * log_mass
+                if np.isclose(q, 0.0):
+                    records.append({"scale": int(size), "q": 0.0, "value": float(mu_pos.size), "kind": "Mq"})
+                    continue
 
-                    # Limit extreme values to prevent exp overflow
-                    q_log_mass = np.clip(q_log_mass, a_min=-700, a_max=700)
-                    mass_q = np.sum(np.exp(q_log_mass))
+                # For any q != 0,1: safe to use mu_pos only; mu=0 contributes 0 for q>0 and excluded for q<0
+                vals = np.exp(q * log_mu_pos)  # = mu_pos**q
+                Mq = float(np.sum(vals))
+                if np.isfinite(Mq) and Mq > 0:
+                    records.append({"scale": int(size), "q": float(q), "value": Mq, "kind": "Mq"})
 
-                    if np.isnan(mass_q) or np.isinf(mass_q):
-                        mass_q = 0
-                    tmp['mass'] = mass_q
+        df = pd.DataFrame(records)
+        if df.empty:
+            return df
+        return df.sort_values(["kind", "q", "scale"]).reset_index(drop=True)
 
-                all_data.append(tmp)
+    # ------------------------------------------------------------
+    # Helper: choose a common scale set for regression
+    # ------------------------------------------------------------
+    @staticmethod
+    def _common_scales_for_fit(df_mass, require_q1=True):
+        """
+        Return a sorted numpy array of scales that are present for:
+          - every q in Mq-kind (q!=1), and
+          - (optionally) q=1 in S-kind.
 
-        df = pd.DataFrame(all_data)
-        return df.sort_values(by=['q', 'scale']).reset_index(drop=True)
-    
-    '''Calculate scaling exponent tau
-    df_mass: generalized mass distribution dataframe
-    Returns: q list and scaling exponent (tau) list
-    '''
-    def get_tau_q(self,df_mass):
-        all_data = []
-        if self.m_with_progress:
-            for q, df_q in tqdm(df_mass.groupby("q"),desc="Calculating τ(q)"):
-                tmp = {}
-                if q == 1:
-                    #mass = np.array(df_q['mass'].tolist())
-                    #mass = mass[mass>0]
-                    #tau = -np.sum(mass * np.log(mass))
-                    #tmp['q'] = q
-                    #tmp['t(q)'] = tau
-                    entropy_list = []
-                    log_scales = []
-                    for scale, df_scale in df_q.groupby('scale'):
-                        mass = np.array(df_scale['mass'])
-                        mass = mass[mass > 0]
-                        entropy = -np.sum(mass * np.log(mass))
-                        entropy_list.append(entropy)
-                        log_scales.append(np.log(scale))
-                    if len(log_scales) > 5:
-                        slope, intercept, r_value, p_value, std_err = linregress(log_scales, entropy_list)
-                        tau = slope
-                        tmp['q'] = q
-                        tmp['t(q)'] = slope
-                        tmp['intercept'] = intercept
-                        tmp['r_value'] = r_value
-                        tmp['p_value'] = p_value
-                        tmp['std_err'] = std_err
-                    else:
-                        tau = np.nan
-                        tmp['q'] = q
-                        tmp['t(q)'] = tau
-                else:
-                    log_scales = np.log(df_q['scale'])
-                    log_mass = np.log(df_q['mass'])
-                    log_mass = np.where(log_mass == -np.inf, np.nan, log_mass)
-                    valid_mask = np.isfinite(log_mass)
-                    log_mass_valid = log_mass[valid_mask]
-                    log_scales_valid = log_scales[valid_mask]
-                    if len(log_scales_valid) > 5:
-                        slope, intercept, r_value, p_value, std_err = linregress(log_scales_valid, log_mass_valid)
-                        #slope, _ = np.polyfit(log_scales_valid, log_mass_valid, 1)
-                        tmp['q'] = q
-                        tmp['t(q)'] = slope
-                        tmp['intercept'] = intercept
-                        tmp['r_value'] = r_value
-                        tmp['p_value'] = p_value
-                        tmp['std_err'] = std_err
-                    else:
-                        tmp['q'] = q
-                        tmp['t(q)'] = np.nan
-                all_data.append(tmp)
+        This enforces consistent regression x-points across q and prevents a D(q) jump at q=1.
+        """
+        df_mq = df_mass[df_mass["kind"] == "Mq"].copy()
+        if df_mq.empty:
+            return np.array([], dtype=int)
+
+        # Intersection across all q groups in Mq
+        common = None
+        for q, g in df_mq.groupby("q"):
+            scales_q = set(g["scale"].astype(int).tolist())
+            common = scales_q if common is None else (common & scales_q)
+
+        if common is None:
+            return np.array([], dtype=int)
+
+        if require_q1:
+            df_s = df_mass[(df_mass["kind"] == "S") & (np.isclose(df_mass["q"], 1.0))].copy()
+            if df_s.empty:
+                return np.array([], dtype=int)
+            common = common & set(df_s["scale"].astype(int).tolist())
+
+        common = np.array(sorted(common), dtype=int)
+        return common
+
+    # ------------------------------------------------------------
+    # Fit τ(q) and D1 (consistent scales + x=log(1/ε))
+    # ------------------------------------------------------------
+    def fit_tau_and_D1(self, df_mass, min_points=6, require_common_scales=True):
+        """
+        Fit using a COMMON scale set for all q:
+            - For q != 1:
+                log M(q,ε) ~ -τ(q) * log(1/ε) + c
+                so if x = log(1/ε), slope = d logM / d x = -τ(q)  => τ(q) = -slope
+      	    - For q == 1:
+       	        S(ε) ~ D1 * log(1/ε) + c
+                so D1 is directly the slope (no minus sign)
+
+            - For q == 0 (where value=N(ε)):
+                log N(ε) ~ D0 * log(1/ε) + c
+                so D0 is directly the slope; do NOT use tau/(q-1).
+        """
+        if df_mass is None or df_mass.empty:
+            return pd.DataFrame()
+
+        df_mass = df_mass.copy()
+        df_mass["scale"] = df_mass["scale"].astype(int)
+
+        if require_common_scales:
+            common_scales = self._common_scales_for_fit(df_mass, require_q1=True)
         else:
-            for q, df_q in df_mass.groupby("q"):
-                tmp = {}
-                if q == 1:
-                    mass = np.array(df_q['mass'].tolist())
-                    mass = mass[mass>0]
-                    tau = -np.sum(mass * np.log(mass))
-                    tmp['q'] = q
-                    tmp['t(q)'] = tau
-                else:
-                    log_scales = np.log(df_q['scale'])
-                    log_mass = np.log(df_q['mass'])
-                    log_mass = np.where(log_mass == -np.inf, np.nan, log_mass)
-                    valid_mask = np.isfinite(log_mass)
-                    log_mass_valid = log_mass[valid_mask]
-                    log_scales_valid = log_scales[valid_mask]
-                    if len(log_scales_valid) > 5:
-                        slope, intercept, r_value, p_value, std_err = linregress(log_scales_valid, log_mass_valid)
-                        #slope, _ = np.polyfit(log_scales_valid, log_mass_valid, 1)
-                        tmp['q'] = q
-                        tmp['t(q)'] = slope
-                        tmp['intercept'] = intercept
-                        tmp['r_value'] = r_value
-                        tmp['p_value'] = p_value
-                        tmp['std_err'] = std_err
-                    else:
-                        tmp['q'] = q
-                        tmp['t(q)'] = np.nan
-                all_data.append(tmp)
-        return pd.DataFrame(all_data)
+            common_scales = None
 
-    '''Calculate the generalized fractal dimension
-    item: a single record in tau (value corresponding to a certain q)
-    Returns: generalized fractal dimension (D)
-    '''
-    def get_generalized_dimension(self,df_tau):
-        df_tau = self.get_alpha_f_alpha(df_tau)
-        def calc_dimension(item):
-            if item['q'] == 1:
-                return item['a(q)']  # 用 alpha(1) 作为 d(1)
-            else:
-                return item['t(q)'] / (item['q'] - 1)
-        df_tau['d(q)'] = df_tau.apply(calc_dimension, axis=1)
-        return df_tau
-        #def calc_dimension(item):
-        #    if item['q'] == 1:
-        #        return item['t(q)']  # use tau(q) when q is 1
-        #    else:
-        #        return item['t(q)'] / (item['q'] - 1)
-        #df_tau['d(q)'] = df_tau.progress_apply(calc_dimension, axis=1)
-        #df_tau['d(q)'] = df_tau.apply(calc_dimension, axis=1)
-        #return df_tau
+        def _filter_common(d):
+            if common_scales is None:
+                return d
+            return d[d["scale"].isin(common_scales)].copy()
 
-    '''Calculate the local singularity exponent and singularity spectrum
-    df_tau: scaling data DataFrame df_tau
-    Returns: list of local singularity exponents (alpha) and singularity spectrum (f(alpha))
-    '''
-    def get_alpha_f_alpha(self,df_tau):
-        #alpha_list = np.gradient(df_tau['t(q)'], df_tau['q'])
-        #f_alpha_list = df_tau['q'] * alpha_list - df_tau['t(q)']
-        q_vals = df_tau['q'].values
-        tq_vals = df_tau['t(q)'].values
-        spl = UnivariateSpline(q_vals, tq_vals, k=3, s=0)
-        alpha_list = spl.derivative()(q_vals)
-        f_alpha_list = q_vals * alpha_list - tq_vals
+        out = []
 
-        df_tau['a(q)'] = alpha_list
-        df_tau['f(a)'] = f_alpha_list
-        return df_tau
-    """
-    Compute the local Hölder exponent α(x, y) map.
-
-    Returns:
-        alpha_map: Local α(x, y) map, same shape as the input image, dtype=float32.
-        count_map: Count of how many times each pixel was covered during multi-scale scanning.
-    """
-    def get_alpha_map(self, max_size=None, max_scales=200):
-        """
-        Use get_boxes_from_image + view_as_blocks to compute local alpha map efficiently.
-        """
-        if max_size is None:
-            max_size = min(self.m_image.shape)  
-        if max_size < 4:
-            raise ValueError("max_size too small: must be >= 4")
-
-        # get box size ( ε ) list
-        scales = np.logspace(1, np.log2(max_size), num=max_scales, base=2, dtype=int)
-        scales = np.unique(scales)
-        image = self.m_image
-        h, w = image.shape
-        total_mass = np.sum(image)
-        alpha_map = np.zeros((h, w), dtype=np.float32)
-        count_map = np.zeros((h, w), dtype=np.uint16)
-
-        for size in scales:
-            block_size = (size, size)
-            blocks_reshaped, raw_blocks = CFAImage.get_boxes_from_image(image, block_size, corp_type=self.m_corp_type)
-
-            if blocks_reshaped.size == 0:
+        # ---- q != 1: tau(q) from log Mq vs log(1/scale)
+        df_mq = _filter_common(df_mass[df_mass["kind"] == "Mq"])
+        for q, df_q in df_mq.groupby("q"):
+            qv = float(q)
+            if np.isclose(qv, 1.0):
                 continue
 
-            block_sums = np.sum(blocks_reshaped, axis=(1, 2))
-            mu_blocks = block_sums / total_mass
-            log_mu = np.log(mu_blocks + 1e-12)
-            log_eps = np.log(size)
-            alpha_vals = log_mu / log_eps  # shape: (num_blocks, )
+            scale = df_q["scale"].astype(np.float64).values
+            x = np.log(1.0 / scale)
+            y = np.log(df_q["value"].astype(np.float64).values)
 
-            # reshape alpha_vals to grid shape
-            grid_shape = raw_blocks.shape[:2]  # (num_blocks_row, num_blocks_col)
-            alpha_grid = alpha_vals.reshape(grid_shape)
+            mask = np.isfinite(x) & np.isfinite(y)
+            x = x[mask]
+            y = y[mask]
 
-            # Broadcast alpha_grid back to full image space
-            for i in range(grid_shape[0]):
-                for j in range(grid_shape[1]):
-                    y0 = i * size
-                    x0 = j * size
-                    alpha_map[y0:y0+size, x0:x0+size] += alpha_grid[i, j]
-                    count_map[y0:y0+size, x0:x0+size] += 1
+            if x.size < min_points:
+                out.append({"q": qv, "tau": np.nan, "Dq": np.nan, "D1": np.nan,
+                            "intercept": np.nan, "r_value": np.nan, "p_value": np.nan,
+                            "std_err": np.nan, "n_points": int(x.size)})
+                continue
 
-        with np.errstate(divide='ignore', invalid='ignore'):
-            alpha_map = np.where(count_map > 0, alpha_map / count_map, 0)
+            slope, intercept, r_value, p_value, std_err = linregress(x, y)
 
-        return alpha_map, count_map
+            # >>> MOD-1: tau sign fix for x=log(1/ε)
+            tau = float(-slope)   # τ(q) = - slope  (because log M ~ -τ log(1/ε))
+            # <<< MOD-1
 
-    '''Calculate multifractal spectrum from tau(q)
-    df_tau: dataframe of tau(q)
-    Returns: dataframe with q, alpha, f(alpha)
-    '''
-    def get_mfs(self, max_size = None, max_scales = 100 ):
-        df_mass = self.get_mass(max_size = max_size, max_scales = max_scales )
-        df_mfs = self.get_tau_q(df_mass)
-        df_mfs = self.get_generalized_dimension(df_mfs)
-        df_mfs = self.get_alpha_f_alpha(df_mfs)
-        return df_mass,df_mfs
-    
-    '''Plot multifractal spectrum'''
-    def plot(self, df_mass,df_mfs, alpha_map = np.array([])):
-        fig, axs = plt.subplots(2, 3, figsize=(16, 8))
-        
-        #  mass vs scale vs. q
-        vmin = np.percentile(df_mass['mass'], 25)   #  5% percentage
-        vmax = np.percentile(df_mass['mass'], 75)  #  95% percentage
-        df_pivot = df_mass.pivot(index='scale', columns='q', values='mass')
-        sns.heatmap(df_pivot,ax=axs[0, 0], cmap='coolwarm',vmin=vmin, vmax=vmax, annot=False, cbar=True)
-        axs[0, 0].set(xlabel=r'$scale$', ylabel=r'$q$', title=r'mass vs. scale vs. q')
-        axs[0, 0].xaxis.set_major_formatter(mticker.FormatStrFormatter('%.2f'))
-        axs[0, 0].set_xticklabels(axs[0, 0].get_xticklabels(), rotation=60)
-        axs[0, 0].grid(True)
+            # >>> MOD-2: special handling for q=0
+            if np.isclose(qv, 0.0):
+                # here value stored in df is N(ε), so D0 is directly slope of log N vs log(1/ε)
+                Dq = float(slope)   # D0 = slope
+            else:
+                Dq = float(tau / (qv - 1.0))  # valid for q!=0,1 under this τ convention
+            # <<< MOD-2
 
-        #  tau(q) vs. q
-        df_tmp = df_mfs.groupby("q").mean().reset_index().sort_values(by = "q").reset_index()
-        sns.lineplot(data=df_tmp, x='q', y='t(q)', ax=axs[0, 1])
-        axs[0, 1].set(xlabel='$q$', ylabel=r'$\tau(q)$', title=r'$\tau(q)$ vs. $q$')
-        axs[0, 1].grid(True)
+            out.append({"q": qv, "tau": tau, "Dq": Dq, "D1": np.nan,
+                        "intercept": float(intercept), "r_value": float(r_value),
+                        "p_value": float(p_value), "std_err": float(std_err),
+                        "n_points": int(x.size)})
 
-        #  D(q) vs. q
-        df_tmp = df_mfs.groupby("q").mean().reset_index().sort_values(by = "q").reset_index()
-        sns.lineplot(data=df_tmp, x='q', y='d(q)', ax=axs[0, 2])
-        axs[0, 2].set(xlabel='$q$', ylabel=r'$D(q)$', title=r'$D(q)$ vs. $q$')
-        axs[0, 2].grid(True)
+        # ---- q == 1: D1 from S(ε) vs log(1/scale)
+        df_s = _filter_common(df_mass[(df_mass["kind"] == "S") & (np.isclose(df_mass["q"], 1.0))])
+        if not df_s.empty:
+            scale = df_s["scale"].astype(np.float64).values
+            x = np.log(1.0 / scale)
+            y = df_s["value"].astype(np.float64).values  # entropy S(ε)
 
-        #  α(q) vs. q
-        df_tmp = df_mfs.groupby("q").mean().reset_index().sort_values(by = "q").reset_index()
-        sns.lineplot(data=df_tmp, x='q', y='a(q)', ax=axs[1, 0])
-        axs[1, 0].set(xlabel='$q$', ylabel=r'$\alpha$', title=r'$\alpha(q)$ vs. $q$')
-        axs[1, 0].grid(True)
+            mask = np.isfinite(x) & np.isfinite(y)
+            x = x[mask]
+            y = y[mask]
 
-        #  f(α) vs. α
-        df_tmp = df_mfs.groupby("a(q)").mean().reset_index().sort_values(by = "a(q)").reset_index()
-        sns.lineplot(data=df_tmp, x='a(q)', y='f(a)', ax=axs[1, 1])
-        axs[1, 1].set(xlabel=r'$\alpha$', ylabel=r'f$(\alpha)$', title=r'$f(\alpha)$ vs. $\alpha$')
-        axs[1, 1].grid(True)
+            if x.size >= min_points:
+                slope, intercept, r_value, p_value, std_err = linregress(x, y)
 
-        #  f(α) vs. d
-        if alpha_map.any():
-            alpha_map_normalized = (alpha_map - np.min(alpha_map)) / (np.max(alpha_map) - np.min(alpha_map))
-            im = axs[1, 2].imshow(self.m_image, cmap='gray', alpha=0.5)
-            im = axs[1, 2].imshow(alpha_map_normalized, cmap='jet', alpha=0.5, vmin=0, vmax=1)
-            cbar = fig.colorbar(im, ax=axs[1, 2], fraction=0.046, pad=0.04)
-            cbar.set_label('Normalized Local Hölder exponent α(x, y)')
-            axs[1, 2].set_title('Overlayed Local Hölder Exponent Map')
-            axs[1, 2].axis('off')
+                # >>> MOD-3 (comment only): D1 uses +slope (no sign flip)
+                D1 = float(slope)
+                # <<< MOD-3
+
+                out.append({"q": 1.0, "tau": 0.0, "Dq": D1, "D1": D1,
+                            "intercept": float(intercept), "r_value": float(r_value),
+                            "p_value": float(p_value), "std_err": float(std_err),
+                            "n_points": int(x.size)})
+            else:
+                out.append({"q": 1.0, "tau": 0.0, "Dq": np.nan, "D1": np.nan,
+                            "intercept": np.nan, "r_value": np.nan, "p_value": np.nan,
+                            "std_err": np.nan, "n_points": int(x.size)})
+
+        df_fit = pd.DataFrame(out)
+        if df_fit.empty:
+            return df_fit
+        return df_fit.sort_values("q").reset_index(drop=True)
+
+    # ------------------------------------------------------------
+    # α(q) and f(α) from τ(q)
+    # ------------------------------------------------------------
+    def alpha_falpha_from_tau(self, df_fit, spline_k=3, exclude_q1=True, spline_s=0):
+        """
+        Compute alpha(q)=dτ/dq and f(α)=qα-τ(q) using a spline on τ(q).
+
+        exclude_q1=True is recommended: τ(1)=0 is a hard constraint and can create
+        spline curvature artifacts around q=1 when s=0.
+        """
+        if df_fit is None or df_fit.empty:
+            return pd.DataFrame()
+
+        df = df_fit[["q", "tau", "Dq", "D1", "n_points"]].copy()
+        df = df[np.isfinite(df["tau"].values)]
+        if exclude_q1:
+            df = df[~np.isclose(df["q"].values, 1.0)]
+        df = df.sort_values("q").reset_index(drop=True)
+
+        if df.shape[0] < max(5, spline_k + 2):
+            df["alpha"] = np.nan
+            df["f_alpha"] = np.nan
+            return df
+
+        q_vals = df["q"].values.astype(np.float64)
+        tau_vals = df["tau"].values.astype(np.float64)
+
+        spl = UnivariateSpline(q_vals, tau_vals, k=spline_k, s=spline_s)
+        alpha = spl.derivative()(q_vals)
+        f_alpha = q_vals * alpha - tau_vals
+
+        df["alpha"] = alpha
+        df["f_alpha"] = f_alpha
+        return df
+
+    # ------------------------------------------------------------
+    # Full pipeline
+    # ------------------------------------------------------------
+    def get_mfs(self, max_size=None, max_scales=80, min_points=6):
+        df_mass = self.get_mass_table(max_size=max_size, max_scales=max_scales)
+        df_fit = self.fit_tau_and_D1(df_mass, min_points=min_points, require_common_scales=True)
+        df_spec = self.alpha_falpha_from_tau(df_fit, exclude_q1=True, spline_s=0)
+        return df_mass, df_fit, df_spec
+
+    # ------------------------------------------------------------
+    # Plotting
+    # ------------------------------------------------------------
+    def plot(self, df_mass, df_fit, df_spec):
+        fig, axs = plt.subplots(2, 2, figsize=(8, 6))
+
+        # --- Heatmap for Mq
+        df_mq = df_mass[df_mass["kind"] == "Mq"].copy()
+        if not df_mq.empty:
+            df_mq["log_value"] = np.log(df_mq["value"].astype(np.float64))
+            pivot = df_mq.pivot_table(index="scale", columns="q", values="log_value", aggfunc="mean")
+            vmin = np.nanpercentile(pivot.values, 10)
+            vmax = np.nanpercentile(pivot.values, 90)
+            sns.heatmap(pivot, ax=axs[0, 0], cmap="coolwarm", vmin=vmin, vmax=vmax, cbar=True)
+            axs[0, 0].set_xlabel("q")
+            axs[0, 0].set_ylabel("scale (box size ε)")
+            axs[0, 0].set_title("Heatmap: log M(q, ε) vs scale and q")
+            axs[0, 0].xaxis.set_major_formatter(mticker.FormatStrFormatter("%.2f"))
         else:
-            df_tmp = df_mfs.groupby("q").mean().reset_index().sort_values(by = "q").reset_index()
-            df_tmp['tmp'] = (df_tmp['t(q)'] - df_tmp['t(q)'].min()) / (df_tmp['t(q)'].std())
-            sns.lineplot(data=df_tmp, x='q', y='tmp', ax=axs[1, 2],label=r'$t(q)$')
+            axs[0, 0].set_title("Heatmap: (no data)")
 
-            df_tmp['tmp'] = (df_tmp['d(q)'] - df_tmp['d(q)'].min()) / (df_tmp['d(q)'].std())
-            sns.lineplot(data=df_tmp, x='q', y='tmp', ax=axs[1, 2],label=r'$d(q)$')
+        # --- tau(q)
+        if df_fit is not None and not df_fit.empty:
+            sns.lineplot(data=df_fit, x="q", y="tau", ax=axs[0, 1])
+            axs[0, 1].set_xlabel("q")
+            axs[0, 1].set_ylabel(r"$\tau(q)$")
+            axs[0, 1].set_title(r"$\tau(q)$ vs $q$")
+            axs[0, 1].grid(True)
+        else:
+            axs[0, 1].set_title("tau(q): (no data)")
 
-            df_tmp['tmp'] = (df_tmp['a(q)'] - df_tmp['a(q)'].min()) / (df_tmp['a(q)'].std())
-            sns.lineplot(data=df_tmp, x='q', y='tmp', ax=axs[1, 2],label=r'$a(q)$')
+        # --- D(q)
+        if df_fit is not None and not df_fit.empty:
+            sns.lineplot(data=df_fit, x="q", y="Dq", ax=axs[1, 0])
+            axs[1, 0].set_xlabel("q")
+            axs[1, 0].set_ylabel(r"$D(q)$")
+            axs[1, 0].set_title(r"$D(q)$ vs $q$ (with $D_1$ at q=1)")
+            axs[1, 0].grid(True)
+        else:
+            axs[1, 0].set_title("D(q): (no data)")
 
-            df_tmp['tmp'] = (df_tmp['f(a)'] - df_tmp['f(a)'].min()) / (df_tmp['f(a)'].std())
-            sns.lineplot(data=df_tmp, x='q', y='tmp', ax=axs[1, 2],label=r'$f(a)$')
+        # --- f(α) vs α
+        if df_spec is not None and not df_spec.empty and np.any(np.isfinite(df_spec["alpha"].values)):
+            sns.lineplot(data=df_spec, x="alpha", y="f_alpha", ax=axs[1, 1])
+            axs[1, 1].set_xlabel(r"$\alpha$")
+            axs[1, 1].set_ylabel(r"$f(\alpha)$")
+            axs[1, 1].set_title(r"Multifractal spectrum: $f(\alpha)$ vs $\alpha$")
+            axs[1, 1].grid(True)
+        else:
+            axs[1, 1].set_title("f(alpha): (no data)")
 
-            axs[1, 2].set(xlabel=r'$q$', ylabel=r'$mix$', title=r'$overview$ vs. $q$')
-            axs[1, 2].grid(True)
-        
         plt.tight_layout()
         plt.show()
 
+
+# ============================================================
+# Demo
+# ============================================================
 def main():
     image = cv2.imread("../images/face.png", cv2.IMREAD_GRAYSCALE)
-    MFS = CFA2DMFS(image)
-    df_mass,df_mfs = MFS.get_mfs()
-    alpha_map, count_map = MFS.get_alpha_map()
-    MFS.plot(df_mass,df_mfs,alpha_map)
+    if image is None:
+        raise FileNotFoundError("../images/face.png")
+
+    q_list = np.linspace(-5, 5, 51)
+
+    mfs = CFA2DMFSBoxCounting(
+        image=image,
+        corp_type=-1,
+        q_list=q_list,
+        with_progress=True,
+    )
+
+    df_mass, df_fit, df_spec = mfs.get_mfs(max_scales=80, min_points=6)
+
+    print("\n=== Fit results (head) ===")
+    print(df_fit.head(10))
+
+    row_d1 = df_fit[np.isclose(df_fit["q"], 1.0)]
+    if not row_d1.empty:
+        print("\n=== D1 (information dimension) ===")
+        print(row_d1[["q", "D1", "Dq", "n_points", "r_value", "std_err"]])
+
+    mfs.plot(df_mass, df_fit, df_spec)
+
 
 if __name__ == "__main__":
     main()
+
