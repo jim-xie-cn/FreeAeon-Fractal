@@ -1,297 +1,420 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Multifractal Spectrum (MFS) for 2D Grayscale Images</title>
-<!-- MathJax -->
-<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
-<script id="MathJax-script" async
- src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
-</script>
-<style>
-body { font-family: Arial, sans-serif; line-height: 1.6; padding: 20px; max-width: 1000px; }
-h1, h2, h3 { color: #333; }
-pre { background: #f7f7f7; padding: 10px; overflow-x: auto; }
-code { font-family: monospace; background: #f2f2f2; padding: 2px 4px; border-radius: 4px; }
-hr { margin: 30px 0; }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>2D Grayscale Image Multifractal Spectrum (MFS) — Documentation (Revised)</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+           line-height: 1.65; margin: 24px; color:#111; }
+    h1,h2,h3 { line-height: 1.25; }
+    code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+    pre { background:#f6f8fa; padding: 12px; border-radius: 8px; overflow:auto; }
+    table { border-collapse: collapse; width: 100%; margin: 12px 0 18px; }
+    th, td { border: 1px solid #ddd; padding: 8px 10px; vertical-align: top; }
+    th { background:#fafafa; }
+    .note { background:#fff8c5; border: 1px solid #f2e08a; padding: 10px 12px; border-radius: 8px; }
+    .warn { background:#ffeef0; border: 1px solid #f5c2c7; padding: 10px 12px; border-radius: 8px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+  </style>
+
+  <!-- MathJax (required to render LaTeX \(...\) and \[...\]) -->
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] },
+      options: { skipHtmlTags: ['script','noscript','style','textarea','pre','code'] }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
 </head>
+
 <body>
 
-<h1>Multifractal Spectrum (MFS) for 2D Grayscale Images</h1>
-<h2>Improved Box-Counting Method</h2>
-<hr>
+<h1>2D Grayscale Image Multifractal Spectrum (MFS) — Documentation (Revised)</h1>
 
-<h2>Overview</h2>
 <p>
-This project computes the <strong>multifractal spectrum (MFS)</strong> of <strong>2D grayscale images</strong> using an <strong>improved box-counting pipeline</strong> with strong numerical stability and scale consistency.
+This document describes a Python implementation for computing the multifractal spectrum (MFS) of a 2D grayscale image
+(class <span class="mono">CFA2DMFS</span>). This revised version is written to be consistent with the actual code behavior,
+especially regarding the scaling fit variable (<span class="mono">log(1/ε)</span>), the full parameter set, background processing,
+ROI/scale selection, and a runnable example matching the real API.
 </p>
-<ul>
-<li>Handles <strong>\( q \neq 0,1 \)</strong> entirely in <strong>log-space</strong> using <code>logsumexp</code> to avoid overflow and underflow.</li>
-<li>Uses <strong>non-empty box counting</strong> for <strong>\( q = 0 \)</strong>.</li>
-<li>Uses <strong>Shannon entropy</strong> for <strong>\( q = 1 \)</strong>.</li>
-<li>Enforces a <strong>fixed region of interest (ROI)</strong> across all scales (<strong>Scheme A</strong>) to ensure consistent normalization of 
-  <span>\(\varepsilon = \frac{\text{box\_size}}{L}\)</span> and to avoid scale-dependent cropping artifacts.
-</li>
-</ul>
 
-<hr>
-<h2>Implementation Pipeline</h2>
+<hr />
 
-<h3>1. Read Input Image</h3>
-<p>Input must be a <strong>2D grayscale image</strong> represented as a NumPy array of shape <code>(H, W)</code>.</p>
+<h2>1. Overview</h2>
+<p>
+Multifractal analysis studies how a probability measure \(\mu_i(\varepsilon)\) changes across scales \(\varepsilon\),
+via a partition function \(Z(q,\varepsilon)\). From its scaling we obtain the mass exponent \(\tau(q)\),
+generalized dimensions \(D_q\), and the spectrum \(f(\alpha)\).
+</p>
 
-<h3>2. Optional Background Removal (Raw Domain)</h3>
-<ul>
-<li>If <code>bg_otsu=True</code>, apply <strong>Otsu thresholding</strong> to the raw image (converted to 8-bit).</li>
-<li>Pixels classified as background are set to zero.</li>
-</ul>
-
-<h3>3. Normalize to a Non-Negative Measure</h3>
-<ul>
-<li>Convert image to <code>float64</code>.</li>
-<li>Shift by the minimum and divide by the maximum to map values into <span>[0,1]</span>.</li>
-<li>Replace all non-finite values with zero and clip to <span>[0,1]</span>.</li>
-</ul>
-
-<h3>4. Post-Normalization Background Thresholding</h3>
-<p>If <code>bg_threshold &gt; 0</code>:</p>
-<ul>
-<li>Default (<code>bg_reverse=False</code>): pixels with values < <code>bg_threshold</code> are set to zero.</li>
-<li>If <code>bg_reverse=True</code>: pixels with values > <code>bg_threshold</code> are set to zero.</li>
-</ul>
-
-<h3>5. Fixed ROI Across All Scales (Scheme A)</h3>
-<ul>
-<li>Crop <strong>once only</strong> to a square ROI of size <code>L × L</code> using <code>crop_square_roi(...)</code>.</li>
-<li>This guarantees that 
-  <span>\(\varepsilon = \frac{\text{box\_size}}{L}\)</span> is identical for all q and all scales.
-</li>
-</ul>
-
-<h3>6. Selection of Box Sizes (Scales)</h3>
-<ul>
-<li>Generate candidate box sizes using base-2 logarithmic spacing.</li>
-<li>Keep integer values in <span>[min_box, L]</span>.</li>
-<li><strong>Filter to divisors of L</strong> so that the ROI tiles exactly at every scale.</li>
-</ul>
-
-<h3>7. Compute Box Probabilities \(\mu_i(\varepsilon)\)</h3>
 <ol>
-<li>Tile the ROI into blocks of size <code>(box_size, box_size)</code>.</li>
-<li>Compute box mass:
-\[
-\text{mass}_i = \sum_{\text{pixels in box } i} I(x,y)
-\]</li>
-<li>Normalize to probabilities:
-\[
-\mu_i = \frac{\text{mass}_i}{\sum_j \text{mass}_j}
-\]</li>
+  <li>Optional background removal (Otsu) and normalization to \([0,1]\); optional post-normalization thresholding.</li>
+  <li>Crop a fixed square ROI (side length \(L\)) and build a list of candidate box sizes.</li>
+  <li>For each scale, tile the ROI into non-overlapping boxes; compute box masses and normalize to probabilities \(\mu_i\).</li>
+  <li>For each \(q\), compute \(Z(q,\varepsilon)\) and fit \(\tau(q)\); fit \(D_1\) from Shannon entropy.</li>
+  <li>Compute \(\alpha(q)\) and \(f(\alpha)\) via numerical differentiation / Legendre transform.</li>
 </ol>
 
-<h3>8. Per-Scale Statistics for Each \(q\)</h3>
-<p>All computations use <strong>non-empty boxes only</strong> (\(\mu_i>0\)).</p>
+<div class="note">
+<b>Important (how scales are chosen):</b>
+This implementation does <b>not</b> accept an explicit list of box sizes from the user.
+Scales are generated from <span class="mono">max_scales/min_box</span>, and then filtered to keep only box sizes that
+<b>exactly divide</b> the fixed ROI size \(L\) so the ROI is perfectly tiled.
+Hence, the number of scales actually used can be much smaller than <span class="mono">max_scales</span>.
+</div>
 
-<h4>Case \(q \neq 0,1\)</h4>
-\[
-\log M(q,\varepsilon) = \log \sum_i \mu_i^q
-\]  
-Computed using <code>logsumexp(q * log(mu))</code>.
+<hr />
 
-<h4>Case \(q = 0\)</h4>
+<h2>2. Measure and Partition Function</h2>
+
+<h3>2.1 Box mass and probability measure</h3>
+<p>
+At scale \(\varepsilon\) (box side length <span class="mono">box_size</span> in pixels), the fixed ROI is partitioned into a grid of
+non-overlapping boxes. The mass of box \(i\) is the sum of pixel intensities:
+</p>
+<p style="margin-left: 18px;">
 \[
-N(\varepsilon) = \text{number of non-empty boxes}
+m_i(\varepsilon) = \sum_{(x,y)\in \text{box } i} I(x,y)
 \]
-
-<h4>Case \(q = 1\)</h4>
-Shannon entropy:
+</p>
+<p>
+Normalize masses into a probability measure:
+</p>
+<p style="margin-left: 18px;">
 \[
-S(\varepsilon) = -\sum_i \mu_i \log \mu_i
+\mu_i(\varepsilon) = \frac{m_i(\varepsilon)}{\sum_j m_j(\varepsilon)}
 \]
+</p>
+<p>
+Only boxes with \(\mu_i(\varepsilon)&gt;0\) are included in logarithms to avoid \(\log 0\).
+</p>
 
-<h3>9. Scaling Law Fitting (Linear Regression)</h3>
+<h3>2.2 Partition function \(Z(q,\varepsilon)\)</h3>
+<p>
+For each moment \(q\),
+</p>
+<p style="margin-left: 18px;">
 \[
-x = \log\left(\frac{1}{\varepsilon}\right)
+Z(q,\varepsilon) = \sum_i \mu_i(\varepsilon)^q
 \]
+</p>
 
-<h4>q ≠ 0,1</h4>
 <ul>
-<li>Regress \(\log M(q,\varepsilon)\) vs \(x\).</li>
-<li>Slope m yields:
-\[
-\tau(q)=-m, \quad D(q) = \frac{\tau(q)}{q-1}
-\]</li>
+  <li><b>\(q=0\):</b> \(Z(0,\varepsilon)\) reduces to the number of non-empty boxes \(N(\varepsilon)\).</li>
+  <li><b>\(q=1\):</b> \(Z(1,\varepsilon)=\sum_i \mu_i = 1\) carries no scaling information, so \(D_1\) is estimated from entropy (Section 4).</li>
+  <li><b>\(q&lt;0\):</b> emphasizes small \(\mu\) values; background handling becomes crucial (Section 6).</li>
 </ul>
 
-<h4>q = 0</h4>
-<ul>
-<li>Regress \(\log N(\varepsilon)\) vs \(x\).</li>
-<li>Slope m yields:
+<hr />
+
+<h2>3. Scaling law and fitting \(\tau(q)\) (code-consistent)</h2>
+
+<p>
+The standard scaling law is:
+</p>
+<p style="margin-left: 18px;">
 \[
-D_0 = m, \quad \tau(0)=-D_0
-\]</li>
+Z(q,\varepsilon)\propto \varepsilon^{\tau(q)}
+\]
+</p>
+
+<p>
+This code performs linear regression using:
+</p>
+<p style="margin-left: 18px;">
+\[
+x=\log(1/\varepsilon)
+\quad (\text{note } \log(1/\varepsilon)=-\log\varepsilon)
+\]
+</p>
+
+<p>
+For \(q\neq 0,1\), it fits
+</p>
+<p style="margin-left: 18px;">
+\[
+y=\log Z(q,\varepsilon)\quad \text{vs}\quad x=\log(1/\varepsilon)
+\]
+</p>
+
+<p>
+If the fitted slope is \(k\), the reported mass exponent is:
+</p>
+<p style="margin-left: 18px;">
+\[
+\tau(q) = -k
+\]
+</p>
+
+<div class="note">
+<b>Equivalent form:</b> You can also write \(\log Z = \tau(q)\log\varepsilon + C\).
+Using \(\log(1/\varepsilon)\) instead simply flips the sign; the code compensates by negating the slope.
+</div>
+
+<hr />
+
+<h2>4. Generalized dimensions \(D_q\) and information dimension \(D_1\)</h2>
+
+<h3>4.1 Generalized dimensions \(D_q\)</h3>
+<p>
+For \(q\neq 1\),
+</p>
+<p style="margin-left: 18px;">
+\[
+D_q = \frac{\tau(q)}{q-1}
+\]
+</p>
+<ul>
+  <li><b>\(q=0\):</b> \(D_0\) (box-counting/capacity dimension) comes from the scaling of \(N(\varepsilon)\).</li>
+  <li><b>\(q\to 1\):</b> requires a dedicated estimator (below).</li>
 </ul>
 
-<h4>q = 1</h4>
-<ul>
-<li>Regress S(ε) vs x.</li>
-<li>Slope m yields:
+<h3>4.2 \(q=1\): estimate \(D_1\) via Shannon entropy</h3>
+<p>
+Since \(Z(1,\varepsilon)=1\) is constant, this implementation uses Shannon entropy:
+</p>
+<p style="margin-left: 18px;">
 \[
-D_1 = m
-\]</li>
-</ul>
+S(\varepsilon)=-\sum_{i:\mu_i(\varepsilon)&gt;0}\mu_i(\varepsilon)\log\mu_i(\varepsilon)
+\]
+</p>
 
-<h4>Fitting Options</h4>
-<ul>
-<li>Use a common set of scales for all q (recommended).</li>
-<li>Restrict to middle scales using <code>fit_scale_frac</code>.</li>
-<li>Automatically search for best linear segment using <code>if_auto_line_fit=True</code>.</li>
-</ul>
-
-<h3>10. Multifractal Spectrum Computation</h3>
-From fitted τ(q):
+<p>
+It regresses \(S(\varepsilon)\) against the same scale variable \(\log(1/\varepsilon)\) to estimate \(D_1\):
+</p>
+<p style="margin-left: 18px;">
 \[
-\alpha(q) = \frac{d\tau(q)}{dq}, \quad
+S(\varepsilon)\ \text{vs}\ \log(1/\varepsilon)
+\]
+</p>
+
+<p>
+Additionally, \(\tau(1)\) is set to 0 by definition (not obtained by regression).
+</p>
+
+<hr />
+
+<h2>5. Multifractal spectrum: \(\alpha(q)\) and \(f(\alpha)\)</h2>
+
+<p>
+The spectrum is obtained from \(\tau(q)\) via a Legendre transform:
+</p>
+<p style="margin-left: 18px;">
+\[
+\alpha(q) = \frac{d\tau(q)}{dq},\qquad
 f(\alpha) = q\alpha - \tau(q)
 \]
+</p>
 
----
+<p>
+In practice, \(\tau(q)\) is fitted with a spline (<span class="mono">UnivariateSpline</span>) and differentiated numerically
+to obtain \(\alpha(q)\), then \(f(\alpha)\).
+</p>
 
-<h3>11. Visualization</h3>
+<div class="note">
+<b>About \(q=1\):</b> numerical differentiation may be unstable around \(q=1\).
+This implementation commonly uses <span class="mono">exclude_q1=True</span> when building/differentiating the spline.
+</div>
+
+<hr />
+
+<h2>6. Background handling and normalization (bg_threshold / bg_reverse / bg_otsu)</h2>
+
+<p>
+Background treatment strongly affects results for negative \(q\). The processing order is:
+</p>
+
+<ol>
+  <li>
+    <b>Optional Otsu masking (<code>bg_otsu</code>):</b>
+    Otsu thresholding is applied to a uint8-rescaled version of the original image;
+    pixels classified as background are set to 0.
+  </li>
+  <li>
+    <b>Normalization:</b> min-max normalize to \([0,1]\); NaN/Inf values are replaced by 0.
+  </li>
+  <li>
+    <b>Post-normalization thresholding (<code>bg_threshold</code>):</b>
+    Let \(T=\) <span class="mono">bg_threshold</span>.
+    <ul>
+      <li><span class="mono">bg_reverse=False</span>: set pixels <b>below</b> \(T\) to 0 (typical “remove dark background”).</li>
+      <li><span class="mono">bg_reverse=True</span>: set pixels <b>above</b> \(T\) to 0 (reverse masking).</li>
+    </ul>
+  </li>
+</ol>
+
+<hr />
+
+<h2>7. ROI cropping and scale divisibility (roi_mode / corp_type)</h2>
+
+<p>
+To keep scale comparisons consistent, the implementation uses a fixed ROI and divisibility constraints:
+</p>
+
 <ul>
-<li>Heatmap of \(\log M(q,\varepsilon)\) vs (scale, q)</li>
-<li>Curves of τ(q) and D(q)</li>
-<li>Multifractal spectrum: f(α) vs α</li>
+  <li>A square ROI of side length \(L\) is cropped once from the original image.</li>
+  <li>Only box sizes that <b>divide \(L\)</b> are kept, ensuring perfect tiling at every scale.</li>
 </ul>
 
-<hr>
-<h2>API Usage, Parameters, and Examples</h2>
+<table>
+  <tr>
+    <th>Parameter</th>
+    <th>Meaning (code-consistent)</th>
+    <th>Notes</th>
+  </tr>
+  <tr>
+    <td><code>roi_mode</code></td>
+    <td>How the fixed ROI is selected: <code>"center"</code> or <code>"topleft"</code>.</td>
+    <td>Changes the ROI position only.</td>
+  </tr>
+  <tr>
+    <td><code>corp_type=0</code></td>
+    <td>Strict tiling: if the ROI size is not divisible by the box size, the cut returns empty.</td>
+    <td>Stable default given the “divisibility filter”.</td>
+  </tr>
+  <tr>
+    <td><code>corp_type=-1</code></td>
+    <td>Allows internal cropping down to a divisible size.</td>
+    <td>
+      Typically has little effect under the default divisibility filter;
+      if divisibility filtering were removed, this could introduce scale-dependent cropping and harm strict comparability.
+    </td>
+  </tr>
+</table>
 
-<h3>Main Class: <code>CFA2DMFS</code></h3>
-<pre><code>mfs = CFA2DMFS(
-    image,
-    corp_type=0,
-    q_list=np.linspace(-5, 5, 51),
-    with_progress=True,
-    bg_threshold=0.01,
-    bg_reverse=False,
-    bg_otsu=False,
-    mu_floor=1e-12
-)</code></pre>
+<hr />
 
-<h3>Parameters</h3>
-<ul>
-<li><strong>image</strong>: 2D grayscale image array (H,W)</li>
-<li><strong>corp_type</strong>:
-  <ul>
-    <li>0 (recommended): fixed ROI, strict tiling, no per-scale cropping</li>
-    <li>-1: legacy behavior with per-scale cropping (may break consistency)</li>
-  </ul>
-</li>
-<li><strong>q_list</strong>: array of q values (may include 0 and 1)</li>
-<li><strong>with_progress</strong>: display tqdm progress bar</li>
-<li><strong>bg_threshold</strong>: post-normalization threshold (default 0.01)</li>
-<li><strong>bg_reverse</strong>: reverse thresholding logic</li>
-<li><strong>bg_otsu</strong>: apply Otsu background removal on raw image</li>
-<li><strong>mu_floor</strong>: compatibility parameter (not used)</li>
-</ul>
+<h2>8. Parameters (complete and code-consistent)</h2>
 
-<h3>Core Pipeline: <code>get_mfs(...)</code></h3>
-<pre><code>df_mass, df_fit, df_spec = mfs.get_mfs(
-    max_size=None,
-    max_scales=80,
-    min_points=6,
-    min_box=2,
-    use_middle_scales=False,
-    fit_scale_frac=(0.2, 0.8),
-    if_auto_line_fit=False,
-    auto_fit_min_len_ratio=0.5,
-    spline_s=0,
-    cap_d0_at_2=False
-)</code></pre>
+<h3>8.1 Constructor: <code>CFA2DMFS(...)</code></h3>
+<table>
+  <tr><th>Parameter</th><th>Description</th><th>Default</th></tr>
+  <tr><td><code>image</code></td><td>2D grayscale image array (H×W).</td><td>required</td></tr>
+  <tr><td><code>q_list</code></td><td>Sequence of \(q\) values (can include negatives, 0, and 1).</td><td><code>np.linspace(-5,5,51)</code></td></tr>
+  <tr><td><code>corp_type</code></td><td>Box cutting/tiling mode (Section 7).</td><td><code>0</code></td></tr>
+  <tr><td><code>with_progress</code></td><td>Show a progress bar.</td><td><code>True</code></td></tr>
+  <tr><td><code>bg_threshold</code></td><td>Post-normalization threshold \(T\).</td><td><code>0.01</code></td></tr>
+  <tr><td><code>bg_reverse</code></td><td>Threshold direction (normal vs reverse masking).</td><td><code>False</code></td></tr>
+  <tr><td><code>bg_otsu</code></td><td>Apply Otsu background masking on the original image.</td><td><code>False</code></td></tr>
+  <tr><td><code>mu_floor</code></td><td>Kept for compatibility; not used as an active \(\mu\) lower bound in the current path.</td><td><code>1e-12</code></td></tr>
+</table>
 
-<h3>Returned Tables</h3>
-<p><strong>df_mass</strong>: per-scale raw statistics</p>
-<ul>
-<li>scale: box size (pixels)</li>
-<li>eps: ε</li>
-<li>q</li>
-<li>value</li>
-<li>kind ∈ {logMq, N, S}</li>
-</ul>
+<h3>8.2 Main entry: <code>get_mfs(...)</code></h3>
+<table>
+  <tr><th>Parameter</th><th>Description</th><th>Typical default</th></tr>
+  <tr><td><code>max_size</code></td><td>Maximum side length \(L\) of the square ROI (pixels). If None, use the largest possible square.</td><td><code>None</code></td></tr>
+  <tr><td><code>max_scales</code></td><td>Upper bound on candidate scales (final set is reduced by divisibility filtering).</td><td><code>80</code></td></tr>
+  <tr><td><code>min_box</code></td><td>Minimum box size (pixels).</td><td><code>2</code></td></tr>
+  <tr><td><code>min_points</code></td><td>Minimum number of scale points required for linear regression.</td><td><code>6</code></td></tr>
+  <tr><td><code>use_middle_scales</code></td><td>Fit using only a middle fraction of scales.</td><td><code>False</code></td></tr>
+  <tr><td><code>fit_scale_frac</code></td><td>Middle-scale quantile range (lo, hi), e.g. (0.2, 0.8).</td><td><code>(0.2, 0.8)</code></td></tr>
+  <tr><td><code>if_auto_line_fit</code></td><td>Automatically search for a best linear range (prefer longer ranges, then higher \(R^2\)).</td><td><code>False</code></td></tr>
+  <tr><td><code>auto_fit_min_len_ratio</code></td><td>Shortest allowed range length as a fraction of available scale points.</td><td><code>0.5</code></td></tr>
+  <tr><td><code>cap_d0_at_2</code></td><td>If True, iteratively drop the smallest scales until fitted \(D_0 \le 2\).</td><td><code>False</code></td></tr>
+  <tr><td><code>spline_s</code></td><td>Smoothing factor for the \(\tau(q)\) spline (<span class="mono">UnivariateSpline</span>).</td><td><code>0</code></td></tr>
+</table>
 
-<p><strong>df_fit</strong>: per-q fitted results</p>
-<ul>
-<li>q</li>
-<li>tau</li>
-<li>Dq</li>
-<li>D1</li>
-<li>intercept</li>
-<li>r_value</li>
-<li>p_value</li>
-<li>std_err</li>
-<li>n_points</li>
-</ul>
+<h3>8.3 Lower-level utilities (advanced)</h3>
+<table>
+  <tr><th>Function</th><th>Parameter</th><th>Description</th></tr>
+  <tr><td><code>get_mass_table</code></td><td><code>roi_mode</code></td><td>ROI selection: <code>"center"</code> or <code>"topleft"</code>.</td></tr>
+  <tr><td><code>fit_tau_and_D1</code></td><td><code>require_common_scales</code></td><td>Require all \(q\) to share the same fitted scale set (useful for aligned comparison).</td></tr>
+  <tr><td><code>alpha_falpha_from_tau</code></td><td><code>spline_k</code></td><td>Spline degree (usually 3).</td></tr>
+  <tr><td><code>alpha_falpha_from_tau</code></td><td><code>exclude_q1</code></td><td>Exclude \(q=1\) from spline/differentiation to reduce numerical instability.</td></tr>
+</table>
 
-<p><strong>df_spec</strong>: multifractal spectrum</p>
-<ul>
-<li>q</li>
-<li>tau</li>
-<li>Dq</li>
-<li>D1</li>
-<li>n_points</li>
-<li>alpha</li>
-<li>f_alpha</li>
-</ul>
+<div class="warn">
+<b>Consistency note:</b> There is no public parameter to directly pass a <span class="mono">box_size</span> list.
+Scales are generated from <span class="mono">max_scales/min_box/max_size</span> and then filtered.
+</div>
 
-<h3>Important Parameters</h3>
-<ul>
-<li>max_scales: number of candidate scales before divisor filtering</li>
-<li>min_points: minimum points required for regression</li>
-<li>min_box: smallest box size (pixels)</li>
-<li>use_middle_scales + fit_scale_frac: restrict fitting to middle scales</li>
-<li>if_auto_line_fit: automatic best linear segment detection</li>
-<li>auto_fit_min_len_ratio: minimum segment length ratio</li>
-<li>spline_s: smoothing factor for spline-based differentiation</li>
-<li>cap_d0_at_2: heuristic to drop smallest-ε points until slope ≤ 2 (2D upper bound)</li>
-</ul>
+<hr />
 
-<h3>Examples</h3>
+<h2>9. Example usage (API-consistent and runnable)</h2>
 
-<h4>Example 1: Minimal Usage</h4>
-<pre><code>import cv2
-import numpy as np
+<pre><code class="language-python">import numpy as np
+import cv2
 
-image = cv2.imread("face.png", cv2.IMREAD_GRAYSCALE)
+# Read grayscale image
+image_path = "../images/face.png"
+image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+
 q_list = np.linspace(-5, 5, 51)
 
 mfs = CFA2DMFS(
-    image,
+    image=image,
     corp_type=0,
     q_list=q_list,
+    with_progress=True,
     bg_threshold=0.01,
+    bg_reverse=False,
     bg_otsu=False
 )
 
 df_mass, df_fit, df_spec = mfs.get_mfs(
+    max_size=None,
     max_scales=80,
-    min_points=6
+    min_box=2,
+    min_points=6,
+    use_middle_scales=False,
+    if_auto_line_fit=False,
+    fit_scale_frac=(0.3, 0.7),
+    auto_fit_min_len_ratio=0.6,
+    cap_d0_at_2=False,
+    spline_s=0
 )
+
+mfs.plot(df_mass, df_fit, df_spec)
 
 print(df_fit.head())
-mfs.plot(df_mass, df_fit, df_spec)
+print(df_spec.head())
 </code></pre>
 
-<h4>Example 2: Middle Scales + Automatic Line Fitting</h4>
-<pre><code>df_mass, df_fit, df_spec = mfs.get_mfs(
-    max_scales=80,
-    min_points=6,
-    use_middle_scales=True,
-    fit_scale_frac=(0.3, 0.7),
-    if_auto_line_fit=True,
-    auto_fit_min_len_ratio=0.6
-)
-</code></pre>
+<hr />
+
+<h2>10. Outputs (typical convention)</h2>
+<ul>
+  <li><b>df_mass</b>: per-scale intermediates (e.g., \(\mu\), \(Z(q,\varepsilon)\), entropy \(S(\varepsilon)\)).</li>
+  <li><b>df_fit</b>: fitted results per \(q\) (e.g., \(\tau(q)\), \(D_q\), fit range, \(R^2\)).</li>
+  <li><b>df_spec</b>: spectrum values (e.g., \(q\), \(\alpha(q)\), \(f(\alpha)\)).</li>
+</ul>
+
+<div class="note">
+<b>Too few scales?</b> Because only box sizes dividing \(L\) are kept, some images yield few usable scale points.
+If you fail the <span class="mono">min_points</span> requirement, try:
+(1) increasing \(L\) (or leaving <span class="mono">max_size=None</span>),
+(2) decreasing <span class="mono">min_box</span>, and/or
+(3) increasing <span class="mono">max_scales</span> so more candidates exist before filtering.
+</div>
+
+<hr />
+
+<h2>11. FAQ</h2>
+
+<h3>11.1 Why fit against \(\log(1/\varepsilon)\)?</h3>
+<p>
+Because the code uses <span class="mono">x = log(1/eps)</span> for regression, then negates the slope to obtain \(\tau(q)\).
+This is equivalent to fitting against \(\log\varepsilon\) with the opposite slope sign.
+</p>
+
+<h3>11.2 My results are unstable for negative \(q\). What can I do?</h3>
+<p>
+Negative \(q\) amplifies low-probability boxes; background noise can dominate.
+Try enabling <span class="mono">bg_otsu</span>, increasing <span class="mono">bg_threshold</span>, or choosing an ROI with less background.
+</p>
+
+<h3>11.3 Why do I get very few scale points?</h3>
+<p>
+Because the implementation filters box sizes to those that exactly divide the fixed ROI side length \(L\).
+Choose a different \(L\) (more factors), use a larger ROI/image, or adjust <span class="mono">min_box</span>/<span class="mono">max_scales</span>.
+</p>
+
+<hr />
+
+<p style="color:#666; font-size: 13px;">
+Document version: Revised (code-consistent: fit variable, full parameter coverage, background order, ROI/scale rules, runnable example).
+</p>
 
 </body>
 </html>
