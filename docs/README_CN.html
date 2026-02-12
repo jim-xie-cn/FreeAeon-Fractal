@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>二维灰度图像多重分形谱 (MFS) — 改进盒计数法</title>
+<!-- MathJax -->
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async
+ src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+</script>
+<style>
+body { font-family: "Microsoft YaHei", Arial, sans-serif; line-height: 1.6; padding: 20px; max-width: 1000px; }
+h1, h2, h3 { color: #333; }
+pre { background: #f7f7f7; padding: 10px; overflow-x: auto; }
+code { font-family: monospace; background: #f2f2f2; padding: 2px 4px; border-radius: 4px; }
+hr { margin: 30px 0; }
+</style>
+</head>
+<body>
+
+<h1>二维灰度图像多重分形谱 (MFS)</h1>
+<h2>改进盒计数法</h2>
+<hr>
+
+<h2>项目概述</h2>
+<p>
+本项目基于 <strong>改进盒计数法</strong>，计算二维灰度图像的 <strong>多重分形谱 (MFS)</strong>，保证数值稳定性与尺度一致性。
+</p>
+<ul>
+<li>对 <strong>\( q \neq 0,1 \)</strong> 完全在 <strong>log-space</strong> 中使用 <code>logsumexp</code>，避免上溢与下溢。</li>
+<li>对 <strong>\( q = 0 \)</strong> 使用 <strong>非空盒计数</strong>。</li>
+<li>对 <strong>\( q = 1 \)</strong> 使用 <strong>香农熵</strong>。</li>
+<li>采用 <strong>固定 ROI (方案 A)</strong>，保证所有尺度 \(\varepsilon = \frac{\text{box\_size}}{L}\) 一致，避免按尺度裁剪导致误差。</li>
+</ul>
+
+<hr>
+<h2>程序流程</h2>
+
+<h3>1. 读取二维灰度图像</h3>
+<p>输入必须为二维数组 <code>(H, W)</code>。</p>
+
+<h3>2. 可选：背景去除（原图域）</h3>
+<ul>
+<li>若 <code>bg_otsu=True</code>，对原图（转换为 8-bit）使用 Otsu 阈值分割。</li>
+<li>背景像素设为 0。</li>
+</ul>
+
+<h3>3. 归一化为非负测度</h3>
+<ul>
+<li>转换为 <code>float64</code>。</li>
+<li>减去最小值，除以最大值，映射到 <span>[0,1]</span>。</li>
+<li>非有限值替换为 0，并裁剪到 <span>[0,1]</span>。</li>
+</ul>
+
+<h3>4. 归一化后背景阈值处理</h3>
+<ul>
+<li>默认 (<code>bg_reverse=False</code>)：小于 <code>bg_threshold</code> 的像素置 0。</li>
+<li>若 <code>bg_reverse=True</code>：大于 <code>bg_threshold</code> 的像素置 0。</li>
+</ul>
+
+<h3>5. 固定 ROI（方案 A）</h3>
+<ul>
+<li>只裁一次，得到 <code>L × L</code> 正方形 ROI，使用 <code>crop_square_roi(...)</code>。</li>
+<li>保证
+\[
+\varepsilon = \frac{\text{box\_size}}{L}
+\]
+在所有尺度和 q 下保持一致。</li>
+</ul>
+
+<h3>6. 生成盒尺寸（尺度）</h3>
+<ul>
+<li>使用 2 的对数间距生成候选 box_size。</li>
+<li>保留整数值，范围 [min_box, L]。</li>
+<li>只保留 L 的约数，确保 ROI 在每个尺度上严格平铺。</li>
+</ul>
+
+<h3>7. 计算每尺度盒概率 \(\mu_i(\varepsilon)\)</h3>
+<ol>
+<li>将 ROI 切成 <code>box_size × box_size</code> 的小块。</li>
+<li>计算每个盒子质量：
+\[
+\text{mass}_i = \sum_{\text{盒子 i 内像素}} I(x,y)
+\]</li>
+<li>归一化为概率：
+\[
+\mu_i = \frac{\text{mass}_i}{\sum_j \text{mass}_j}
+\]</li>
+</ol>
+
+<h3>8. 计算每个 q 的统计量（非空盒 \(\mu_i>0\)）</h3>
+
+<h4>q ≠ 0,1</h4>
+\[
+\log M(q,\varepsilon) = \log \sum_i \mu_i^q
+\]
+使用 <code>logsumexp(q * log(mu))</code> 计算。
+
+<h4>q = 0</h4>
+\[
+N(\varepsilon) = \text{非空盒数量}
+\]
+
+<h4>q = 1</h4>
+\[
+S(\varepsilon) = -\sum_i \mu_i \log \mu_i
+\]
+
+<h3>9. 标度律线性拟合</h3>
+\[
+x = \log\left(\frac{1}{\varepsilon}\right)
+\]
+
+<h4>q ≠ 0,1</h4>
+<ul>
+<li>回归 \(\log M(q,\varepsilon)\) 对 x</li>
+<li>斜率 m 得：
+\[
+\tau(q) = -m, \quad D(q) = \frac{\tau(q)}{q-1}
+\]</li>
+</ul>
+
+<h4>q = 0</h4>
+<ul>
+<li>回归 \(\log N(\varepsilon)\) 对 x</li>
+<li>斜率 m 得：
+\[
+D_0 = m, \quad \tau(0) = -D_0
+\]</li>
+</ul>
+
+<h4>q = 1</h4>
+<ul>
+<li>回归 S(ε) 对 x</li>
+<li>斜率 m 得：
+\[
+D_1 = m
+\]</li>
+</ul>
+
+<h4>拟合选项</h4>
+<ul>
+<li>所有 q 使用共同尺度集合（推荐）</li>
+<li>仅使用中间尺度段 <code>fit_scale_frac</code></li>
+<li>自动搜索最佳线性段 <code>if_auto_line_fit=True</code></li>
+</ul>
+
+<h3>10. 多重分形谱计算</h3>
+\[
+\alpha(q) = \frac{d\tau(q)}{dq}, \quad
+f(\alpha) = q \alpha - \tau(q)
+\]
+
+<h3>11. 可视化</h3>
+<ul>
+<li>热图：\(\log M(q,\varepsilon)\) vs (尺度, q)</li>
+<li>曲线：τ(q), D(q)</li>
+<li>谱曲线：f(α) vs α</li>
+</ul>
+
+<hr>
+<h2>调用方法、参数与示例</h2>
+
+<h3>主类 <code>CFA2DMFS</code></h3>
+<pre><code>mfs = CFA2DMFS(
+    image,
+    corp_type=0,
+    q_list=np.linspace(-5, 5, 51),
+    with_progress=True,
+    bg_threshold=0.01,
+    bg_reverse=False,
+    bg_otsu=False,
+    mu_floor=1e-12
+)
+</code></pre>
+
+<h3>参数说明</h3>
+<ul>
+<li><strong>image</strong>：二维灰度图像 (H,W)</li>
+<li><strong>corp_type</strong>：
+<ul>
+<li>0（推荐）：固定 ROI，严格平铺，不按尺度裁剪</li>
+<li>-1：旧逻辑，每尺度裁剪到倍数，可能破坏一致性</li>
+</ul>
+</li>
+<li><strong>q_list</strong>：q 序列（可含 0 和 1）</li>
+<li><strong>with_progress</strong>：是否显示进度条</li>
+<li><strong>bg_threshold</strong>：归一化后的阈值，低于置 0（默认 0.01）</li>
+<li><strong>bg_reverse</strong>：反向阈值逻辑</li>
+<li><strong>bg_otsu</strong>：是否对原图使用 Otsu 去背景</li>
+<li><strong>mu_floor</strong>：兼容参数（当前实现不使用）</li>
+</ul>
+
+<h3>核心计算函数 <code>get_mfs(...)</code></h3>
+<pre><code>df_mass, df_fit, df_spec = mfs.get_mfs(
+    max_size=None,
+    max_scales=80,
+    min_points=6,
+    min_box=2,
+    use_middle_scales=False,
+    fit_scale_frac=(0.2, 0.8),
+    if_auto_line_fit=False,
+    auto_fit_min_len_ratio=0.5,
+    spline_s=0,
+    cap_d0_at_2=False
+)
+</code></pre>
+
+<h3>返回表格</h3>
+<p><strong>df_mass</strong>：每尺度原始数据，列为 scale, eps, q, value, kind(logMq/N/S)</p>
+<p><strong>df_fit</strong>：每个 q 的拟合结果</p>
+<p><strong>df_spec</strong>：多重分形谱数据 alpha, f_alpha</p>
+
+<h3>重要参数</h3>
+<ul>
+<li>max_scales：候选尺度数量（再筛选为 ROI 边长约数）</li>
+<li>min_points：回归拟合至少所需点数</li>
+<li>min_box：最小盒尺寸（像素）</li>
+<li>use_middle_scales + fit_scale_frac：仅使用中间尺度段拟合</li>
+<li>if_auto_line_fit：自动搜索最佳线性段</li>
+<li>auto_fit_min_len_ratio：自动线性段最小长度比例</li>
+<li>spline_s：样条平滑参数（用于计算 α, f(α)）</li>
+<li>cap_d0_at_2：启发式：若 D0>2，逐步丢弃最小 ε 的点直到斜率 ≤ 2（二维上限）</li>
+</ul>
+
+<h3>示例</h3>
+
+<h4>示例 1：最简调用</h4>
+<pre><code>import cv2
+import numpy as np
+
+image = cv2.imread("face.png", cv2.IMREAD_GRAYSCALE)
+q_list = np.linspace(-5, 5, 51)
+
+mfs = CFA2DMFS(
+    image,
+    corp_type=0,
+    q_list=q_list,
+    bg_threshold=0.01,
+    bg_otsu=False
+)
+
+df_mass, df_fit, df_spec = mfs.get_mfs(
+    max_scales=80,
+    min_points=6
+)
+
+print(df_fit.head())
+mfs.plot(df_mass, df_fit, df_spec)
+</code></pre>
+
+<h4>示例 2：仅用中间尺度 + 自动线性段拟合</h4>
+<pre><code>df_mass, df_fit, df_spec = mfs.get_mfs(
+    max_scales=80,
+    min_points=6,
+    use_middle_scales=True,
+    fit_scale_frac=(0.3, 0.7),
+    if_auto_line_fit=True,
+    auto_fit_min_len_ratio=0.6
+)
+</code></pre>
+
+</body>
+</html>
+

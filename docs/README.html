@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Multifractal Spectrum (MFS) for 2D Grayscale Images</title>
+<!-- MathJax -->
+<script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+<script id="MathJax-script" async
+ src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js">
+</script>
+<style>
+body { font-family: Arial, sans-serif; line-height: 1.6; padding: 20px; max-width: 1000px; }
+h1, h2, h3 { color: #333; }
+pre { background: #f7f7f7; padding: 10px; overflow-x: auto; }
+code { font-family: monospace; background: #f2f2f2; padding: 2px 4px; border-radius: 4px; }
+hr { margin: 30px 0; }
+</style>
+</head>
+<body>
+
+<h1>Multifractal Spectrum (MFS) for 2D Grayscale Images</h1>
+<h2>Improved Box-Counting Method</h2>
+<hr>
+
+<h2>Overview</h2>
+<p>
+This project computes the <strong>multifractal spectrum (MFS)</strong> of <strong>2D grayscale images</strong> using an <strong>improved box-counting pipeline</strong> with strong numerical stability and scale consistency.
+</p>
+<ul>
+<li>Handles <strong>\( q \neq 0,1 \)</strong> entirely in <strong>log-space</strong> using <code>logsumexp</code> to avoid overflow and underflow.</li>
+<li>Uses <strong>non-empty box counting</strong> for <strong>\( q = 0 \)</strong>.</li>
+<li>Uses <strong>Shannon entropy</strong> for <strong>\( q = 1 \)</strong>.</li>
+<li>Enforces a <strong>fixed region of interest (ROI)</strong> across all scales (<strong>Scheme A</strong>) to ensure consistent normalization of 
+  <span>\(\varepsilon = \frac{\text{box\_size}}{L}\)</span> and to avoid scale-dependent cropping artifacts.
+</li>
+</ul>
+
+<hr>
+<h2>Implementation Pipeline</h2>
+
+<h3>1. Read Input Image</h3>
+<p>Input must be a <strong>2D grayscale image</strong> represented as a NumPy array of shape <code>(H, W)</code>.</p>
+
+<h3>2. Optional Background Removal (Raw Domain)</h3>
+<ul>
+<li>If <code>bg_otsu=True</code>, apply <strong>Otsu thresholding</strong> to the raw image (converted to 8-bit).</li>
+<li>Pixels classified as background are set to zero.</li>
+</ul>
+
+<h3>3. Normalize to a Non-Negative Measure</h3>
+<ul>
+<li>Convert image to <code>float64</code>.</li>
+<li>Shift by the minimum and divide by the maximum to map values into <span>[0,1]</span>.</li>
+<li>Replace all non-finite values with zero and clip to <span>[0,1]</span>.</li>
+</ul>
+
+<h3>4. Post-Normalization Background Thresholding</h3>
+<p>If <code>bg_threshold &gt; 0</code>:</p>
+<ul>
+<li>Default (<code>bg_reverse=False</code>): pixels with values < <code>bg_threshold</code> are set to zero.</li>
+<li>If <code>bg_reverse=True</code>: pixels with values > <code>bg_threshold</code> are set to zero.</li>
+</ul>
+
+<h3>5. Fixed ROI Across All Scales (Scheme A)</h3>
+<ul>
+<li>Crop <strong>once only</strong> to a square ROI of size <code>L × L</code> using <code>crop_square_roi(...)</code>.</li>
+<li>This guarantees that 
+  <span>\(\varepsilon = \frac{\text{box\_size}}{L}\)</span> is identical for all q and all scales.
+</li>
+</ul>
+
+<h3>6. Selection of Box Sizes (Scales)</h3>
+<ul>
+<li>Generate candidate box sizes using base-2 logarithmic spacing.</li>
+<li>Keep integer values in <span>[min_box, L]</span>.</li>
+<li><strong>Filter to divisors of L</strong> so that the ROI tiles exactly at every scale.</li>
+</ul>
+
+<h3>7. Compute Box Probabilities \(\mu_i(\varepsilon)\)</h3>
+<ol>
+<li>Tile the ROI into blocks of size <code>(box_size, box_size)</code>.</li>
+<li>Compute box mass:
+\[
+\text{mass}_i = \sum_{\text{pixels in box } i} I(x,y)
+\]</li>
+<li>Normalize to probabilities:
+\[
+\mu_i = \frac{\text{mass}_i}{\sum_j \text{mass}_j}
+\]</li>
+</ol>
+
+<h3>8. Per-Scale Statistics for Each \(q\)</h3>
+<p>All computations use <strong>non-empty boxes only</strong> (\(\mu_i>0\)).</p>
+
+<h4>Case \(q \neq 0,1\)</h4>
+\[
+\log M(q,\varepsilon) = \log \sum_i \mu_i^q
+\]  
+Computed using <code>logsumexp(q * log(mu))</code>.
+
+<h4>Case \(q = 0\)</h4>
+\[
+N(\varepsilon) = \text{number of non-empty boxes}
+\]
+
+<h4>Case \(q = 1\)</h4>
+Shannon entropy:
+\[
+S(\varepsilon) = -\sum_i \mu_i \log \mu_i
+\]
+
+<h3>9. Scaling Law Fitting (Linear Regression)</h3>
+\[
+x = \log\left(\frac{1}{\varepsilon}\right)
+\]
+
+<h4>q ≠ 0,1</h4>
+<ul>
+<li>Regress \(\log M(q,\varepsilon)\) vs \(x\).</li>
+<li>Slope m yields:
+\[
+\tau(q)=-m, \quad D(q) = \frac{\tau(q)}{q-1}
+\]</li>
+</ul>
+
+<h4>q = 0</h4>
+<ul>
+<li>Regress \(\log N(\varepsilon)\) vs \(x\).</li>
+<li>Slope m yields:
+\[
+D_0 = m, \quad \tau(0)=-D_0
+\]</li>
+</ul>
+
+<h4>q = 1</h4>
+<ul>
+<li>Regress S(ε) vs x.</li>
+<li>Slope m yields:
+\[
+D_1 = m
+\]</li>
+</ul>
+
+<h4>Fitting Options</h4>
+<ul>
+<li>Use a common set of scales for all q (recommended).</li>
+<li>Restrict to middle scales using <code>fit_scale_frac</code>.</li>
+<li>Automatically search for best linear segment using <code>if_auto_line_fit=True</code>.</li>
+</ul>
+
+<h3>10. Multifractal Spectrum Computation</h3>
+From fitted τ(q):
+\[
+\alpha(q) = \frac{d\tau(q)}{dq}, \quad
+f(\alpha) = q\alpha - \tau(q)
+\]
+
+---
+
+<h3>11. Visualization</h3>
+<ul>
+<li>Heatmap of \(\log M(q,\varepsilon)\) vs (scale, q)</li>
+<li>Curves of τ(q) and D(q)</li>
+<li>Multifractal spectrum: f(α) vs α</li>
+</ul>
+
+<hr>
+<h2>API Usage, Parameters, and Examples</h2>
+
+<h3>Main Class: <code>CFA2DMFS</code></h3>
+<pre><code>mfs = CFA2DMFS(
+    image,
+    corp_type=0,
+    q_list=np.linspace(-5, 5, 51),
+    with_progress=True,
+    bg_threshold=0.01,
+    bg_reverse=False,
+    bg_otsu=False,
+    mu_floor=1e-12
+)</code></pre>
+
+<h3>Parameters</h3>
+<ul>
+<li><strong>image</strong>: 2D grayscale image array (H,W)</li>
+<li><strong>corp_type</strong>:
+  <ul>
+    <li>0 (recommended): fixed ROI, strict tiling, no per-scale cropping</li>
+    <li>-1: legacy behavior with per-scale cropping (may break consistency)</li>
+  </ul>
+</li>
+<li><strong>q_list</strong>: array of q values (may include 0 and 1)</li>
+<li><strong>with_progress</strong>: display tqdm progress bar</li>
+<li><strong>bg_threshold</strong>: post-normalization threshold (default 0.01)</li>
+<li><strong>bg_reverse</strong>: reverse thresholding logic</li>
+<li><strong>bg_otsu</strong>: apply Otsu background removal on raw image</li>
+<li><strong>mu_floor</strong>: compatibility parameter (not used)</li>
+</ul>
+
+<h3>Core Pipeline: <code>get_mfs(...)</code></h3>
+<pre><code>df_mass, df_fit, df_spec = mfs.get_mfs(
+    max_size=None,
+    max_scales=80,
+    min_points=6,
+    min_box=2,
+    use_middle_scales=False,
+    fit_scale_frac=(0.2, 0.8),
+    if_auto_line_fit=False,
+    auto_fit_min_len_ratio=0.5,
+    spline_s=0,
+    cap_d0_at_2=False
+)</code></pre>
+
+<h3>Returned Tables</h3>
+<p><strong>df_mass</strong>: per-scale raw statistics</p>
+<ul>
+<li>scale: box size (pixels)</li>
+<li>eps: ε</li>
+<li>q</li>
+<li>value</li>
+<li>kind ∈ {logMq, N, S}</li>
+</ul>
+
+<p><strong>df_fit</strong>: per-q fitted results</p>
+<ul>
+<li>q</li>
+<li>tau</li>
+<li>Dq</li>
+<li>D1</li>
+<li>intercept</li>
+<li>r_value</li>
+<li>p_value</li>
+<li>std_err</li>
+<li>n_points</li>
+</ul>
+
+<p><strong>df_spec</strong>: multifractal spectrum</p>
+<ul>
+<li>q</li>
+<li>tau</li>
+<li>Dq</li>
+<li>D1</li>
+<li>n_points</li>
+<li>alpha</li>
+<li>f_alpha</li>
+</ul>
+
+<h3>Important Parameters</h3>
+<ul>
+<li>max_scales: number of candidate scales before divisor filtering</li>
+<li>min_points: minimum points required for regression</li>
+<li>min_box: smallest box size (pixels)</li>
+<li>use_middle_scales + fit_scale_frac: restrict fitting to middle scales</li>
+<li>if_auto_line_fit: automatic best linear segment detection</li>
+<li>auto_fit_min_len_ratio: minimum segment length ratio</li>
+<li>spline_s: smoothing factor for spline-based differentiation</li>
+<li>cap_d0_at_2: heuristic to drop smallest-ε points until slope ≤ 2 (2D upper bound)</li>
+</ul>
+
+<h3>Examples</h3>
+
+<h4>Example 1: Minimal Usage</h4>
+<pre><code>import cv2
+import numpy as np
+
+image = cv2.imread("face.png", cv2.IMREAD_GRAYSCALE)
+q_list = np.linspace(-5, 5, 51)
+
+mfs = CFA2DMFS(
+    image,
+    corp_type=0,
+    q_list=q_list,
+    bg_threshold=0.01,
+    bg_otsu=False
+)
+
+df_mass, df_fit, df_spec = mfs.get_mfs(
+    max_scales=80,
+    min_points=6
+)
+
+print(df_fit.head())
+mfs.plot(df_mass, df_fit, df_spec)
+</code></pre>
+
+<h4>Example 2: Middle Scales + Automatic Line Fitting</h4>
+<pre><code>df_mass, df_fit, df_spec = mfs.get_mfs(
+    max_scales=80,
+    min_points=6,
+    use_middle_scales=True,
+    fit_scale_frac=(0.3, 0.7),
+    if_auto_line_fit=True,
+    auto_fit_min_len_ratio=0.6
+)
+</code></pre>
+
+</body>
+</html>

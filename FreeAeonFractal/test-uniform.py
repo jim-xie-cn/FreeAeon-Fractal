@@ -1,19 +1,3 @@
-"""
-Improved Multifractal (box-counting) analysis for 2D grayscale images.
-
-Applied modifications (important):
-1) For q != 0,1: compute log M(q, eps) in log-space via logsumexp WITHOUT mu_floor
-   - store logMq directly (no exp, no overflow-based dropping)
-2) For q=0: store N (count of nonzero boxes), fit with log(N)
-3) For q=1: store S = -sum(mu log mu), fit S vs log(1/eps)
-4) Keep epsilon normalization with fixed ROI across scales (FIXED ROI; Scheme A):
-   - crop ONCE to a fixed square ROI
-   - restrict scales to divisors of ROI size => no scale-dependent cropping, no LCM explosion
-
-Notes:
-- mu_floor parameter is kept for backward compatibility but is not used anymore (by design).
-"""
-
 import numpy as np
 import cv2
 import pandas as pd
@@ -136,7 +120,7 @@ class CFA2DMFSBoxCounting:
     bg_otsu : bool, default True
         Apply Otsu threshold on raw image to remove background.
     mu_floor : float, default 1e-12
-        Kept for compatibility; NOT used anymore (we do not floor mu).
+        Used in Scheme A fix: floor μ==0 before log for q!=0,1 (especially negative q).
     """
 
     def __init__(self, image, corp_type=-1, q_list=np.linspace(-5, 5, 51),
@@ -178,8 +162,9 @@ class CFA2DMFSBoxCounting:
         self.m_with_progress = with_progress
         self.m_q_list = np.array(q_list, dtype=np.float64)
 
-        # kept (not used for mu flooring now)
-        self._mu_floor = mu_floor
+        self._mu_floor = float(mu_floor)
+        if not np.isfinite(self._mu_floor) or self._mu_floor <= 0:
+            raise ValueError("mu_floor must be finite and > 0")
 
     # ------------------------------------------------------------
     # Core: compute per-scale measures μ_i(ε)
@@ -233,11 +218,10 @@ class CFA2DMFSBoxCounting:
             raise ValueError("max_size too small.")
 
         # -------- Scheme A: fixed square ROI once --------
-        # fixed_L is the ROI side length used for eps normalization (constant across scales)
         img_fixed, fixed_L_int = crop_square_roi(img0, L=min(min(h0, w0), max_size), mode=roi_mode)
         fixed_L = float(fixed_L_int)
 
-        # Candidate integer box sizes (same as before, but will be filtered)
+        # Candidate integer box sizes
         scales = np.logspace(np.log2(min_box), np.log2(fixed_L_int), num=max_scales, base=2.0)
         scales = np.unique(np.maximum(min_box, np.round(scales).astype(int)))
         scales = scales[(scales >= min_box) & (scales <= fixed_L_int)]
@@ -249,16 +233,14 @@ class CFA2DMFSBoxCounting:
         if scales.size == 0:
             return pd.DataFrame()
 
-        # Temporarily replace image with fixed ROI (avoid changing other code)
+        # Temporarily replace image with fixed ROI
         old_img = self.m_image
         self.m_image = img_fixed
-        # ------------------------------------------------
 
         records = []
         iterator = tqdm(scales, desc="Computing per-scale μ") if self.m_with_progress else scales
 
         try:
-
             for size in iterator:
                 size = int(size)
                 if size < min_box:
@@ -268,29 +250,37 @@ class CFA2DMFSBoxCounting:
                 if mu.size == 0:
                     continue
 
-                mu_pos_all = mu[mu > 0]
-                if mu_pos_all.size == 0:
-                    continue
-
-                log_mu_all = np.log(mu_pos_all)
                 eps = float(size) / fixed_L
+
+                # For q=0 and q=1 we still need mu>0 subset
+                mu_pos = mu[mu > 0]
+                if mu_pos.size == 0:
+                    continue
+                log_mu_pos = np.log(mu_pos)
+
+                # For q!=0,1 we use ALL boxes, with μ==0 floored
+                mu_all = mu.copy()
+                mu_all[mu_all == 0] = self._mu_floor
+                # guard (shouldn't happen, but avoid log(neg/NaN))
+                mu_all = np.where(np.isfinite(mu_all) & (mu_all > 0), mu_all, self._mu_floor)
+                log_mu_all = np.log(mu_all)
 
                 for q in self.m_q_list:
                     q = float(q)
 
                     if np.isclose(q, 1.0):
-                        S = float(-np.sum(mu_pos_all * log_mu_all))
+                        # S = -sum_{mu>0} mu log mu
+                        S = float(-np.sum(mu_pos * log_mu_pos))
                         if np.isfinite(S):
                             records.append({"scale": size, "eps": eps, "q": 1.0, "value": S, "kind": "S"})
                         continue
 
                     if np.isclose(q, 0.0):
-                        records.append({"scale": size, "eps": eps, "q": 0.0, "value": float(mu_pos_all.size), "kind": "N"})
+                        # N = number of non-empty boxes
+                        records.append({"scale": size, "eps": eps, "q": 0.0, "value": float(mu_pos.size), "kind": "N"})
                         continue
-                    #max_log_arg = np.log(np.finfo(np.float64).max)  # ~709.78
-                    #a = q * log_mu_all               
-                    #a = np.minimum(a, max_log_arg)  
-                    #logMq = float(logsumexp(a))
+
+                    # log M(q,eps) = log sum_i mu_i^q, computed in log-space
                     a = q * log_mu_all
                     a = a[np.isfinite(a)]
                     logMq = float(logsumexp(a)) if a.size else np.nan
@@ -298,7 +288,6 @@ class CFA2DMFSBoxCounting:
                         records.append({"scale": size, "eps": eps, "q": q, "value": logMq, "kind": "logMq"})
         finally:
             self.m_image = old_img
-
 
         df = pd.DataFrame(records)
         if df.empty:
@@ -410,7 +399,7 @@ class CFA2DMFSBoxCounting:
 
         out = []
 
-        # --- q != 0,1: use y = logMq directly ---
+        # --- q != 0,1: y = logMq ---
         df_logmq = _filter_common(df_mass[df_mass["kind"] == "logMq"])
         for q, df_q in df_logmq.groupby("q"):
             qv = float(q)
@@ -449,6 +438,7 @@ class CFA2DMFSBoxCounting:
                 slope, intercept, r_value, p_value, std_err = linregress(x, y)
                 n_used = int(x.size)
 
+            # x = log(1/eps) = -log(eps); log M ~ -tau * x  => tau = -slope
             tau = float(-slope)
             Dq = float(tau / (qv - 1.0))
             out.append({"q": qv, "tau": tau, "Dq": Dq, "D1": np.nan,
@@ -456,7 +446,7 @@ class CFA2DMFSBoxCounting:
                         "p_value": float(p_value), "std_err": float(std_err),
                         "n_points": int(n_used)})
 
-        # --- q == 0: use y = log N ---
+        # --- q == 0: y = log N ---
         df_n = _filter_common(df_mass[(df_mass["kind"] == "N") & (np.isclose(df_mass["q"], 0.0))])
         if not df_n.empty:
             df_n = df_n.sort_values("scale")
@@ -543,7 +533,7 @@ class CFA2DMFSBoxCounting:
                     slope, intercept, r_value, p_value, std_err = linregress(x, y)
                     n_used = int(x.size)
 
-                D1 = float(slope)
+                D1 = float(slope)  # S ~ D1 * log(1/eps)
                 out.append({"q": 1.0, "tau": 0.0, "Dq": D1, "D1": D1,
                             "intercept": float(intercept), "r_value": float(r_value),
                             "p_value": float(p_value), "std_err": float(std_err),
@@ -664,7 +654,7 @@ class CFA2DMFSBoxCounting:
 # Demo
 # ============================================================
 def main():
-    image_path = "../images/face.png"
+    image_path = "../images/test.png"
     image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
     if image is None:
         raise FileNotFoundError(image_path)
@@ -676,10 +666,10 @@ def main():
         corp_type=0,          # Scheme A 下建议用 0：禁止每尺度 crop
         q_list=q_list,
         with_progress=True,
-        bg_reverse=False,
-        bg_threshold=0.01,
+        bg_reverse=True,
+        bg_threshold=0.5,
         bg_otsu=False,
-        mu_floor=1e-12
+        mu_floor=1e-12        # 方案A：用于 μ==0 的 floor
     )
 
     print("Nonzero pixel ratio (adjust bg_threshold, typically < 0.5):", np.mean(mfs.m_image > 0))
@@ -720,3 +710,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

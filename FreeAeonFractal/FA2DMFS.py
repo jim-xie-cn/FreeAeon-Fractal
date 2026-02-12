@@ -1,13 +1,17 @@
 """
 Improved Multifractal (box-counting) analysis for 2D grayscale images.
 
-Fixes:
-- q=1 entropy uses original μ (no floor, no log_eps).
-- Negative q stability via logsumexp and μ floor only for q!=1.
+Applied modifications (important):
+1) For q != 0,1: compute log M(q, eps) in log-space via logsumexp WITHOUT mu_floor
+   - store logMq directly (no exp, no overflow-based dropping)
+2) For q=0: store N (count of nonzero boxes), fit with log(N)
+3) For q=1: store S = -sum(mu log mu), fit S vs log(1/eps)
+4) Keep epsilon normalization with fixed ROI across scales (FIXED ROI; Scheme A):
+   - crop ONCE to a fixed square ROI
+   - restrict scales to divisors of ROI size => no scale-dependent cropping, no LCM explosion
 
-Added:
-- Scheme B: use middle fraction of scales for linear regression.
-- Auto linear fit: select the most linear continuous scale interval by maximizing R².
+Notes:
+- mu_floor parameter is kept for backward compatibility but is not used anymore (by design).
 """
 
 import numpy as np
@@ -21,6 +25,42 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import matplotlib.ticker as mticker
 from skimage.util import view_as_blocks
+
+
+# ============================================================
+# Fixed ROI utilities (Scheme A: fixed square ROI, no LCM)
+# ============================================================
+def crop_square_roi(img, L=None, mode="center"):
+    """
+    Crop a 2D image to a fixed square ROI of size LxL.
+    If L is None: use L = min(H, W).
+
+    mode:
+      - "topleft": crop from top-left corner
+      - "center":  centered crop
+    """
+    if img is None:
+        raise ValueError("img is None")
+    if img.ndim != 2:
+        raise ValueError("img must be 2D grayscale (H,W).")
+
+    H, W = img.shape
+    if L is None:
+        L = min(H, W)
+    L = int(L)
+
+    if L <= 0 or L > min(H, W):
+        raise ValueError(f"Invalid L={L} for image shape {(H, W)}")
+
+    if mode == "topleft":
+        y0, x0 = 0, 0
+    elif mode == "center":
+        y0 = (H - L) // 2
+        x0 = (W - L) // 2
+    else:
+        raise ValueError("mode must be 'topleft' or 'center'.")
+
+    return img[y0:y0 + L, x0:x0 + L].copy(), L
 
 
 # ============================================================
@@ -50,16 +90,22 @@ class CFAImage:
         if image.ndim != 2:
             raise ValueError("For MFS, image must be 2D grayscale (H,W).")
 
+        bh, bw = block_size
+
         if corp_type == -1:
             img = CFAImage.crop_data(image, block_size)
         elif corp_type == 0:
+            # strict: require exact tiling, otherwise return empty
+            if image.shape[0] % bh != 0 or image.shape[1] % bw != 0:
+                return (np.empty((0, bh, bw), dtype=image.dtype),
+                        np.empty((0, 0, bh, bw), dtype=image.dtype))
             img = image
         else:
             img = CFAImage.crop_data(image, block_size)
 
-        bh, bw = block_size
         if img.shape[0] < bh or img.shape[1] < bw:
-            return np.empty((0, bh, bw), dtype=img.dtype), np.empty((0, 0, bh, bw), dtype=img.dtype)
+            return (np.empty((0, bh, bw), dtype=img.dtype),
+                    np.empty((0, 0, bh, bw), dtype=img.dtype))
 
         raw_blocks = view_as_blocks(img, block_shape=(bh, bw))  # (nY, nX, bh, bw)
         nY, nX = raw_blocks.shape[:2]
@@ -70,7 +116,7 @@ class CFAImage:
 # ============================================================
 # Box-counting multifractal spectrum (MFS)
 # ============================================================
-class CFA2DMFSBoxCounting:
+class CFA2DMFS:
     """
     Box-counting multifractal analysis on a grayscale image.
 
@@ -79,36 +125,60 @@ class CFA2DMFSBoxCounting:
     image : 2D array
         Input grayscale image.
     corp_type : int
-        -1 crop to multiples of box size (recommended).
+        -1 crop to multiples of box size (OLD; will break fixed ROI idea).
+         0 require exact multiples (recommended with Scheme A).
     q_list : array-like
         q values. Can include 1; we compute D1 specially.
     with_progress : bool
         Show progress bars.
+    bg_threshold : float, default 1e-6
+        After normalization, pixels < bg_threshold are set to 0.
+    bg_otsu : bool, default True
+        Apply Otsu threshold on raw image to remove background.
+    mu_floor : float, default 1e-12
+        Kept for compatibility; NOT used anymore (we do not floor mu).
     """
-
-    def __init__(self, image, corp_type=-1, q_list=np.linspace(-5, 5, 51), with_progress=True):
+    def __init__(self, image, corp_type=0, q_list=np.linspace(-5, 5, 51),
+                 with_progress=True, bg_threshold=0.01, bg_reverse=False, bg_otsu=False, mu_floor=1e-12):
         if image is None:
             raise ValueError("image is None")
         if image.ndim != 2:
             raise ValueError("image must be a 2D grayscale array (H,W).")
 
-        img = image.astype(np.float64)
+        img_raw = image.astype(np.float64)
+
+        # optional Otsu on raw image
+        if bg_otsu:
+            vmin = np.nanmin(img_raw)
+            vmax = np.nanmax(img_raw)
+            if np.isfinite(vmin) and np.isfinite(vmax) and vmax > vmin:
+                img8 = ((img_raw - vmin) / (vmax - vmin) * 255.0).astype(np.uint8)
+                _, img_bin = cv2.threshold(img8, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+                img_raw[img_bin == 0] = 0.0
 
         # Normalize to [0,1] and ensure nonnegative measure
+        img = img_raw.copy()
         img -= np.nanmin(img)
         mx = np.nanmax(img)
         img /= (mx + 1e-12)
         img = np.where(np.isfinite(img), img, 0.0)
         img = np.clip(img, 0.0, 1.0)
 
+        # background thresholding (post-normalization)
+        self._bg_threshold = bg_threshold
+        if bg_threshold > 0:
+            if bg_reverse:
+                img[img > bg_threshold] = 0.0
+            else:
+                img[img < bg_threshold] = 0.0
+
         self.m_image = img
         self.m_corp_type = corp_type
         self.m_with_progress = with_progress
         self.m_q_list = np.array(q_list, dtype=np.float64)
 
-        # Small epsilon only used inside logs for q!=1 (not for changing μ algebra)
-        self._log_eps = 1e-300
-        self._mu_floor = 1e-30  # raised floor for negative q stability
+        # kept (not used for mu flooring now)
+        self._mu_floor = mu_floor
 
     # ------------------------------------------------------------
     # Core: compute per-scale measures μ_i(ε)
@@ -118,7 +188,7 @@ class CFA2DMFSBoxCounting:
         Compute box probabilities μ_i at a given box size.
 
         Returns:
-            mu : 1D float64 array, μ_i >= 0, sum(mu)=1 (on cropped region)
+            mu : 1D float64 array, μ_i >= 0, sum(mu)=1
         """
         boxes, _ = CFAImage.get_boxes_from_image(
             self.m_image, (box_size, box_size), corp_type=self.m_corp_type
@@ -143,71 +213,91 @@ class CFA2DMFSBoxCounting:
         return mu
 
     # ------------------------------------------------------------
-    # Compute M(q,ε) or S(ε) per scale
+    # Compute per-scale values: logMq (q!=0,1), N (q=0), S (q=1)
     # ------------------------------------------------------------
-    def get_mass_table(self, max_size=None, max_scales=80, min_box=2):
+    def get_mass_table(self, max_size=None, max_scales=80, min_box=2, roi_mode="center"):
         """
-        Compute per-(scale,q) table needed for τ(q) and D1.
+        Output columns: scale, eps, q, value, kind
 
-        Output columns:
-            scale, eps, q, value, kind
-        where:
-            kind = "Mq" for q!=1 (value = Σ μ^q or N_nonzero for q==0)
-            kind = "S"  for q==1 (value = -Σ μ log μ)
+        kind meanings:
+            - "logMq": for q != 0,1; value = log( sum_i mu_i^q )
+            - "N":     for q == 0;   value = N_nonzero (count of mu_i>0)
+            - "S":     for q == 1;   value = -sum_i mu_i log mu_i
         """
-        img = self.m_image
-        h, w = img.shape
+        img0 = self.m_image
+        h0, w0 = img0.shape
         if max_size is None:
-            max_size = min(h, w)
-
+            max_size = min(h0, w0)
         if max_size < min_box:
             raise ValueError("max_size too small.")
 
-        scales = np.logspace(np.log2(min_box), np.log2(max_size), num=max_scales, base=2.0)
+        # -------- Scheme A: fixed square ROI once --------
+        # fixed_L is the ROI side length used for eps normalization (constant across scales)
+        img_fixed, fixed_L_int = crop_square_roi(img0, L=min(min(h0, w0), max_size), mode=roi_mode)
+        fixed_L = float(fixed_L_int)
+
+        # Candidate integer box sizes (same as before, but will be filtered)
+        scales = np.logspace(np.log2(min_box), np.log2(fixed_L_int), num=max_scales, base=2.0)
         scales = np.unique(np.maximum(min_box, np.round(scales).astype(int)))
+        scales = scales[(scales >= min_box) & (scales <= fixed_L_int)]
+
+        # keep only divisors of fixed_L => exact tiling, no per-scale crop
+        scales = scales[(fixed_L_int % scales) == 0]
+        scales = np.array(sorted(scales.astype(int)))
+
+        if scales.size == 0:
+            return pd.DataFrame()
+
+        # Temporarily replace image with fixed ROI (avoid changing other code)
+        old_img = self.m_image
+        self.m_image = img_fixed
+        # ------------------------------------------------
 
         records = []
         iterator = tqdm(scales, desc="Computing per-scale μ") if self.m_with_progress else scales
 
-        for size in iterator:
-            if size < min_box:
-                continue
+        try:
 
-            mu = self._mu_at_scale(size)
-            if mu.size == 0:
-                continue
-
-            mu_pos = mu[mu > 0]
-            if mu_pos.size == 0:
-                continue
-
-            eps = size / float(min(h, w))  # normalized scale
-
-            for q in self.m_q_list:
-                if np.isclose(q, 1.0):
-                    # IMPORTANT: no floor or log_eps for q=1
-                    log_mu = np.log(mu_pos)
-                    S = float(-np.sum(mu_pos * log_mu))
-                    if np.isfinite(S):
-                        records.append({"scale": int(size), "eps": eps, "q": 1.0, "value": S, "kind": "S"})
+            for size in iterator:
+                size = int(size)
+                if size < min_box:
                     continue
 
-                if np.isclose(q, 0.0):
-                    records.append({"scale": int(size), "eps": eps, "q": 0.0, "value": float(mu_pos.size), "kind": "Mq"})
+                mu = self._mu_at_scale(size)
+                if mu.size == 0:
                     continue
 
-                # q != 1: stabilize negative q
-                mu_floor = np.maximum(mu_pos, self._mu_floor)
-                log_mu_floor = np.log(mu_floor + self._log_eps)
+                mu_pos_all = mu[mu > 0]
+                if mu_pos_all.size == 0:
+                    continue
 
-                logMq = float(logsumexp(q * log_mu_floor))
-                if not np.isfinite(logMq):
-                    continue
-                if logMq > 700:
-                    continue
-                Mq = float(np.exp(logMq))
-                if np.isfinite(Mq) and Mq > 0:
-                    records.append({"scale": int(size), "eps": eps, "q": float(q), "value": Mq, "kind": "Mq"})
+                log_mu_all = np.log(mu_pos_all)
+                eps = float(size) / fixed_L
+
+                for q in self.m_q_list:
+                    q = float(q)
+
+                    if np.isclose(q, 1.0):
+                        S = float(-np.sum(mu_pos_all * log_mu_all))
+                        if np.isfinite(S):
+                            records.append({"scale": size, "eps": eps, "q": 1.0, "value": S, "kind": "S"})
+                        continue
+
+                    if np.isclose(q, 0.0):
+                        records.append({"scale": size, "eps": eps, "q": 0.0, "value": float(mu_pos_all.size), "kind": "N"})
+                        continue
+                    #max_log_arg = np.log(np.finfo(np.float64).max)  # ~709.78
+                    #a = q * log_mu_all               
+                    #a = np.minimum(a, max_log_arg)  
+                    #logMq = float(logsumexp(a))
+                    a = q * log_mu_all
+                    a = a[np.isfinite(a)]
+                    logMq = float(logsumexp(a)) if a.size else np.nan
+                    if np.isfinite(logMq):
+                        records.append({"scale": size, "eps": eps, "q": q, "value": logMq, "kind": "logMq"})
+        finally:
+            self.m_image = old_img
+
 
         df = pd.DataFrame(records)
         if df.empty:
@@ -219,25 +309,27 @@ class CFA2DMFSBoxCounting:
     # ------------------------------------------------------------
     @staticmethod
     def _common_scales_for_fit(df_mass, require_q1=True):
-        """
-        Return a sorted numpy array of scales that are present for:
-          - every q in Mq-kind (q!=1), and
-          - (optionally) q=1 in S-kind.
-        """
-        df_mq = df_mass[df_mass["kind"] == "Mq"].copy()
-        if df_mq.empty:
+        if df_mass is None or df_mass.empty:
             return np.array([], dtype=int)
 
         common = None
-        for q, g in df_mq.groupby("q"):
-            scales_q = set(g["scale"].astype(int).tolist())
-            common = scales_q if common is None else (common & scales_q)
+
+        df_logmq = df_mass[df_mass["kind"] == "logMq"]
+        if not df_logmq.empty:
+            for q, g in df_logmq.groupby("q"):
+                scales_q = set(g["scale"].astype(int).tolist())
+                common = scales_q if common is None else (common & scales_q)
+
+        df_n = df_mass[df_mass["kind"] == "N"]
+        if not df_n.empty:
+            scales_n = set(df_n["scale"].astype(int).tolist())
+            common = scales_n if common is None else (common & scales_n)
 
         if common is None:
             return np.array([], dtype=int)
 
         if require_q1:
-            df_s = df_mass[(df_mass["kind"] == "S") & (np.isclose(df_mass["q"], 1.0))].copy()
+            df_s = df_mass[(df_mass["kind"] == "S") & (np.isclose(df_mass["q"], 1.0))]
             if df_s.empty:
                 return np.array([], dtype=int)
             common = common & set(df_s["scale"].astype(int).tolist())
@@ -245,33 +337,14 @@ class CFA2DMFSBoxCounting:
         return np.array(sorted(common), dtype=int)
 
     # ------------------------------------------------------------
-    # Fit τ(q) and D1 (consistent scales + x=log(1/ε))
+    # Fit τ(q) and D1 (x=log(1/ε))
     # ------------------------------------------------------------
     def fit_tau_and_D1(
         self, df_mass, min_points=6, require_common_scales=True,
-        use_middle_scales=True, fit_scale_frac=(0, 0),
-        if_auto_line_fit=False
+        use_middle_scales=True, fit_scale_frac=(0.2, 0.8),
+        if_auto_line_fit=False, auto_fit_min_len_ratio=0.5,
+        cap_d0_at_2=False
     ):
-        """
-        Fit using a COMMON scale set for all q:
-            - For q != 1:
-                log M(q,ε) ~ -τ(q) * log(1/ε) + c
-                so if x = log(1/ε), slope = d logM / d x = -τ(q)  => τ(q) = -slope
-            - For q == 1:
-                S(ε) ~ D1 * log(1/ε) + c
-                so D1 is directly the slope (no minus sign)
-
-            - For q == 0 (where value=N(ε)):
-                log N(ε) ~ D0 * log(1/ε) + c
-                so D0 is directly the slope; do NOT use tau/(q-1).
-
-        Scheme B:
-            use_middle_scales=True and fit_scale_frac=(a,b)
-            => only use middle fraction of scales for regression.
-
-        Auto:
-            if_auto_line_fit=True selects most linear continuous scale interval by maximizing R².
-        """
         if df_mass is None or df_mass.empty:
             return pd.DataFrame()
 
@@ -286,14 +359,13 @@ class CFA2DMFSBoxCounting:
         else:
             common_scales = None
 
-        # Scheme B: middle fraction of scales
         use_middle = use_middle_scales and (common_scales is not None)
         if use_middle:
             all_scales = common_scales
             if all_scales.size >= 3:
                 lo, hi = fit_scale_frac
-                lo = max(0.0, min(1.0, lo))
-                hi = max(0.0, min(1.0, hi))
+                lo = max(0.0, min(1.0, float(lo)))
+                hi = max(0.0, min(1.0, float(hi)))
                 if hi <= lo:
                     hi = min(1.0, lo + 0.6)
                 i0 = int(np.floor(lo * len(all_scales)))
@@ -312,10 +384,9 @@ class CFA2DMFSBoxCounting:
                 d = d[d["scale"].isin(middle_scales)].copy()
             return d
 
-        # ---- 仅当 if_auto_line_fit=True 时使用
-        def _best_linear_segment(x, y, min_pts):
+        def _best_linear_segment(x, y, min_pts, min_len_ratio):
             n = len(x)
-            min_pts = max(min_pts, int(np.ceil(n * 0.33)))
+            min_pts = max(min_pts, int(np.ceil(n * min_len_ratio)))
             if n < min_pts:
                 return None
             best = None
@@ -325,27 +396,30 @@ class CFA2DMFSBoxCounting:
                     ys = y[i:j]
                     slope, intercept, r_value, p_value, std_err = linregress(xs, ys)
                     r2 = r_value ** 2
-                    if (best is None) or (r2 > best["r2"]):
-                        best = dict(
-                            slope=slope, intercept=intercept,
-                            r_value=r_value, p_value=p_value, std_err=std_err,
-                            r2=r2, n_points=len(xs)
-                        )
+                    length = j - i
+                    cand = dict(slope=slope, intercept=intercept,
+                                r_value=r_value, p_value=p_value, std_err=std_err,
+                                r2=r2, n_points=length)
+                    if best is None:
+                        best = cand
+                    else:
+                        if (length > best["n_points"]) or (length == best["n_points"] and r2 > best["r2"]):
+                            best = cand
             return best
 
         out = []
 
-        # ---- q != 1: tau(q) from log Mq vs log(1/eps)
-        df_mq = _filter_common(df_mass[df_mass["kind"] == "Mq"])
-        for q, df_q in df_mq.groupby("q"):
+        # --- q != 0,1: use y = logMq directly ---
+        df_logmq = _filter_common(df_mass[df_mass["kind"] == "logMq"])
+        for q, df_q in df_logmq.groupby("q"):
             qv = float(q)
-            if np.isclose(qv, 1.0):
+            if np.isclose(qv, 1.0) or np.isclose(qv, 0.0):
                 continue
 
-            df_q = df_q.sort_values("scale")  # ensure monotonic scale
+            df_q = df_q.sort_values("scale")
             eps = df_q["eps"].astype(np.float64).values
             x = np.log(1.0 / eps)
-            y = np.log(df_q["value"].astype(np.float64).values)
+            y = df_q["value"].astype(np.float64).values  # already logMq
 
             mask = np.isfinite(x) & np.isfinite(y)
             x = x[mask]
@@ -358,38 +432,94 @@ class CFA2DMFSBoxCounting:
                 continue
 
             if if_auto_line_fit:
-                best = _best_linear_segment(x, y, min_points)
+                best = _best_linear_segment(x, y, min_points, auto_fit_min_len_ratio)
                 if best is None:
                     out.append({"q": qv, "tau": np.nan, "Dq": np.nan, "D1": np.nan,
                                 "intercept": np.nan, "r_value": np.nan, "p_value": np.nan,
                                 "std_err": np.nan, "n_points": int(x.size)})
                     continue
-                slope = best["slope"]; intercept = best["intercept"]
-                r_value = best["r_value"]; p_value = best["p_value"]; std_err = best["std_err"]
+                slope = best["slope"]
+                intercept = best["intercept"]
+                r_value = best["r_value"]
+                p_value = best["p_value"]
+                std_err = best["std_err"]
                 n_used = best["n_points"]
             else:
-                # 原始路径保持不变
                 slope, intercept, r_value, p_value, std_err = linregress(x, y)
                 n_used = int(x.size)
 
             tau = float(-slope)
-            if np.isclose(qv, 0.0):
-                Dq = float(slope)  # D0 = slope
-            else:
-                Dq = float(tau / (qv - 1.0))
-
+            Dq = float(tau / (qv - 1.0))
             out.append({"q": qv, "tau": tau, "Dq": Dq, "D1": np.nan,
                         "intercept": float(intercept), "r_value": float(r_value),
                         "p_value": float(p_value), "std_err": float(std_err),
                         "n_points": int(n_used)})
 
-        # ---- q == 1: D1 from S(ε) vs log(1/eps)
+        # --- q == 0: use y = log N ---
+        df_n = _filter_common(df_mass[(df_mass["kind"] == "N") & (np.isclose(df_mass["q"], 0.0))])
+        if not df_n.empty:
+            df_n = df_n.sort_values("scale")
+            eps = df_n["eps"].astype(np.float64).values
+            x = np.log(1.0 / eps)
+            N = df_n["value"].astype(np.float64).values
+            y = np.log(N)
+
+            mask = np.isfinite(x) & np.isfinite(y)
+            x0 = x[mask]
+            y0 = y[mask]
+
+            if x0.size >= min_points:
+                if if_auto_line_fit:
+                    best = _best_linear_segment(x0, y0, min_points, auto_fit_min_len_ratio)
+                    if best is not None:
+                        slope = best["slope"]
+                        intercept = best["intercept"]
+                        r_value = best["r_value"]
+                        p_value = best["p_value"]
+                        std_err = best["std_err"]
+                        n_used = best["n_points"]
+                    else:
+                        slope = intercept = r_value = p_value = std_err = np.nan
+                        n_used = int(x0.size)
+                else:
+                    if cap_d0_at_2:
+                        xs, ys = x0.copy(), y0.copy()
+                        while xs.size >= min_points:
+                            slope, intercept, r_value, p_value, std_err = linregress(xs, ys)
+                            if slope <= 2.0:
+                                break
+                            idx = np.argmax(xs)  # largest x = smallest eps
+                            xs = np.delete(xs, idx)
+                            ys = np.delete(ys, idx)
+                        x_fit, y_fit = xs, ys
+                    else:
+                        x_fit, y_fit = x0, y0
+
+                    if len(x_fit) >= 2:
+                        slope, intercept, r_value, p_value, std_err = linregress(x_fit, y_fit)
+                        n_used = len(x_fit)
+                    else:
+                        slope = intercept = r_value = p_value = std_err = np.nan
+                        n_used = len(x_fit)
+
+                tau0 = float(-slope)   # τ(0) = -D0
+                D0 = float(slope)
+                out.append({"q": 0.0, "tau": tau0, "Dq": D0, "D1": np.nan,
+                            "intercept": float(intercept), "r_value": float(r_value),
+                            "p_value": float(p_value), "std_err": float(std_err),
+                            "n_points": int(n_used)})
+            else:
+                out.append({"q": 0.0, "tau": np.nan, "Dq": np.nan, "D1": np.nan,
+                            "intercept": np.nan, "r_value": np.nan, "p_value": np.nan,
+                            "std_err": np.nan, "n_points": int(x0.size)})
+
+        # --- q == 1: fit S vs log(1/eps) ---
         df_s = _filter_common(df_mass[(df_mass["kind"] == "S") & (np.isclose(df_mass["q"], 1.0))])
         if not df_s.empty:
-            df_s = df_s.sort_values("scale")  # ensure monotonic scale
+            df_s = df_s.sort_values("scale")
             eps = df_s["eps"].astype(np.float64).values
             x = np.log(1.0 / eps)
-            y = df_s["value"].astype(np.float64).values  # entropy S(ε)
+            y = df_s["value"].astype(np.float64).values
 
             mask = np.isfinite(x) & np.isfinite(y)
             x = x[mask]
@@ -397,15 +527,18 @@ class CFA2DMFSBoxCounting:
 
             if x.size >= min_points:
                 if if_auto_line_fit:
-                    best = _best_linear_segment(x, y, min_points)
+                    best = _best_linear_segment(x, y, min_points, auto_fit_min_len_ratio)
                     if best is not None:
-                        slope = best["slope"]; intercept = best["intercept"]
-                        r_value = best["r_value"]; p_value = best["p_value"]; std_err = best["std_err"]
+                        slope = best["slope"]
+                        intercept = best["intercept"]
+                        r_value = best["r_value"]
+                        p_value = best["p_value"]
+                        std_err = best["std_err"]
                         n_used = best["n_points"]
                     else:
-                        slope=intercept=r_value=p_value=std_err=np.nan; n_used=int(x.size)
+                        slope = intercept = r_value = p_value = std_err = np.nan
+                        n_used = int(x.size)
                 else:
-                    # 原始路径保持不变
                     slope, intercept, r_value, p_value, std_err = linregress(x, y)
                     n_used = int(x.size)
 
@@ -428,9 +561,6 @@ class CFA2DMFSBoxCounting:
     # α(q) and f(α) from τ(q)
     # ------------------------------------------------------------
     def alpha_falpha_from_tau(self, df_fit, spline_k=3, exclude_q1=True, spline_s=0):
-        """
-        Compute alpha(q)=dτ/dq and f(α)=qα-τ(q) using a spline on τ(q).
-        """
         if df_fit is None or df_fit.empty:
             return pd.DataFrame()
 
@@ -460,13 +590,16 @@ class CFA2DMFSBoxCounting:
     # Full pipeline
     # ------------------------------------------------------------
     def get_mfs(self, max_size=None, max_scales=80, min_points=6, min_box=2,
-                use_middle_scales=True, fit_scale_frac=(0.2, 0.8),
-                if_auto_line_fit=False, spline_s=0):
+                use_middle_scales=False, fit_scale_frac=(0.2, 0.8),
+                if_auto_line_fit=False, auto_fit_min_len_ratio=0.5,
+                spline_s=0, cap_d0_at_2=False):
         df_mass = self.get_mass_table(max_size=max_size, max_scales=max_scales, min_box=min_box)
         df_fit = self.fit_tau_and_D1(
             df_mass, min_points=min_points, require_common_scales=True,
             use_middle_scales=use_middle_scales, fit_scale_frac=fit_scale_frac,
-            if_auto_line_fit=if_auto_line_fit
+            if_auto_line_fit=if_auto_line_fit,
+            auto_fit_min_len_ratio=auto_fit_min_len_ratio,
+            cap_d0_at_2=cap_d0_at_2
         )
         df_spec = self.alpha_falpha_from_tau(df_fit, exclude_q1=True, spline_s=spline_s)
         return df_mass, df_fit, df_spec
@@ -477,26 +610,24 @@ class CFA2DMFSBoxCounting:
     def plot(self, df_mass, df_fit, df_spec):
         fig, axs = plt.subplots(2, 2, figsize=(8, 6))
 
-        # --- Heatmap for Mq
-        df_mq = df_mass[df_mass["kind"] == "Mq"].copy()
-        if not df_mq.empty:
-            df_mq["log_value"] = np.log(df_mq["value"].astype(np.float64))
-            pivot = df_mq.pivot_table(index="scale", columns="q", values="log_value", aggfunc="mean")
+        # Heatmap: logMq for q!=0,1
+        df_logmq = df_mass[df_mass["kind"] == "logMq"].copy()
+        if not df_logmq.empty:
+            pivot = df_logmq.pivot_table(index="scale", columns="q", values="value", aggfunc="mean")
             vals = pivot.values
             if np.any(np.isfinite(vals)):
                 vmin = np.nanpercentile(vals, 10)
                 vmax = np.nanpercentile(vals, 90)
                 sns.heatmap(pivot, ax=axs[0, 0], cmap="coolwarm", vmin=vmin, vmax=vmax, cbar=True)
                 axs[0, 0].set_xlabel("q")
-                axs[0, 0].set_ylabel("scale (box size ε)")
-                axs[0, 0].set_title("Heatmap: log M(q, ε) vs scale and q")
+                axs[0, 0].set_ylabel("box size (pixels)")
+                axs[0, 0].set_title("Heatmap: log M(q, ε) vs box size and q")
                 axs[0, 0].xaxis.set_major_formatter(mticker.FormatStrFormatter("%.2f"))
             else:
                 axs[0, 0].set_title("Heatmap: (all NaN)")
         else:
-            axs[0, 0].set_title("Heatmap: (no data)")
+            axs[0, 0].set_title("Heatmap: (no logMq data)")
 
-        # --- tau(q)
         if df_fit is not None and not df_fit.empty:
             sns.lineplot(data=df_fit, x="q", y="tau", ax=axs[0, 1])
             axs[0, 1].set_xlabel("q")
@@ -506,7 +637,6 @@ class CFA2DMFSBoxCounting:
         else:
             axs[0, 1].set_title("tau(q): (no data)")
 
-        # --- D(q)
         if df_fit is not None and not df_fit.empty:
             sns.lineplot(data=df_fit, x="q", y="Dq", ax=axs[1, 0])
             axs[1, 0].set_xlabel("q")
@@ -516,7 +646,6 @@ class CFA2DMFSBoxCounting:
         else:
             axs[1, 0].set_title("D(q): (no data)")
 
-        # --- f(α) vs α
         if df_spec is not None and not df_spec.empty and np.any(np.isfinite(df_spec["alpha"].values)):
             sns.lineplot(data=df_spec, x="alpha", y="f_alpha", ax=axs[1, 1])
             axs[1, 1].set_xlabel(r"$\alpha$")
@@ -539,24 +668,37 @@ def main():
     if image is None:
         raise FileNotFoundError(image_path)
 
-    q_list = np.linspace(0, 20, 10)
+    q_list = np.linspace(-5, 5, 51)
 
-    mfs = CFA2DMFSBoxCounting(
+    mfs = CFA2DMFS(
         image=image,
-        corp_type=-1,
+        corp_type=0,          # Scheme A 下建议用 0：禁止每尺度 crop
         q_list=q_list,
         with_progress=True,
+        bg_reverse=False,
+        bg_threshold=0.01,
+        bg_otsu=False,
+        mu_floor=1e-12
     )
 
-    # 默认不启用自动线性区间（保持原行为）
+    print("Nonzero pixel ratio (adjust bg_threshold, typically < 0.5):", np.mean(mfs.m_image > 0))
+
     df_mass, df_fit, df_spec = mfs.get_mfs(
-        max_scales=80, 
-        min_points=16,
-        use_middle_scales=True, 
-        fit_scale_frac=(0.0, 1.0),
+        max_scales=80,
+        min_points=6,
+        use_middle_scales=False,
         if_auto_line_fit=False,
-        spline_s=0
+        fit_scale_frac=(0.3, 0.7),
+        auto_fit_min_len_ratio=0.6,
+        cap_d0_at_2=False
     )
+
+    if df_fit.empty:
+        print("empty fit")
+        return
+
+    bad = df_fit[np.isfinite(df_fit["Dq"]) & (df_fit["Dq"] > 2.0)]
+    print(bad[["q", "Dq", "tau", "n_points", "r_value"]].head(20))
 
     print("\n=== Fit results (head) ===")
     print(df_fit.head(10))
@@ -565,6 +707,12 @@ def main():
     if not row_d1.empty:
         print("\n=== D1 (information dimension) ===")
         print(row_d1[["q", "D1", "Dq", "n_points", "r_value", "std_err"]])
+
+    row_d0 = df_fit[np.isclose(df_fit["q"], 0.0)]
+    if not row_d0.empty:
+        print("\n=== D0 (capacity dimension) ===")
+        print(row_d0[["q", "Dq", "n_points", "r_value", "std_err"]])
+        print(f"  D0 should be ≤ 2.0; measured = {row_d0['Dq'].values[0]:.4f}")
 
     mfs.plot(df_mass, df_fit, df_spec)
 
