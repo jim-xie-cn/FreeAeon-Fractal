@@ -250,7 +250,10 @@ def main():
     fd_bc = CFAImageDimension(bin_image).get_bc_fd(corp_type=-1)
     fd_dbc = CFAImageDimension(raw_image).get_dbc_fd(corp_type=-1)
     fd_sdbc = CFAImageDimension(raw_image).get_sdbc_fd(corp_type=-1)
-    CFAImageDimension.plot(raw_image,bin_image,fd_bc,fd_dbc,fd_sdbc)
+    print(fd_bc['fd'])
+    print(fd_dbc['fd'])
+    print(fd_sdbc['fd'])
+    #CFAImageDimension.plot(raw_image,bin_image,fd_bc,fd_dbc,fd_sdbc)
 
 if __name__ == "__main__":
     main()
