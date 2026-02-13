@@ -63,6 +63,13 @@ Example:
   - `fourier` - Fourier analysis
   - `series` - Multifractal Spectrum for Series analysis
 
+## Use GPU to speed up
+
+```bash
+from FreeAeonFractal.FAImageDimensionGPU import CFAImageDimensionGPU as CFAImageDimension
+from FreeAeonFractal.FA2DMFSGPU import CFA2DMFSGPU as CFA2DMFS
+```
+
 ## 📁 Directory Structure
 
 ```
