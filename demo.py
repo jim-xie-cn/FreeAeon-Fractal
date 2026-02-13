@@ -1,9 +1,14 @@
 import cv2
 import argparse
 import numpy as np
-from FreeAeonFractal.FAImageDimension import CFAImageDimension
 from FreeAeonFractal.FAImageFourier import CFAImageFourier
+#CPU version
+from FreeAeonFractal.FAImageDimension import CFAImageDimension
 from FreeAeonFractal.FA2DMFS import CFA2DMFS
+#GPU version
+#from FreeAeonFractal.FAImageDimension import CFAImageDimensionGPU as CFAImageDimension
+#from FreeAeonFractal.FA2DMFSGPU import CFA2DMFSGPU as CFA2DMFS
+
 from FreeAeonFractal.FA1DMFS import CFA1DMFS
 
 def demo_1d_mfs():
