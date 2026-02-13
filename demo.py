@@ -1,9 +1,16 @@
 import cv2
 import argparse
 import numpy as np
-from FreeAeonFractal.FAImageDimension import CFAImageDimension
 from FreeAeonFractal.FAImageFourier import CFAImageFourier
+
+#CPU version
+from FreeAeonFractal.FAImageDimension import CFAImageDimension
 from FreeAeonFractal.FA2DMFS import CFA2DMFS
+
+#GPU version
+#from FreeAeonFractal.FAImageDimensionGPU import CFAImageDimensionGPU as CFAImageDimension
+#from FreeAeonFractal.FA2DMFSGPU import CFA2DMFSGPU as CFA2DMFS
+
 from FreeAeonFractal.FA1DMFS import CFA1DMFS
 
 def demo_1d_mfs():
@@ -18,19 +25,25 @@ def demo_2d_fd(image_path):
     if rgb_image is None:
         raise FileNotFoundError(f"Cannot load image")
     gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
-    bin_image = (gray_image >= 64).astype(int)
+    bin_image = (gray_image < 64).astype(int)
     fd_bc = CFAImageDimension(bin_image).get_bc_fd(corp_type=-1)
     fd_dbc = CFAImageDimension(gray_image).get_dbc_fd(corp_type=-1)
     fd_sdbc = CFAImageDimension(gray_image).get_sdbc_fd(corp_type=-1)
-    CFAImageDimension.plot(gray_image, bin_image, fd_bc, fd_dbc, fd_sdbc)
+    
+    print("bc:",fd_bc['fd'])
+    print("dbc:",fd_dbc['fd'])
+    print("sdbc:",fd_sdbc['fd'])
 
+    CFAImageDimension.plot(gray_image, bin_image, fd_bc, fd_dbc, fd_sdbc)
+    
 def demo_2d_mfs(image_path):
     rgb_image = cv2.imread(image_path)
     if rgb_image is None:
         raise FileNotFoundError(f"Cannot load image")
     gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
-    MFS = CFA2DMFS(gray_image)
+    MFS = CFA2DMFS(gray_image,q_list = np.linspace(0, 5, 26) )
     df_mass, df_fit, df_spec = MFS.get_mfs()
+    print(df_spec)
     MFS.plot(df_mass,df_fit,df_spec)
 
 def demo_fourier(image_path):  

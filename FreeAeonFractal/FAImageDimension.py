@@ -244,11 +244,15 @@ class CFAImageDimension(object):
         plt.show()
 
 def main():
-    raw_image = cv2.imread("../images/face.png", cv2.IMREAD_GRAYSCALE)
-    bin_image = (raw_image >= 64).astype(int)     
+    raw_image = cv2.imread("../images/fractal.png", cv2.IMREAD_GRAYSCALE)
+    bin_image = raw_image
+    bin_image = (bin_image < 64).astype(int)     
     fd_bc = CFAImageDimension(bin_image).get_bc_fd(corp_type=-1)
     fd_dbc = CFAImageDimension(raw_image).get_dbc_fd(corp_type=-1)
     fd_sdbc = CFAImageDimension(raw_image).get_sdbc_fd(corp_type=-1)
+    print(fd_bc['fd'])
+    print(fd_dbc['fd'])
+    print(fd_sdbc['fd'])
     CFAImageDimension.plot(raw_image,bin_image,fd_bc,fd_dbc,fd_sdbc)
 
 if __name__ == "__main__":
