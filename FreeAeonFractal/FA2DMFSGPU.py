@@ -1,44 +1,20 @@
-"""
-Improved Multifractal (box-counting) analysis for 2D grayscale images.
-
-Applied modifications (important):
-1) For q != 0,1: compute log M(q, eps) in log-space via logsumexp WITHOUT mu_floor
-   - store logMq directly (no exp, no overflow-based dropping)
-2) For q=0: store N (count of nonzero boxes), fit with log(N)
-3) For q=1: store S = -sum(mu log mu), fit S vs log(1/eps)
-4) Keep epsilon normalization with fixed ROI across scales (FIXED ROI; Scheme A):
-   - crop ONCE to a fixed square ROI
-   - restrict scales to divisors of ROI size => no scale-dependent cropping, no LCM explosion
-
-Notes:
-- mu_floor parameter is kept for backward compatibility but is not used anymore (by design).
-"""
-
 import numpy as np
-import cv2
 import pandas as pd
+import cv2
 from tqdm import tqdm
+import time
+import torch
 from scipy.stats import linregress
 from scipy.interpolate import UnivariateSpline
-from scipy.special import logsumexp
 import matplotlib.pyplot as plt
 import seaborn as sns
 import matplotlib.ticker as mticker
-from skimage.util import view_as_blocks
 
 
 # ============================================================
 # Fixed ROI utilities (Scheme A: fixed square ROI, no LCM)
 # ============================================================
 def crop_square_roi(img, L=None, mode="center"):
-    """
-    Crop a 2D image to a fixed square ROI of size LxL.
-    If L is None: use L = min(H, W).
-
-    mode:
-      - "topleft": crop from top-left corner
-      - "center":  centered crop
-    """
     if img is None:
         raise ValueError("img is None")
     if img.ndim != 2:
@@ -64,82 +40,19 @@ def crop_square_roi(img, L=None, mode="center"):
 
 
 # ============================================================
-# Image blocking utilities (2D only)
+# GPU-accelerated MFS
 # ============================================================
-class CFAImage:
-    @staticmethod
-    def crop_data(data, block_size):
-        """Crop spatial dimensions so H and W are multiples of block_size."""
-        if data is None:
-            raise ValueError("data is None")
-        bh, bw = block_size
-        h, w = data.shape[:2]
-        new_h = (h // bh) * bh
-        new_w = (w // bw) * bw
-        return data[:new_h, :new_w]
-
-    @staticmethod
-    def get_boxes_from_image(image, block_size, corp_type=-1):
-        """
-        Split a 2D grayscale image into blocks.
-
-        Returns:
-            blocks_reshaped: (num_blocks, bh, bw)
-            raw_blocks:      (nY, nX, bh, bw)
-        """
-        if image.ndim != 2:
-            raise ValueError("For MFS, image must be 2D grayscale (H,W).")
-
-        bh, bw = block_size
-
-        if corp_type == -1:
-            img = CFAImage.crop_data(image, block_size)
-        elif corp_type == 0:
-            # strict: require exact tiling, otherwise return empty
-            if image.shape[0] % bh != 0 or image.shape[1] % bw != 0:
-                return (np.empty((0, bh, bw), dtype=image.dtype),
-                        np.empty((0, 0, bh, bw), dtype=image.dtype))
-            img = image
-        else:
-            img = CFAImage.crop_data(image, block_size)
-
-        if img.shape[0] < bh or img.shape[1] < bw:
-            return (np.empty((0, bh, bw), dtype=img.dtype),
-                    np.empty((0, 0, bh, bw), dtype=img.dtype))
-
-        raw_blocks = view_as_blocks(img, block_shape=(bh, bw))  # (nY, nX, bh, bw)
-        nY, nX = raw_blocks.shape[:2]
-        blocks_reshaped = raw_blocks.reshape(nY * nX, bh, bw)
-        return blocks_reshaped, raw_blocks
-
-
-# ============================================================
-# Box-counting multifractal spectrum (MFS)
-# ============================================================
-class CFA2DMFS:
+class CFA2DMFSGPU:
     """
-    Box-counting multifractal analysis on a grayscale image.
-
-    Parameters
-    ----------
-    image : 2D array
-        Input grayscale image.
-    corp_type : int
-        -1 crop to multiples of box size (OLD; will break fixed ROI idea).
-         0 require exact multiples (recommended with Scheme A).
-    q_list : array-like
-        q values. Can include 1; we compute D1 specially.
-    with_progress : bool
-        Show progress bars.
-    bg_threshold : float, default 1e-6
-        After normalization, pixels < bg_threshold are set to 0.
-    bg_otsu : bool, default True
-        Apply Otsu threshold on raw image to remove background.
-    mu_floor : float, default 1e-12
-        Kept for compatibility; NOT used anymore (we do not floor mu).
+    GPU version of CFA2DMFS (PyTorch).
+    - Core per-scale μ and logsumexp computed on GPU.
+    - Regression/spline kept on CPU.
     """
+
     def __init__(self, image, corp_type=0, q_list=np.linspace(-5, 5, 51),
-                 with_progress=True, bg_threshold=0.01, bg_reverse=False, bg_otsu=False, mu_floor=1e-12):
+                 with_progress=True, bg_threshold=0.01, bg_reverse=False,
+                 bg_otsu=False, mu_floor=1e-12, device='cuda', dtype=torch.float64):
+
         if image is None:
             raise ValueError("image is None")
         if image.ndim != 2:
@@ -147,7 +60,7 @@ class CFA2DMFS:
 
         img_raw = image.astype(np.float64)
 
-        # optional Otsu on raw image
+        # optional Otsu on raw image (CPU)
         if bg_otsu:
             vmin = np.nanmin(img_raw)
             vmax = np.nanmax(img_raw)
@@ -156,7 +69,7 @@ class CFA2DMFS:
                 _, img_bin = cv2.threshold(img8, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
                 img_raw[img_bin == 0] = 0.0
 
-        # Normalize to [0,1] and ensure nonnegative measure
+        # Normalize to [0,1] (CPU)
         img = img_raw.copy()
         img -= np.nanmin(img)
         mx = np.nanmax(img)
@@ -164,7 +77,7 @@ class CFA2DMFS:
         img = np.where(np.isfinite(img), img, 0.0)
         img = np.clip(img, 0.0, 1.0)
 
-        # background thresholding (post-normalization)
+        # background thresholding (CPU)
         self._bg_threshold = bg_threshold
         if bg_threshold > 0:
             if bg_reverse:
@@ -176,54 +89,52 @@ class CFA2DMFS:
         self.m_corp_type = corp_type
         self.m_with_progress = with_progress
         self.m_q_list = np.array(q_list, dtype=np.float64)
+        self._mu_floor = mu_floor  # kept for compatibility, not used
 
-        # kept (not used for mu flooring now)
-        self._mu_floor = mu_floor
+        if device is None:
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = torch.device(device)
+        self.dtype = dtype
 
     # ------------------------------------------------------------
-    # Core: compute per-scale measures μ_i(ε)
+    # Core: μ at a given box size (GPU)
     # ------------------------------------------------------------
-    def _mu_at_scale(self, box_size):
+    @torch.no_grad()
+    def _mu_at_scale_torch(self, img_t: torch.Tensor, box_size: int):
         """
-        Compute box probabilities μ_i at a given box size.
-
-        Returns:
-            mu : 1D float64 array, μ_i >= 0, sum(mu)=1
+        img_t: (H,W) on device
+        returns mu_pos (1D tensor, mu>0), and also log(mu_pos)
         """
-        boxes, _ = CFAImage.get_boxes_from_image(
-            self.m_image, (box_size, box_size), corp_type=self.m_corp_type
-        )
-        if boxes.size == 0:
-            return np.array([], dtype=np.float64)
+        H, W = img_t.shape
+        s = int(box_size)
+        if s <= 0 or H % s != 0 or W % s != 0:
+            # Scheme A expects exact tiling
+            return None, None
 
-        block_mass = np.sum(boxes, axis=(1, 2)).astype(np.float64)
-        block_mass = np.where(block_mass < 0, 0.0, block_mass)
+        # (H,W) -> (nY, s, nX, s) -> sum over block dims -> (nY,nX) -> flatten
+        nY = H // s
+        nX = W // s
+        blocks = img_t.reshape(nY, s, nX, s)
+        block_mass = blocks.sum(dim=(1, 3)).reshape(-1)  # (nY*nX,)
 
-        total = float(np.sum(block_mass))
-        if (not np.isfinite(total)) or total <= 0:
-            return np.array([], dtype=np.float64)
+        total = block_mass.sum()
+        if not torch.isfinite(total) or total <= 0:
+            return None, None
 
         mu = block_mass / total
-        mu = np.where(np.isfinite(mu) & (mu >= 0), mu, 0.0)
+        # keep only mu>0 to avoid log(0) issues (same as your code)
+        mu_pos = mu[mu > 0]
+        if mu_pos.numel() == 0:
+            return None, None
 
-        s = float(np.sum(mu))
-        if s <= 0 or (not np.isfinite(s)):
-            return np.array([], dtype=np.float64)
-        mu /= s
-        return mu
+        log_mu = torch.log(mu_pos)
+        return mu_pos, log_mu
 
     # ------------------------------------------------------------
-    # Compute per-scale values: logMq (q!=0,1), N (q=0), S (q=1)
+    # Per-scale table (GPU)
     # ------------------------------------------------------------
+    @torch.no_grad()
     def get_mass_table(self, max_size=None, max_scales=80, min_box=2, roi_mode="center"):
-        """
-        Output columns: scale, eps, q, value, kind
-
-        kind meanings:
-            - "logMq": for q != 0,1; value = log( sum_i mu_i^q )
-            - "N":     for q == 0;   value = N_nonzero (count of mu_i>0)
-            - "S":     for q == 1;   value = -sum_i mu_i log mu_i
-        """
         img0 = self.m_image
         h0, w0 = img0.shape
         if max_size is None:
@@ -231,73 +142,62 @@ class CFA2DMFS:
         if max_size < min_box:
             raise ValueError("max_size too small.")
 
-        # -------- Scheme A: fixed square ROI once --------
-        # fixed_L is the ROI side length used for eps normalization (constant across scales)
-        img_fixed, fixed_L_int = crop_square_roi(img0, L=min(min(h0, w0), max_size), mode=roi_mode)
+        # Scheme A fixed ROI (CPU crop)
+        img_fixed_np, fixed_L_int = crop_square_roi(
+            img0, L=min(min(h0, w0), max_size), mode=roi_mode
+        )
         fixed_L = float(fixed_L_int)
 
-        # Candidate integer box sizes (same as before, but will be filtered)
+        # Candidate scales (CPU)
         scales = np.logspace(np.log2(min_box), np.log2(fixed_L_int), num=max_scales, base=2.0)
         scales = np.unique(np.maximum(min_box, np.round(scales).astype(int)))
         scales = scales[(scales >= min_box) & (scales <= fixed_L_int)]
-
-        # keep only divisors of fixed_L => exact tiling, no per-scale crop
         scales = scales[(fixed_L_int % scales) == 0]
         scales = np.array(sorted(scales.astype(int)))
-
         if scales.size == 0:
             return pd.DataFrame()
 
-        # Temporarily replace image with fixed ROI (avoid changing other code)
-        old_img = self.m_image
-        self.m_image = img_fixed
-        # ------------------------------------------------
+        # Move fixed ROI to GPU once
+        img_t = torch.from_numpy(img_fixed_np).to(device=self.device, dtype=self.dtype)
+
+        # q on GPU
+        q_t = torch.tensor(self.m_q_list, device=self.device, dtype=self.dtype)
 
         records = []
-        iterator = tqdm(scales, desc="Computing per-scale μ") if self.m_with_progress else scales
+        iterator = tqdm(scales, desc=f"Computing per-scale μ on {self.device.type}") if self.m_with_progress else scales
 
-        try:
+        for size in iterator:
+            size = int(size)
+            mu_pos, log_mu = self._mu_at_scale_torch(img_t, size)
+            if mu_pos is None:
+                continue
 
-            for size in iterator:
-                size = int(size)
-                if size < min_box:
+            eps = float(size) / fixed_L
+
+            # q==0: N = count(mu>0)
+            # q==1: S = -sum(mu log mu)
+            # q!=0,1: logMq = logsumexp(q*log(mu))
+            N = float(mu_pos.numel())
+            S = float(-(mu_pos * log_mu).sum().item())
+
+            # 先把 q==0/1 写入（CPU records）
+            records.append({"scale": size, "eps": eps, "q": 0.0, "value": N, "kind": "N"})
+            records.append({"scale": size, "eps": eps, "q": 1.0, "value": S, "kind": "S"})
+
+            # 计算所有 q 的 logMq（GPU），然后过滤掉 q=0/1
+            # a shape: (n_mu, n_q) if we broadcast properly
+            # we want for each q: logsumexp(q*log_mu)
+            a = log_mu[:, None] * q_t[None, :]  # (n_mu, n_q)
+            logMq_all = torch.logsumexp(a, dim=0)  # (n_q,)
+
+            # 搬回 CPU
+            logMq_cpu = logMq_all.detach().to("cpu").numpy().astype(np.float64)
+
+            for qv, logMq in zip(self.m_q_list.astype(np.float64), logMq_cpu):
+                if np.isclose(qv, 0.0) or np.isclose(qv, 1.0):
                     continue
-
-                mu = self._mu_at_scale(size)
-                if mu.size == 0:
-                    continue
-
-                mu_pos_all = mu[mu > 0]
-                if mu_pos_all.size == 0:
-                    continue
-
-                log_mu_all = np.log(mu_pos_all)
-                eps = float(size) / fixed_L
-
-                for q in self.m_q_list:
-                    q = float(q)
-
-                    if np.isclose(q, 1.0):
-                        S = float(-np.sum(mu_pos_all * log_mu_all))
-                        if np.isfinite(S):
-                            records.append({"scale": size, "eps": eps, "q": 1.0, "value": S, "kind": "S"})
-                        continue
-
-                    if np.isclose(q, 0.0):
-                        records.append({"scale": size, "eps": eps, "q": 0.0, "value": float(mu_pos_all.size), "kind": "N"})
-                        continue
-                    #max_log_arg = np.log(np.finfo(np.float64).max)  # ~709.78
-                    #a = q * log_mu_all               
-                    #a = np.minimum(a, max_log_arg)  
-                    #logMq = float(logsumexp(a))
-                    a = q * log_mu_all
-                    a = a[np.isfinite(a)]
-                    logMq = float(logsumexp(a)) if a.size else np.nan
-                    if np.isfinite(logMq):
-                        records.append({"scale": size, "eps": eps, "q": q, "value": logMq, "kind": "logMq"})
-        finally:
-            self.m_image = old_img
-
+                if np.isfinite(logMq):
+                    records.append({"scale": size, "eps": eps, "q": float(qv), "value": float(logMq), "kind": "logMq"})
 
         df = pd.DataFrame(records)
         if df.empty:
@@ -305,7 +205,7 @@ class CFA2DMFS:
         return df.sort_values(["kind", "q", "scale"]).reset_index(drop=True)
 
     # ------------------------------------------------------------
-    # Helper: choose a common scale set for regression
+    # 下面：拟合/谱计算/画图基本保持你原来的 CPU 实现
     # ------------------------------------------------------------
     @staticmethod
     def _common_scales_for_fit(df_mass, require_q1=True):
@@ -336,15 +236,13 @@ class CFA2DMFS:
 
         return np.array(sorted(common), dtype=int)
 
-    # ------------------------------------------------------------
-    # Fit τ(q) and D1 (x=log(1/ε))
-    # ------------------------------------------------------------
     def fit_tau_and_D1(
         self, df_mass, min_points=6, require_common_scales=True,
         use_middle_scales=True, fit_scale_frac=(0.2, 0.8),
         if_auto_line_fit=False, auto_fit_min_len_ratio=0.5,
         cap_d0_at_2=False
     ):
+        # 原逻辑基本不变（CPU）
         if df_mass is None or df_mass.empty:
             return pd.DataFrame()
 
@@ -409,7 +307,7 @@ class CFA2DMFS:
 
         out = []
 
-        # --- q != 0,1: use y = logMq directly ---
+        # q != 0,1
         df_logmq = _filter_common(df_mass[df_mass["kind"] == "logMq"])
         for q, df_q in df_logmq.groupby("q"):
             qv = float(q)
@@ -419,7 +317,7 @@ class CFA2DMFS:
             df_q = df_q.sort_values("scale")
             eps = df_q["eps"].astype(np.float64).values
             x = np.log(1.0 / eps)
-            y = df_q["value"].astype(np.float64).values  # already logMq
+            y = df_q["value"].astype(np.float64).values
 
             mask = np.isfinite(x) & np.isfinite(y)
             x = x[mask]
@@ -455,7 +353,7 @@ class CFA2DMFS:
                         "p_value": float(p_value), "std_err": float(std_err),
                         "n_points": int(n_used)})
 
-        # --- q == 0: use y = log N ---
+        # q==0
         df_n = _filter_common(df_mass[(df_mass["kind"] == "N") & (np.isclose(df_mass["q"], 0.0))])
         if not df_n.empty:
             df_n = df_n.sort_values("scale")
@@ -488,7 +386,7 @@ class CFA2DMFS:
                             slope, intercept, r_value, p_value, std_err = linregress(xs, ys)
                             if slope <= 2.0:
                                 break
-                            idx = np.argmax(xs)  # largest x = smallest eps
+                            idx = np.argmax(xs)
                             xs = np.delete(xs, idx)
                             ys = np.delete(ys, idx)
                         x_fit, y_fit = xs, ys
@@ -502,7 +400,7 @@ class CFA2DMFS:
                         slope = intercept = r_value = p_value = std_err = np.nan
                         n_used = len(x_fit)
 
-                tau0 = float(-slope)   # τ(0) = -D0
+                tau0 = float(-slope)
                 D0 = float(slope)
                 out.append({"q": 0.0, "tau": tau0, "Dq": D0, "D1": np.nan,
                             "intercept": float(intercept), "r_value": float(r_value),
@@ -513,7 +411,7 @@ class CFA2DMFS:
                             "intercept": np.nan, "r_value": np.nan, "p_value": np.nan,
                             "std_err": np.nan, "n_points": int(x0.size)})
 
-        # --- q == 1: fit S vs log(1/eps) ---
+        # q==1
         df_s = _filter_common(df_mass[(df_mass["kind"] == "S") & (np.isclose(df_mass["q"], 1.0))])
         if not df_s.empty:
             df_s = df_s.sort_values("scale")
@@ -557,9 +455,6 @@ class CFA2DMFS:
             return df_fit
         return df_fit.sort_values("q").reset_index(drop=True)
 
-    # ------------------------------------------------------------
-    # α(q) and f(α) from τ(q)
-    # ------------------------------------------------------------
     def alpha_falpha_from_tau(self, df_fit, spline_k=3, exclude_q1=True, spline_s=0):
         if df_fit is None or df_fit.empty:
             return pd.DataFrame()
@@ -586,9 +481,6 @@ class CFA2DMFS:
         df["f_alpha"] = f_alpha
         return df
 
-    # ------------------------------------------------------------
-    # Full pipeline
-    # ------------------------------------------------------------
     def get_mfs(self, max_size=None, max_scales=80, min_points=6, min_box=2,
                 use_middle_scales=False, fit_scale_frac=(0.2, 0.8),
                 if_auto_line_fit=False, auto_fit_min_len_ratio=0.5,
@@ -604,13 +496,9 @@ class CFA2DMFS:
         df_spec = self.alpha_falpha_from_tau(df_fit, exclude_q1=True, spline_s=spline_s)
         return df_mass, df_fit, df_spec
 
-    # ------------------------------------------------------------
-    # Plotting
-    # ------------------------------------------------------------
     def plot(self, df_mass, df_fit, df_spec):
         fig, axs = plt.subplots(2, 2, figsize=(8, 6))
 
-        # Heatmap: logMq for q!=0,1
         df_logmq = df_mass[df_mass["kind"] == "logMq"].copy()
         if not df_logmq.empty:
             pivot = df_logmq.pivot_table(index="scale", columns="q", values="value", aggfunc="mean")
@@ -658,10 +546,6 @@ class CFA2DMFS:
         plt.tight_layout()
         plt.show()
 
-
-# ============================================================
-# Demo
-# ============================================================
 def main():
     image_path = "../images/fractal.png"
     image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
@@ -669,53 +553,26 @@ def main():
         raise FileNotFoundError(image_path)
 
     q_list = np.linspace(0, 5, 51)
-
-    mfs = CFA2DMFS(
-        image=image,
-        corp_type=0,          # Scheme A 下建议用 0：禁止每尺度 crop
-        q_list=q_list,
-        with_progress=True,
-        bg_reverse=False,
-        bg_threshold=0.01,
-        bg_otsu=False,
-        mu_floor=1e-12
-    )
-    print(mfs.m_image)
-    print("Nonzero pixel ratio (adjust bg_threshold, typically < 0.5):", np.mean(mfs.m_image > 0))
-
+    mfs = CFA2DMFSGPU(
+            image=image,
+            corp_type=0,
+            q_list=q_list,
+            with_progress=True,
+            bg_reverse=False,
+            bg_threshold=0.01,
+            bg_otsu=False)
     df_mass, df_fit, df_spec = mfs.get_mfs(
-        max_scales=80,
-        min_points=6,
-        use_middle_scales=False,
-        if_auto_line_fit=False,
-        fit_scale_frac=(0.3, 0.7),
-        auto_fit_min_len_ratio=0.6,
-        cap_d0_at_2=False
-    )
+            max_scales=80,
+            min_points=6,
+            use_middle_scales=False,
+            if_auto_line_fit=False,
+            fit_scale_frac=(0.3, 0.7),
+            auto_fit_min_len_ratio=0.6,
+            cap_d0_at_2=False)
 
-    if df_fit.empty:
-        print("empty fit")
-        return
-
-    bad = df_fit[np.isfinite(df_fit["Dq"]) & (df_fit["Dq"] > 2.0)]
-    print(bad[["q", "Dq", "tau", "n_points", "r_value"]].head(20))
-
-    print("\n=== Fit results (head) ===")
-    print(df_fit.head(10))
-
-    row_d1 = df_fit[np.isclose(df_fit["q"], 1.0)]
-    if not row_d1.empty:
-        print("\n=== D1 (information dimension) ===")
-        print(row_d1[["q", "D1", "Dq", "n_points", "r_value", "std_err"]])
-
-    row_d0 = df_fit[np.isclose(df_fit["q"], 0.0)]
-    if not row_d0.empty:
-        print("\n=== D0 (capacity dimension) ===")
-        print(row_d0[["q", "Dq", "n_points", "r_value", "std_err"]])
-        print(f"  D0 should be ≤ 2.0; measured = {row_d0['Dq'].values[0]:.4f}")
-
+    print(df_fit.head())
     mfs.plot(df_mass, df_fit, df_spec)
-
 
 if __name__ == "__main__":
     main()
+
