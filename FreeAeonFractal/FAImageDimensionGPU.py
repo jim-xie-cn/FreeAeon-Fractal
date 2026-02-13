@@ -1,6 +1,7 @@
 import math
 import numpy as np
 import torch
+import matplotlib.pyplot as plt
 import torch.nn.functional as F
 from tqdm import tqdm
 
@@ -194,6 +195,61 @@ class CFAImageDimensionGPU:
         # 与 DBC 相同（保持与原代码一致）
         return self.get_dbc_fd(corp_type=corp_type)
 
+    '''Display image and fitting plots for various FD calculations'''
+    @staticmethod
+    def plot(raw_img, gray_img, fd_bc, fd_dbc, fd_sdbc):
+        def show_image(text,image,cmap='viridis'):
+            plt.imshow(image, cmap=cmap)
+            plt.title(text,fontsize=8)
+            plt.axis('off')
+        def show_fit(text,result):
+            #x = np.array(result['log_scales'])
+            #y = np.array(result['log_counts'])
+            #fd = result['fd']
+            #b = result['intercept']
+            #plt.title('%s: FD=%0.4f PV=%.4f' % (text,fd,result['p_value']),fontsize=8)
+            #b = result['intercept']
+            #plt.plot(x, y, 'ro',label='Calculated points',markersize=1)
+            #plt.plot(x, fd*x+b, 'k--', label='Linear fit')
+            #plt.legend(loc=4,fontsize=8)
+            #plt.xlabel('$log(1/r)$',fontsize=8)
+            #plt.ylabel('$log(Nr)$',fontsize=8)
+            #plt.legend(fontsize=8)
+            x = np.array(result['log_scales'])
+            y = np.array(result['log_counts'])
+            fd = result['fd']
+            b = result['intercept']
+            r2 = result['r_value'] ** 2
+            scale_range = f"[{min(result['scales'])}, {max(result['scales'])}]"
+
+            plt.plot(x, y, 'ro', label='Calculated points', markersize=2)
+            plt.plot(x, fd * x + b, 'k--', label='Linear fit')
+            plt.fill_between(x, fd*x + b - 2*result['std_err'], fd*x + b + 2*result['std_err'],
+                 color='gray', alpha=0.2, label='±2σ band')
+
+            textstr = '\n'.join((r'$D=%.4f$' % (fd,), r'$R^2=%.4f$' % (r2,),r'Scale: ' + scale_range))
+
+            plt.gca().text(0.95, 0.95, textstr, transform=plt.gca().transAxes,fontsize=7, verticalalignment='top', horizontalalignment='right',bbox=dict(boxstyle='round,pad=0.2', facecolor='white', alpha=0.5))
+            plt.title('%s: FD=%0.4f' % (text,fd),fontsize=7)
+            plt.xlabel(r'$\log(1/r)$', fontsize=7)
+            plt.ylabel(r'$\log(N(r))$', fontsize=7)
+            plt.legend(fontsize=7)
+            plt.grid(True, which='both', ls='--', lw=0.3)
+
+        plt.figure(1,figsize=(10,5))
+        plt.subplot(2, 3, 1)
+        show_image("Raw Image",raw_img)
+        plt.subplot(2, 3, 3)
+        show_image("Binary Image",gray_img,"gray")
+        plt.subplot(2, 3, 4)
+        show_fit("BC",fd_bc)
+        plt.subplot(2, 3, 5)
+        show_fit("DBC",fd_dbc)
+        plt.subplot(2, 3, 6)
+        show_fit("SDBC",fd_sdbc)
+
+        plt.tight_layout()
+        plt.show()
 
 def main():
     import cv2
