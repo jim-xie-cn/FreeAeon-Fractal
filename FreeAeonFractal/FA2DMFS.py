@@ -663,12 +663,12 @@ class CFA2DMFS:
 # Demo
 # ============================================================
 def main():
-    image_path = "../images/face.png"
+    image_path = "../images/fractal.png"
     image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
     if image is None:
         raise FileNotFoundError(image_path)
 
-    q_list = np.linspace(-5, 5, 51)
+    q_list = np.linspace(0, 5, 51)
 
     mfs = CFA2DMFS(
         image=image,
@@ -676,11 +676,11 @@ def main():
         q_list=q_list,
         with_progress=True,
         bg_reverse=False,
-        bg_threshold=0.01,
+        bg_threshold=0.95,
         bg_otsu=False,
         mu_floor=1e-12
     )
-
+    print(mfs.m_image)
     print("Nonzero pixel ratio (adjust bg_threshold, typically < 0.5):", np.mean(mfs.m_image > 0))
 
     df_mass, df_fit, df_spec = mfs.get_mfs(
