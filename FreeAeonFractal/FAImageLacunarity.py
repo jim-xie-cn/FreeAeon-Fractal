@@ -106,16 +106,17 @@ class CFAImageLacunarity(object):
 
     def fit_lacunarity(self, lac_result, min_valid_lambda=1.0 + 1e-12):
         """
-        Fit log(Λ-1) vs log(1/r).
+        Fit log(Λ-1) vs log(r).
 
         lac_result: dict returned by get_lacunarity()
         """
         scales = np.asarray(lac_result["scales"], dtype=np.float64)
         lam = np.asarray(lac_result["lacunarity"], dtype=np.float64)
 
-        # valid: finite, and Λ>1 so that log(Λ-1) defined
+        # valid: finite, r>0, and Λ>1 so that log(Λ-1) defined
         mask = np.isfinite(scales) & (scales > 0) & np.isfinite(lam) & (lam > min_valid_lambda)
-        x = np.log(1.0 / scales[mask])
+
+        x = np.log(scales[mask])          # <-- 用 log(r)
         y = np.log(lam[mask] - 1.0)
 
         if x.size < 2:
@@ -125,7 +126,7 @@ class CFAImageLacunarity(object):
                 "r_value": np.nan,
                 "p_value": np.nan,
                 "std_err": np.nan,
-                "log_inv_scales": x.tolist(),
+                "log_scales": x.tolist(),          # <-- 字段名改为 log_scales
                 "log_lambda_minus_1": y.tolist()
             }
 
@@ -136,12 +137,13 @@ class CFAImageLacunarity(object):
             "r_value": float(r_value),
             "p_value": float(p_value),
             "std_err": float(std_err),
-            "log_inv_scales": x.tolist(),
+            "log_scales": x.tolist(),              # <-- 字段名改为 log_scales
             "log_lambda_minus_1": y.tolist()
         }
 
+
     def plot(self, lac_result, fit_result=None, ax=None, show=True,
-                        title="Lacunarity", label=None):
+            title="Lacunarity", label=None):
         """
         lac_result: dict returned by get_lacunarity()
         fit_result: dict returned by fit_lacunarity() (optional)
@@ -169,10 +171,10 @@ class CFAImageLacunarity(object):
         if label is not None:
             ax.legend()
 
-        # (2) log-log fit: log(Λ-1) vs log(1/r)
+        # (2) log-log fit: log(Λ-1) vs log(r)
         if fit_result is not None:
             ax2 = axes[1]
-            x = np.asarray(fit_result["log_inv_scales"], dtype=float)
+            x = np.asarray(fit_result["log_scales"], dtype=float)   # <-- 改这里
             y = np.asarray(fit_result["log_lambda_minus_1"], dtype=float)
 
             slope = fit_result["slope"]
@@ -182,10 +184,12 @@ class CFAImageLacunarity(object):
             ax2.scatter(x, y, s=18, label="data")
             xline = np.linspace(np.min(x), np.max(x), 200)
             yline = slope * xline + intercept
-            ax2.plot(xline, yline, "r-", lw=2,
-                     label=f"y={slope:.2f}x+({intercept:.2f})\n"
-                           f"r={r_value:.2f},R²={r_value**2:.2f}")
-            ax2.set_xlabel(r"$\log(1/r)$")
+            ax2.plot(
+                xline, yline, "r-", lw=2,
+                label=f"y={slope:.2f}x+({intercept:.2f})\n"
+                    f"r={r_value:.2f},R²={r_value**2:.2f}"
+            )
+            ax2.set_xlabel(r"$\log(r)$")          # <-- 改标签
             ax2.set_ylabel(r"$\log(\Lambda(r)-1)$")
             ax2.set_title("Lacunarity scaling fit")
             ax2.grid(True, alpha=0.3)
@@ -196,6 +200,7 @@ class CFAImageLacunarity(object):
             plt.show()
 
         return ax
+
 
 def main():
     raw_image = cv2.imread("../images/fractal.png", cv2.IMREAD_GRAYSCALE)
@@ -217,7 +222,7 @@ def main():
     )
     fit_gray = CFAImageLacunarity(raw_image).fit_lacunarity(lac_gray)
     print("Gray lacunarity:", lac_gray["lacunarity"])
-    print("Fit slope:", fit_gray["slope"], "R:", fit_gray["r_value"])
+    print("Fit slope:", fit_gray["slope"],"Fit intercept",fit_gray["intercept"],  "R:", fit_gray["r_value"],"P:",fit_gray["p_value"])
     CFAImageLacunarity(raw_image).plot(lac_gray,fit_gray)
 
 if __name__ == "__main__":

@@ -41,7 +41,7 @@ def demo_2d_mfs(image_path):
     if rgb_image is None:
         raise FileNotFoundError(f"Cannot load image")
     gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
-    MFS = CFA2DMFS(gray_image,q_list = np.linspace(0, 5, 26) )
+    MFS = CFA2DMFS(gray_image,q_list = np.linspace(-5, 5, 26) )
     df_mass, df_fit, df_spec = MFS.get_mfs()
     print(df_spec)
     MFS.plot(df_mass,df_fit,df_spec)
@@ -55,7 +55,7 @@ def demo_2d_lacunarity(image_path):
     lac_gray = lacunarity.get_lacunarity(corp_type=-1, use_binary_mass=False, include_zero=True)
     fit_gray = lacunarity.fit_lacunarity(lac_gray)
     print("Gray lacunarity:", lac_gray["lacunarity"])
-    print("Fit slope:", fit_gray["slope"], "R:", fit_gray["r_value"])
+    print("Fit slope:", fit_gray["slope"],"Fit intercept",fit_gray["intercept"],  "R:", fit_gray["r_value"],"P:",fit_gray["p_value"])
     lacunarity.plot(lac_gray,fit_gray)
 
 def demo_fourier(image_path):  
