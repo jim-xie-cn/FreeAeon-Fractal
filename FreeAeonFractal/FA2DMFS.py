@@ -623,6 +623,8 @@ class CFA2DMFS:
                 axs[0, 0].set_ylabel("box size (pixels)")
                 axs[0, 0].set_title("Heatmap: log M(q, ε) vs box size and q")
                 axs[0, 0].xaxis.set_major_formatter(mticker.FormatStrFormatter("%.2f"))
+                axs[0, 0].tick_params(axis='x', labelrotation=30,labelsize=8)
+                axs[0, 0].tick_params(axis='y', labelrotation=30,labelsize=8)
             else:
                 axs[0, 0].set_title("Heatmap: (all NaN)")
         else:
@@ -634,6 +636,8 @@ class CFA2DMFS:
             axs[0, 1].set_ylabel(r"$f(\alpha)$")
             axs[0, 1].set_title(r"Multifractal spectrum: $f(\alpha)$ vs $\alpha$")
             axs[0, 1].grid(True)
+            axs[0, 1].tick_params(axis='x', labelrotation=30,labelsize=8)
+            axs[0, 1].tick_params(axis='y', labelrotation=30,labelsize=8)
         else:
             axs[0, 1].set_title("f(alpha): (no data)")
 
@@ -643,6 +647,8 @@ class CFA2DMFS:
             axs[0, 2].set_ylabel(r"$\tau(q)$")
             axs[0, 2].set_title(r"$\tau(q)$ vs $q$")
             axs[0, 2].grid(True)
+            #axs[0, 2].tick_params(axis='x', labelrotation=30,labelsize=8)
+            axs[0, 2].tick_params(axis='y', labelrotation=30,labelsize=8)
         else:
             axs[0, 2].set_title("tau(q): (no data)")
 
@@ -652,6 +658,8 @@ class CFA2DMFS:
             axs[1, 0].set_ylabel(r"$D(q)$")
             axs[1, 0].set_title(r"$D(q)$ vs $q$ (with $D_1$ at q=1)")
             axs[1, 0].grid(True)
+            #axs[1, 0].tick_params(axis='x', labelrotation=30,labelsize=8)
+            axs[1, 0].tick_params(axis='y', labelrotation=30,labelsize=8)
         else:
             axs[1, 0].set_title("D(q): (no data)")
 
@@ -661,6 +669,8 @@ class CFA2DMFS:
             axs[1, 1].set_ylabel(r"$\alpha$")
             axs[1, 1].set_title(r"Multifractal spectrum: $\alpha$ vs $q$")
             axs[1, 1].grid(True)
+            #axs[1, 1].tick_params(axis='x', labelrotation=30,labelsize=8)
+            axs[1, 1].tick_params(axis='y', labelrotation=30,labelsize=8)
         else:
             axs[1, 1].set_title("f(alpha): (no data)")
 
@@ -670,9 +680,11 @@ class CFA2DMFS:
             axs[1, 2].set_ylabel(r"$f(\alpha)$")
             axs[1, 2].set_title(r"Multifractal spectrum: $f(\alpha)$ vs $q$")
             axs[1, 2].grid(True)
+            #axs[1, 2].tick_params(axis='x', labelrotation=30,labelsize=8)
+            axs[1, 2].tick_params(axis='y', labelrotation=30,labelsize=8)
         else:
             axs[1, 2].set_title("f(alpha): (no data)")
-
+        
         plt.tight_layout()
         plt.show()
 
