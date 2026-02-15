@@ -34,6 +34,16 @@ Example:
 
 ![Fractal Dimension Input](https://github.com/jim-xie-cn/FreeAeon-Fractal/raw/main/images/fd.png)
 
+### Lacunarity analysis of an image
+
+```bash
+python python demo.py --mode=lacunarity --image=./images/fractal.png
+```
+
+Example:
+
+![Fractal Dimension Input](https://github.com/jim-xie-cn/FreeAeon-Fractal/raw/main/images/lacunarity.png)
+
 ### Fourier analysis of an image
 
 ```bash
@@ -60,6 +70,7 @@ Example:
 - `--mode`: Analysis mode:  
   - `fd` – Fractal Dimension  
   - `mfs` – Multifractal Spectrum (default)
+  - `lacunarity` - Lacunarity analysis
   - `fourier` - Fourier analysis
   - `series` - Multifractal Spectrum for Series analysis
 

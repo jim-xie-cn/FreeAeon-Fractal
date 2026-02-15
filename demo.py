@@ -2,7 +2,7 @@ import cv2
 import argparse
 import numpy as np
 from FreeAeonFractal.FAImageFourier import CFAImageFourier
-
+from FreeAeonFractal.FAImageLacunarity import CFAImageLacunarity
 #CPU version
 from FreeAeonFractal.FAImageDimension import CFAImageDimension
 from FreeAeonFractal.FA2DMFS import CFA2DMFS
@@ -46,19 +46,29 @@ def demo_2d_mfs(image_path):
     print(df_spec)
     MFS.plot(df_mass,df_fit,df_spec)
 
+def demo_2d_lacunarity(image_path):
+    rgb_image = cv2.imread(image_path)
+    if rgb_image is None:
+        raise FileNotFoundError(f"Cannot load image")
+    gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)   
+    lacunarity = CFAImageLacunarity(gray_image,max_scales=256, with_progress=True) 
+    lac_gray = lacunarity.get_lacunarity(corp_type=-1, use_binary_mass=False, include_zero=True)
+    fit_gray = lacunarity.fit_lacunarity(lac_gray)
+    print("Gray lacunarity:", lac_gray["lacunarity"])
+    print("Fit slope:", fit_gray["slope"], "R:", fit_gray["r_value"])
+    lacunarity.plot(lac_gray,fit_gray)
+
 def demo_fourier(image_path):  
     rgb_image = cv2.imread(image_path)
     if rgb_image is None:
         raise FileNotFoundError(f"Cannot load image")
     gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
 
-    #fourier for grayscale
+    #fourier for gray images
     #gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
-    #demo_fourier(gray_image)
+    #fourier = CFAImageFourier(gray_image)
 
-    #fourier for RGB
-
-    # Create CFAImageFourier instance
+    #fourier for RGB images
     fourier = CFAImageFourier(rgb_image)
 
     # Get raw spectrum
@@ -99,15 +109,17 @@ def main(image_path, mode):
         demo_2d_mfs(image_path)
     elif mode == 'fourier':
         demo_fourier(image_path)
+    elif mode == 'lacunarity':
+        demo_2d_lacunarity(image_path)
     elif mode == 'series':
         demo_1d_mfs()
     else:
-        raise ValueError("Invalid mode. Use 'fd' or 'mfs' or 'fourier'.")
+        raise ValueError("Invalid mode. Use 'fd' or 'mfs' or 'lacunarity' or 'fourier'.")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Compute fractal dimension or multifractal spectrum from an image.")
     parser.add_argument("--image", type=str, help="Path to the input image")
-    parser.add_argument("--mode", choices=['fd', 'mfs', 'fourier','series'], default='mfs',
+    parser.add_argument("--mode", choices=['fd', 'mfs', 'lacunarity', 'fourier','series'], default='mfs',
                         help="Choose 'fd' to compute fractal dimension, 'mfs' for multifractal spectrum or 'fourier' for Fourier analysis. (default: mfs)")
 
     args = parser.parse_args()
