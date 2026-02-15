@@ -619,7 +619,7 @@ class CFA2DMFS:
                 vmin = np.nanpercentile(vals, 10)
                 vmax = np.nanpercentile(vals, 90)
                 sns.heatmap(pivot, ax=axs[0, 0], cmap="coolwarm", vmin=vmin, vmax=vmax, cbar=True)
-                axs[0, 0].set_xlabel("q")
+                axs[0, 0].set_xlabel("$q$")
                 axs[0, 0].set_ylabel("box size (pixels)")
                 axs[0, 0].set_title("Heatmap: log M(q, ε) vs box size and q")
                 axs[0, 0].xaxis.set_major_formatter(mticker.FormatStrFormatter("%.2f"))
@@ -639,7 +639,7 @@ class CFA2DMFS:
 
         if df_fit is not None and not df_fit.empty:
             sns.lineplot(data=df_fit, x="q", y="tau", ax=axs[0, 2])
-            axs[0, 2].set_xlabel("q")
+            axs[0, 2].set_xlabel("$q$")
             axs[0, 2].set_ylabel(r"$\tau(q)$")
             axs[0, 2].set_title(r"$\tau(q)$ vs $q$")
             axs[0, 2].grid(True)
@@ -648,7 +648,7 @@ class CFA2DMFS:
 
         if df_fit is not None and not df_fit.empty:
             sns.lineplot(data=df_fit, x="q", y="Dq", ax=axs[1, 0])
-            axs[1, 0].set_xlabel("q")
+            axs[1, 0].set_xlabel("$q$")
             axs[1, 0].set_ylabel(r"$D(q)$")
             axs[1, 0].set_title(r"$D(q)$ vs $q$ (with $D_1$ at q=1)")
             axs[1, 0].grid(True)
