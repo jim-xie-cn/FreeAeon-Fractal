@@ -41,7 +41,7 @@ def demo_2d_mfs(image_path):
     if rgb_image is None:
         raise FileNotFoundError(f"Cannot load image")
     gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
-    MFS = CFA2DMFS(gray_image,q_list = np.linspace(0, 5, 26) )
+    MFS = CFA2DMFS(gray_image,q_list = np.linspace(-5, 5, 26) )
     df_mass, df_fit, df_spec = MFS.get_mfs()
     print(df_spec)
     MFS.plot(df_mass,df_fit,df_spec)
