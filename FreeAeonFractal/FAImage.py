@@ -68,6 +68,62 @@ class CFAImage(object):
         if mode == "constant":
             return np.pad(data, pad_width, mode=mode, constant_values=constant_values)
         return np.pad(data, pad_width, mode=mode)
+    
+    # auto binary an image with Otsu
+    @staticmethod
+    def otsu_binarize(img):
+        """
+        Perform Otsu automatic thresholding on an image.
+
+        Args:
+            img (ndarray): Input 2D grayscale or 3D color image.
+                        Can be uint8 or float dtype. 
+                        Color images will be converted to grayscale first.
+
+        Returns:
+            bin_img (ndarray): Binary uint8 image with pixel values {0, 255}.
+            threshold (float): Otsu automatically computed threshold value.
+
+        Raises:
+            ValueError: If input is None or has unsupported dimensions.
+
+        Notes:
+            - Otsu thresholding chooses the value that minimizes intra-class variance.
+            - For float input, values will be scaled to [0, 255] before thresholding.
+            - The returned binary image can be used directly for segmentation or masks.
+        """
+        if img is None:
+            raise ValueError("Input image is None")
+
+        # Convert to grayscale if necessary
+        if img.ndim == 3:
+            if img.shape[2] == 3:
+                img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            else:
+                # Average channels if not 3-channel (e.g., multispectral)
+                img_gray = np.mean(img, axis=2)
+        elif img.ndim == 2:
+            img_gray = img
+        else:
+            raise ValueError("Unsupported image ndim: only 2D/3D images are allowed")
+
+        # Convert to uint8 (0–255) for OpenCV thresholding
+        if img_gray.dtype != np.uint8:
+            img_min = img_gray.min()
+            img_max = img_gray.max()
+            if img_max > 1.0:  # Assume already in 0–255 range
+                img_uint8 = img_gray.astype(np.uint8)
+            else:  # Scale from [0, 1] float to 0–255 uint8
+                img_uint8 = (img_gray * 255).astype(np.uint8)
+        else:
+            img_uint8 = img_gray
+
+        # Apply Otsu thresholding
+        threshold, bin_img = cv2.threshold(
+            img_uint8, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU
+        )
+
+        return bin_img, threshold
 
     # -----------------------------
     # Block split / merge (spatial only)
@@ -441,7 +497,7 @@ def demo_roi(file_name="../images/face.png"):
 
 def main():
     demo_boxes_grayscale()
-    demo_roi("../images/face.png")  # 修改为你的路径
+    demo_roi("../images/face.png") 
 
 
 if __name__ == "__main__":
