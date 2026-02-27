@@ -2,7 +2,9 @@ import cv2
 import argparse
 import numpy as np
 from FreeAeonFractal.FAImageFourier import CFAImageFourier
+from FreeAeonFractal.FAImage import CFAImage
 from FreeAeonFractal.FAImageLacunarity import CFAImageLacunarity
+
 #CPU version
 from FreeAeonFractal.FAImageDimension import CFAImageDimension
 from FreeAeonFractal.FA2DMFS import CFA2DMFS
@@ -25,7 +27,7 @@ def demo_2d_fd(image_path):
     if rgb_image is None:
         raise FileNotFoundError(f"Cannot load image")
     gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
-    bin_image = (gray_image < 64).astype(int)
+    bin_image,threshold = CFAImage.otsu_binarize(gray_image)
     fd_bc = CFAImageDimension(bin_image).get_bc_fd(corp_type=-1)
     fd_dbc = CFAImageDimension(gray_image).get_dbc_fd(corp_type=-1)
     fd_sdbc = CFAImageDimension(gray_image).get_sdbc_fd(corp_type=-1)
