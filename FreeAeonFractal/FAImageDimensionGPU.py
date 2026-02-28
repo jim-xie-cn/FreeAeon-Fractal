@@ -168,8 +168,9 @@ class CFAImageDimensionGPU:
         img = self.img
         Hnorm = float(max(img.shape))  # same as original
 
-        # percentile on GPU
-        gray_max = torch.quantile(img.flatten(), 0.99).clamp_min(1e-12)
+        # percentile on GPU has a potential RuntimeError: quantile() input tensor is too large, use CPU here
+        # gray_max = torch.quantile(img.flatten(), 0.99).clamp_min(1e-12)
+        gray_max = torch.tensor(np.quantile(img.cpu().numpy(), 0.99),device=self.device, dtype=torch.float32).clamp_min(1e-12)
 
         for size in it:
             blocks = self._view_as_blocks(img, size, corp_type=corp_type)  # (nb, s*s)
@@ -189,10 +190,8 @@ class CFAImageDimensionGPU:
     @torch.no_grad()
     def get_sdbc_fd(self, corp_type=-1):
         """
-        SDBC: 这里按你原代码当前实现与DBC一致（都是ceil((delta_z+eps)/size)）。
-        如果你有SDBC的不同公式，可在此处替换。
+        use dbc as place holder
         """
-        # 与 DBC 相同（保持与原代码一致）
         return self.get_dbc_fd(corp_type=corp_type)
 
     '''Display image and fitting plots for various FD calculations'''
