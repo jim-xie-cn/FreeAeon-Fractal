@@ -63,6 +63,16 @@ class CFAImageLacunarity:
         results = [[] for _ in range(B)]
         iterator = tqdm(scales, desc="GPU Lacunarity", disable=not with_progress)
         for size in iterator:
+            if size > H or size > W:
+                for i in range(B):
+                    results[i].append({
+                        "scale": int(size),
+                         "num_boxes": 0,
+                        "mean_mass": np.nan,
+                        "var_mass": np.nan,
+                        "lambda": np.nan
+                    })
+                continue
             if partition_mode == "non-overlapping":
                 nY = H//size
                 nX = W//size
@@ -91,7 +101,7 @@ class CFAImageLacunarity:
                 })
         return results
 
-    def get_lacunarity(self, use_binary_mass=False, include_zero=True, device=None):
+    def get_lacunarity(self, use_binary_mass=False, include_zero=True, device=None,corp_type=-1):
         device = torch.device(device if device else ("cuda" if torch.cuda.is_available() else "cpu"))
         dtype = torch.float64
         img_t = torch.tensor(self.image.astype(np.float64), device=device, dtype=dtype)
@@ -112,7 +122,7 @@ class CFAImageLacunarity:
         }
 
     @staticmethod
-    def get_batch_lacunarity(img_list, scales=None, scales_mode="powers",
+    def get_batch_lacunarity(img_list, scales=None, scales_mode="logspace",
                              max_size=None, max_scales=100,
                              partition_mode="gliding", use_binary_mass=False,
                              include_zero=True, device=None, with_progress=True):
