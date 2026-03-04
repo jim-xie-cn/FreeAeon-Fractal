@@ -697,35 +697,27 @@ def main():
     image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
     if image is None:
         raise FileNotFoundError(image_path)
-
+    with_progress = True
     q_list = np.linspace(0, 5, 51)
+    mfs = CFA2DMFS(image=image,
+                      corp_type=0,
+                      q_list=q_list,
+                      with_progress=with_progress,
+                      bg_reverse=False,
+                      bg_threshold=0.01,
+                      bg_otsu=False)
 
-    mfs = CFA2DMFS(
-        image=image,
-        corp_type=0,          # Scheme A 下建议用 0：禁止每尺度 crop
-        q_list=q_list,
-        with_progress=True,
-        bg_reverse=False,
-        bg_threshold=0.01,
-        bg_otsu=False,
-        mu_floor=1e-12
-    )
     print(mfs.m_image)
     print("Nonzero pixel ratio (adjust bg_threshold, typically < 0.5):", np.mean(mfs.m_image > 0))
 
-    df_mass, df_fit, df_spec = mfs.get_mfs(
-        max_scales=80,
-        min_points=6,
-        use_middle_scales=False,
-        if_auto_line_fit=False,
-        fit_scale_frac=(0.3, 0.7),
-        auto_fit_min_len_ratio=0.6,
-        cap_d0_at_2=False
-    )
-
-    if df_fit.empty:
-        print("empty fit")
-        return
+    df_mass, df_fit, df_spec = mfs.get_mfs(max_scales=80,
+                                           min_points=6,
+                                           use_middle_scales=False,
+                                           if_auto_line_fit=False,
+                                           fit_scale_frac=(0.3, 0.7),
+                                           auto_fit_min_len_ratio=0.6,
+                                           cap_d0_at_2=False)
+    print(df_fit.head())
 
     bad = df_fit[np.isfinite(df_fit["Dq"]) & (df_fit["Dq"] > 2.0)]
     print(bad[["q", "Dq", "tau", "n_points", "r_value"]].head(20))

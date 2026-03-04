@@ -194,6 +194,141 @@ class CFAImageDimensionGPU:
         """
         return self.get_dbc_fd(corp_type=corp_type)
 
+    @torch.no_grad()
+    def get_batch_bc_fd(self, images, corp_type=-1):
+        """
+        calaculate fd with box counting
+        images: numpy array or torch tensor, shape = (N, H, W)
+        corp_type: -1:corp, 1:pad, 0:no corp/pad
+        return: FD list
+        """
+
+        if isinstance(images, np.ndarray):
+            images_t = torch.from_numpy(images).to(self.device)
+        elif isinstance(images, torch.Tensor):
+            images_t = images.to(self.device)
+        else:
+            raise TypeError("images must be numpy array or torch tensor")
+
+        if images_t.dtype not in (torch.float16, torch.float32, torch.float64):
+            images_t = images_t.float()
+        else:
+            images_t = images_t.float()
+
+        img_occ = (images_t > 0).to(torch.int32)  # (N,H,W)
+
+        N = img_occ.shape[0]
+        scale_results = [[] for _ in range(N)]
+        count_results = [[] for _ in range(N)]
+
+        it = tqdm(self.m_scales, desc="Batch BC (GPU)") if self.m_with_progress else self.m_scales
+
+        for size in it:
+            processed_imgs = []
+            new_HW_list = []
+            for idx in range(N):
+                img_proc, newH, newW = self._crop_or_pad_to_multiple(img_occ[idx], size, corp_type=corp_type)
+                processed_imgs.append(img_proc)
+                new_HW_list.append((newH, newW))
+
+            batch_imgs = torch.stack(processed_imgs)  # (N,H_new,W_new)
+
+            H_new, W_new = new_HW_list[0]
+            h = H_new // size
+            w = W_new // size
+            blocks = batch_imgs.reshape(N, h, size, w, size) \
+                .permute(0, 1, 3, 2, 4) \
+                .reshape(N, h * w, size * size)  # (N, nb, s*s)
+
+            occ = (blocks.sum(dim=2) > 0).sum(dim=1)  
+
+            for idx in range(N):
+                scale_results[idx].append(size)
+                count_results[idx].append(int(occ[idx].item()))
+
+        return [self.get_fd(scale_results[idx], count_results[idx]) for idx in range(N)]
+
+    @torch.no_grad()
+    def get_batch_dbc_fd(self, images, corp_type=-1):
+        """
+        batch calcute FD with DBC
+        images: numpy array or torch tensor, shape = (N, H, W)
+        corp_type: -1:corp, 1:pad, 0:no corp/pad
+        return: FD list of images, 
+        """
+
+        if isinstance(images, np.ndarray):
+            images_t = torch.from_numpy(images).to(self.device)
+        elif isinstance(images, torch.Tensor):
+            images_t = images.to(self.device)
+        else:
+            raise TypeError("images must be numpy array or torch tensor")
+
+        if images_t.dtype not in (torch.float16, torch.float32, torch.float64):
+            images_t = images_t.float()
+        else:
+            images_t = images_t.float()
+
+        N, H, W = images_t.shape
+        Hnorm = float(max(H, W))
+
+        gray_max_list = torch.tensor(
+            np.quantile(images_t.cpu().numpy(), 0.99, axis=(1, 2)),
+            device=self.device, dtype=torch.float32
+        ).clamp_min(1e-12)
+
+        scale_results = [[] for _ in range(N)]
+        count_results = [[] for _ in range(N)]
+
+        it = tqdm(self.m_scales, desc="Batch DBC (GPU)") if self.m_with_progress else self.m_scales
+
+        for size in it:
+            processed_imgs = []
+            new_HW_list = []
+            for idx in range(N):
+                img_proc, newH, newW = self._crop_or_pad_to_multiple(images_t[idx], size, corp_type=corp_type)
+                processed_imgs.append(img_proc)
+                new_HW_list.append((newH, newW))
+
+            batch_imgs = torch.stack(processed_imgs)  # (N, newH, newW)
+
+            H_new, W_new = new_HW_list[0]
+            h = H_new // size
+            w = W_new // size
+            blocks = batch_imgs.reshape(N, h, size, w, size) \
+                .permute(0, 1, 3, 2, 4) \
+                .reshape(N, h * w, size * size)  # (N, nb, size*size)
+
+            # min/max
+            I_min = blocks.min(dim=2).values   # (N, nb)
+            I_max = blocks.max(dim=2).values   # (N, nb)
+
+            Z_min = (I_min / gray_max_list.unsqueeze(1)) * Hnorm
+            Z_max = (I_max / gray_max_list.unsqueeze(1)) * Hnorm
+            delta_z = (Z_max - Z_min).clamp_min(0.0)
+
+            box_cnt = torch.ceil((delta_z + 1e-6) / float(size)).to(torch.int64).sum(dim=1)  # (N,)
+
+            for idx in range(N):
+                scale_results[idx].append(size)
+                count_results[idx].append(int(box_cnt[idx].item()))
+
+        return [self.get_fd(scale_results[idx], count_results[idx]) for idx in range(N)]
+
+    '''get batch DBC FD'''
+    @staticmethod
+    def get_batch_dbc(img_list, max_scales=100, with_progress=True, device=None, corp_type=-1):
+        imgs_np = np.stack(img_list, axis=0)  # (N,H,W)
+        fd_list = CFAImageDimensionGPU(imgs_np[0],max_scales=max_scales, with_progress=with_progress,device=device).get_batch_dbc_fd(imgs_np, corp_type=corp_type)
+        return fd_list
+
+    '''get batch BC FD'''
+    @staticmethod
+    def get_batch_bc(img_list, max_scales=100, with_progress=True, device=None, corp_type=-1):
+        imgs_np = np.stack(img_list, axis=0)  # (N,H,W)
+        fd_list = CFAImageDimensionGPU(imgs_np[0],max_scales=max_scales, with_progress=with_progress,device=device).get_batch_bc_fd(imgs_np, corp_type=corp_type)
+        return fd_list
+
     '''Display image and fitting plots for various FD calculations'''
     @staticmethod
     def plot(raw_img, gray_img, fd_bc, fd_dbc, fd_sdbc):
@@ -251,18 +386,35 @@ class CFAImageDimensionGPU:
         plt.show()
 
 def main():
-    import cv2
+    import cv2,time
+    max_scales = 10240
     raw_image = cv2.imread("../images/fractal.png", cv2.IMREAD_GRAYSCALE)
     raw_image = raw_image.astype(np.float32)
-
     bin_image = (raw_image < 64).astype(np.uint8)
-    fd_bc   = CFAImageDimensionGPU(bin_image, with_progress=True).get_bc_fd(corp_type=-1)
-    fd_dbc  = CFAImageDimensionGPU(raw_image, with_progress=True).get_dbc_fd(corp_type=-1)
-    fd_sdbc = CFAImageDimensionGPU(raw_image, with_progress=True).get_sdbc_fd(corp_type=-1)
-
+    
+    start = time.time()
+    for i in tqdm(range(2)):
+        fd_bc   = CFAImageDimensionGPU(bin_image,max_scales=max_scales, with_progress=False).get_bc_fd(corp_type=-1)
+        fd_dbc  = CFAImageDimensionGPU(raw_image,max_scales=max_scales, with_progress=False).get_dbc_fd(corp_type=-1)
+    
+    print("Time used (No batch) ",time.time() - start)
     print("BC FD:", fd_bc["fd"])
     print("DBC FD:", fd_dbc["fd"])
-    print("SDBC FD:", fd_sdbc["fd"])
+    
+    gray_imgs = []
+    for i in range(2):
+        gray_imgs.append(raw_image)
+    bin_imgs = []
+    for i in range(2):
+        bin_imgs.append(bin_image)
+    
+    start = time.time()
+    bc_fd_list = CFAImageDimensionGPU.get_batch_bc(bin_imgs,with_progress=False, corp_type=-1,max_scales=max_scales)
+    dbc_fd_list = CFAImageDimensionGPU.get_batch_dbc(gray_imgs,with_progress=False, corp_type=-1,max_scales=max_scales)
+    
+    print("Time used (batch) ",time.time() - start)
+    print("BC FD:", bc_fd_list[0]['fd'])
+    print("DBC FD:", dbc_fd_list[0]['fd'])
 
 if __name__ == "__main__":
     main()
