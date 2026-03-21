@@ -125,6 +125,69 @@ class CFAImage(object):
 
         return bin_img, threshold
 
+    #get random sub images from raw image
+    @staticmethod
+    def get_random_patches(image, num_patches=100, ratio=0.25):
+        """
+        Randomly sample rectangular patches from an image with optional partial overlap,
+        ensuring that no two patches share the same top-left coordinate.
+
+        Args:
+            image (ndarray): Input image array of shape (H, W, C) or (H, W).
+                             Accepts grayscale or RGB images.
+                             dtype can be uint8, float32, etc.
+            num_patches (int): Number of patches to extract.
+                               Must not exceed max possible unique positions:
+                               (W - patch_w) * (H - patch_h).
+            ratio (float): Fraction of patch size relative to image dimensions.
+                           patch_w = W * ratio, patch_h = H * ratio.
+                           Example:
+                               ratio = 0.25 → patch width/height are 1/4 of image size
+                               ratio = 0.5  → patch width/height are 1/2 of image size
+
+        Returns:
+            patches (list of ndarray): List containing extracted image patches.
+                                       Each patch has shape (patch_h, patch_w[, C]).
+
+        Raises:
+            ValueError: If num_patches exceeds the theoretical maximum number of unique
+                        patches given the specified ratio.
+            ValueError: If ratio produces a patch that is equal to the full image size.
+
+        Notes:
+            - Patches are sampled randomly with possible partial overlap,
+              but duplicate top-left positions are avoided.
+            - The maximum number of patches allowed is computed as:
+              max_possible = (W - patch_w) * (H - patch_h)
+            - The sampling is without replacement — once a coordinate is used,
+              it will not be sampled again.
+            - This method is useful for data augmentation, texture analysis,
+              or training patch-based models, especially when overlap is required.
+        """
+        h, w = image.shape[:2]
+        patch_w = int(w * ratio)
+        patch_h = int(h * ratio)
+        if patch_w == w and patch_h == h:
+            return [image]
+
+        patches = []
+        used_coords = set()
+
+        max_possible = (w - patch_w) * (h - patch_h)
+        if num_patches > max_possible:
+            raise ValueError(f"too much sample count, max sample count is {max_possible}")
+
+        while len(patches) < num_patches:
+            x = np.random.randint(0, w - patch_w)
+            y = np.random.randint(0, h - patch_h)
+
+            if (x, y) not in used_coords:
+                used_coords.add((x, y))
+                patch = image[y:y+patch_h, x:x+patch_w]
+                patches.append(patch)
+
+        return patches
+
     # -----------------------------
     # Block split / merge (spatial only)
     # -----------------------------

@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-import cv2
+import cv2,time
 from tqdm import tqdm
 import time
 import torch
@@ -496,6 +496,122 @@ class CFA2DMFSGPU:
         df_spec = self.alpha_falpha_from_tau(df_fit, exclude_q1=True, spline_s=spline_s)
         return df_mass, df_fit, df_spec
 
+    @staticmethod
+    def get_batch_mfs(img_list,
+                  q_list=np.linspace(-5, 5, 51),
+                  corp_type=0,
+                  max_scales=80,
+                  min_box=2,
+                  min_points=6,
+                  use_middle_scales=False,
+                  fit_scale_frac=(0.2, 0.8),
+                  if_auto_line_fit=False,
+                  auto_fit_min_len_ratio=0.5,
+                  spline_s=0,
+                  cap_d0_at_2=False,
+                  bg_threshold=0.01,
+                  bg_reverse=False,
+                  bg_otsu=False,
+                  device=None,
+                  with_progress=True):
+        if len(img_list) == 0:
+            return []
+        
+        imgs_proc = []
+        for img in img_list:
+            img = img.astype(np.float64)
+            img -= np.nanmin(img)
+            mx = np.nanmax(img)
+            img /= (mx + 1e-12)
+            img = np.where(np.isfinite(img), img, 0.0)
+            img = np.clip(img, 0.0, 1.0)
+            if bg_threshold > 0:
+                if bg_reverse:
+                    img[img > bg_threshold] = 0.0
+                else:
+                    img[img < bg_threshold] = 0.0
+            imgs_proc.append(img)
+
+        min_hw = int(min(min(im.shape) for im in imgs_proc))
+        rois = []
+        roi_size = None
+        for img in imgs_proc:
+            roi_np, L_int = crop_square_roi(img, L=min_hw, mode="center")
+            rois.append(roi_np)
+            if roi_size is None:
+                roi_size = L_int
+
+        device = torch.device(device if device else ("cuda" if torch.cuda.is_available() else "cpu"))
+        dtype = torch.float64
+        img_batch_t = torch.from_numpy(np.stack(rois)).to(device=device, dtype=dtype)  # (B,H,W)
+        # q tensor
+        q_t = torch.tensor(q_list, device=device, dtype=dtype)
+        # scales
+        scales = np.logspace(np.log2(min_box), np.log2(roi_size), num=max_scales, base=2.0)
+        scales = np.unique(np.maximum(min_box, np.round(scales).astype(int)))
+        scales = scales[(scales >= min_box) & (scales <= roi_size)]
+        scales = scales[(roi_size % scales) == 0]
+        scales = np.array(sorted(scales.astype(int)))
+        if scales.size == 0:
+            return [ (pd.DataFrame(), pd.DataFrame(), pd.DataFrame()) for _ in range(len(img_list)) ]
+
+        records_per_img = [[] for _ in range(len(img_list))]
+
+        iterator = tqdm(scales, desc="Batch scales", disable=not with_progress)
+        fixed_L = float(roi_size)
+        for size in iterator:
+            s = int(size)
+            nY = roi_size // s
+            nX = roi_size // s
+            blocks = img_batch_t.view(len(img_list), nY, s, nX, s)
+            block_mass = blocks.sum(dim=(2, 4)).view(len(img_list), -1)
+            total_mass = block_mass.sum(dim=1, keepdim=True)
+            mu = block_mass / total_mass
+            mask = mu > 0
+            log_mu = torch.full_like(mu, float('-inf'))
+            log_mu[mask] = torch.log(mu[mask])
+
+            eps = float(s) / fixed_L
+            N_batch = mask.sum(dim=1).double()
+            mask_double = mask.double()
+            S_batch = -(mu * log_mu * mask_double).sum(dim=1)
+
+            for i in range(len(img_list)):
+                records_per_img[i].append({"scale": s, "eps": eps, "q": 0.0,
+                                   "value": float(N_batch[i].item()), "kind": "N"})
+                records_per_img[i].append({"scale": s, "eps": eps, "q": 1.0,
+                                   "value": float(S_batch[i].item()), "kind": "S"})
+
+            # q != 0/1
+            a = log_mu.unsqueeze(2) * q_t.view(1, 1, -1)
+            logMq_batch = torch.logsumexp(a, dim=1)
+            logMq_cpu = logMq_batch.detach().cpu().numpy()
+
+            for qi, qv in enumerate(q_list):
+                if np.isclose(qv, 0.0) or np.isclose(qv, 1.0):
+                    continue
+                for i in range(len(img_list)):
+                    val = logMq_cpu[i, qi]
+                    if np.isfinite(val):
+                        records_per_img[i].append({"scale": s, "eps": eps, "q": float(qv),
+                                           "value": float(val), "kind": "logMq"})
+
+        results = []
+        core = CFA2DMFSGPU(img_list[0], corp_type=corp_type, q_list=q_list, device=device, with_progress=False)
+        for recs in records_per_img:
+            df_mass = pd.DataFrame(recs).sort_values(["kind", "q", "scale"]).reset_index(drop=True)
+            df_fit = core.fit_tau_and_D1(df_mass, min_points=min_points,
+                                     require_common_scales=True,
+                                     use_middle_scales=use_middle_scales,
+                                     fit_scale_frac=fit_scale_frac,
+                                     if_auto_line_fit=if_auto_line_fit,
+                                     auto_fit_min_len_ratio=auto_fit_min_len_ratio,
+                                     cap_d0_at_2=cap_d0_at_2)
+            df_spec = core.alpha_falpha_from_tau(df_fit, exclude_q1=True, spline_s=spline_s)
+            results.append((df_mass, df_fit, df_spec))
+
+        return results
+
     def plot(self, df_mass, df_fit, df_spec):
         fig, axs = plt.subplots(2, 2, figsize=(8, 6))
 
@@ -551,27 +667,49 @@ def main():
     image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
     if image is None:
         raise FileNotFoundError(image_path)
+    imgs = []
+    for i in range(200):
+        imgs.append(image)
 
     q_list = np.linspace(0, 5, 51)
-    mfs = CFA2DMFSGPU(
-            image=image,
-            corp_type=0,
-            q_list=q_list,
-            with_progress=True,
-            bg_reverse=False,
-            bg_threshold=0.01,
-            bg_otsu=False)
-    df_mass, df_fit, df_spec = mfs.get_mfs(
-            max_scales=80,
-            min_points=6,
-            use_middle_scales=False,
-            if_auto_line_fit=False,
-            fit_scale_frac=(0.3, 0.7),
-            auto_fit_min_len_ratio=0.6,
-            cap_d0_at_2=False)
-
+    with_progress = False
+    start = time.time()
+    for img in imgs:
+        mfs = CFA2DMFSGPU(image=img,
+                          corp_type=0,
+                          q_list=q_list,
+                          with_progress=with_progress,
+                          bg_reverse=False,
+                          bg_threshold=0.01,
+                          bg_otsu=False)
+        df_mass, df_fit, df_spec = mfs.get_mfs(max_scales=80,
+                                               min_points=6,
+                                               use_middle_scales=False,
+                                               if_auto_line_fit=False,
+                                               fit_scale_frac=(0.3, 0.7),
+                                               auto_fit_min_len_ratio=0.6,
+                                               cap_d0_at_2=False)
+    print("time used (No batch):",time.time() - start)
     print(df_fit.head())
-    mfs.plot(df_mass, df_fit, df_spec)
+
+    start = time.time()
+    batch_results = CFA2DMFSGPU.get_batch_mfs(imgs,
+                                              with_progress = with_progress,
+                                              q_list=q_list,
+                                              corp_type=0,
+                                              bg_reverse=False,
+                                              bg_threshold=0.01,
+                                              bg_otsu=False,
+                                              max_scales=80,
+                                              min_points=6,
+                                              use_middle_scales=False,
+                                              if_auto_line_fit=False,
+                                              fit_scale_frac=(0.3, 0.7),
+                                              auto_fit_min_len_ratio=0.6,
+                                              cap_d0_at_2=False)
+    df_mass1, df_fit1, df_spec1 = batch_results[0]
+    print("time used (batch):",time.time() - start)
+    print(df_fit1.head())
 
 if __name__ == "__main__":
     main()
