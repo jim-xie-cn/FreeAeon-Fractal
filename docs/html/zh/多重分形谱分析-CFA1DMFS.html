@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CFA1DMFS - 一维时间序列多重分形谱分析</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #34495e;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            border-left: 4px solid #3498db;
+            padding-left: 15px;
+        }
+        h3 {
+            color: #546e7a;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        h4 {
+            color: #607d8b;
+            margin-top: 15px;
+            margin-bottom: 10px;
+        }
+        p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+        ul, ol {
+            margin-left: 30px;
+            margin-bottom: 15px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        code {
+            background: #f4f4f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        pre {
+            background: #2d2d2d;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin-bottom: 20px;
+        }
+        pre code {
+            background: none;
+            color: inherit;
+            padding: 0;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+        table th, table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+        table th {
+            background: #3498db;
+            color: white;
+            font-weight: bold;
+        }
+        table tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        table tr:hover {
+            background: #f5f5f5;
+        }
+        .nav {
+            background: #34495e;
+            color: white;
+            padding: 15px;
+            margin: -40px -40px 30px -40px;
+            border-radius: 8px 8px 0 0;
+        }
+        .nav a {
+            color: #3498db;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .nav a:hover {
+            color: #5dade2;
+            text-decoration: underline;
+        }
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            color: #666;
+            font-size: 0.9em;
+        }
+        .badge {
+            display: inline-block;
+            background: #3498db;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 0.85em;
+            margin-right: 5px;
+        }
+        blockquote {
+            border-left: 4px solid #3498db;
+            margin: 20px 0;
+            padding: 10px 20px;
+            background: #ecf0f1;
+            font-style: italic;
+        }
+        .note {
+            background: #fff3cd;
+            border: 1px solid #ffc107;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .warning {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="nav">
+            <a href="index.html">← 返回索引</a>
+        </div>
+        <h1>CFA1DMFS - 一维时间序列多重分形谱分析</h1>
+<h2>类概述</h2>
+<code>CFA1DMFS</code> 类用于计算一维时间序列的多重分形谱(Multifractal Spectrum),包括广义Hurst指数h(q)、质量指数τ(q)、奇异性强度α(q)、多重分形谱f(α)以及广义维数D(q)。
+<h2>应用场景</h2>
+<ul>
+<li><strong>金融时间序列分析</strong>:股票价格波动分析、市场风险评估</li>
+<li><strong>生理信号处理</strong>:心电图(ECG)、脑电图(EEG)分析</li>
+<li><strong>地震数据分析</strong>:地震波信号的复杂度分析</li>
+<li><strong>气象数据分析</strong>:温度、降雨等时间序列的多尺度特征提取</li>
+<li><strong>网络流量分析</strong>:互联网流量的多重分形特性研究</li>
+</ul>
+<h2>类初始化</h2>
+<h3>构造函数</h3>
+<pre><code>CFA1DMFS(data, q_list=np.linspace(-5, 5, 51), with_progress=True)
+</code></pre>
+<h3>参数说明</h3>
+<tr><td>参数</td><td>类型</td><td>默认值</td><td>说明</td></tr>
+<tr><td>------</td><td>------</td><td>--------</td><td>------</td></tr>
+<tr><td><code>data</code></td><td>numpy.ndarray</td><td>必需</td><td>输入的一维时间序列数据</td></tr>
+<tr><td><code>q_list</code></td><td>numpy.ndarray</td><td><code>np.linspace(-5, 5, 51)</code></td><td>q值范围,用于计算不同阶的分形指标</td></tr>
+<tr><td><code>with_progress</code></td><td>bool</td><td><code>True</code></td><td>是否显示进度条</td></tr>
+<h3>初始化示例</h3>
+<pre><code>import numpy as np
+from FreeAeonFractal.FA1DMFS import CFA1DMFS
+<h1>生成随机游走时间序列</h1>
+x = np.cumsum(np.random.randn(5000))
+<h1>创建多重分形谱分析对象</h1>
+mfs = CFA1DMFS(x, q_list=np.linspace(-5, 5, 21), with_progress=True)
+</code></pre>
+<h2>主要方法</h2>
+<h3>1. get_mfs() - 计算多重分形谱</h3>
+<p>计算完整的多重分形谱,包括h(q)、τ(q)、α(q)、f(α)和D(q)。</p>
+<h4>方法签名</h4>
+<pre><code>get_mfs(lag_list=None, order=2)
+</code></pre>
+<h4>参数说明</h4>
+<tr><td>参数</td><td>类型</td><td>默认值</td><td>说明</td></tr>
+<tr><td>------</td><td>------</td><td>--------</td><td>------</td></tr>
+<tr><td><code>lag_list</code></td><td>numpy.ndarray</td><td><code>None</code></td><td>自定义尺度窗口列表。如果为None,将自动生成推荐尺度</td></tr>
+<tr><td><code>order</code></td><td>int</td><td><code>2</code></td><td>DFA(去趋势波动分析)的多项式拟合阶数</td></tr>
+<h4>返回值</h4>
+<p>返回一个pandas DataFrame,包含以下列:</p>
+<ul>
+<li><code>q</code>: q值</li>
+<li><code>h(q)</code>: 广义Hurst指数</li>
+<li><code>t(q)</code>: 质量指数 τ(q)</li>
+<li><code>a(q)</code>: 奇异性强度 α(q)</li>
+<li><code>f(a)</code>: 多重分形谱 f(α)</li>
+<li><code>d(q)</code>: 广义维数 D(q)</li>
+</ul>
+<h4>使用示例</h4>
+<pre><code># 计算多重分形谱
+df_mfs = mfs.get_mfs()
+<h1>查看结果</h1>
+print(df_mfs.head())
+print(f"最大奇异性强度: {df_mfs['a(q)'].max():.4f}")
+print(f"最小奇异性强度: {df_mfs['a(q)'].min():.4f}")
+print(f"谱宽度: {df_mfs['a(q)'].max() - df_mfs['a(q)'].min():.4f}")
+</code></pre>
+<h3>2. plot() - 可视化多重分形谱</h3>
+<p>绘制多重分形谱的六个关键图表。</p>
+<h4>方法签名</h4>
+<pre><code>plot(df_mfs)
+</code></pre>
+<h4>参数说明</h4>
+<tr><td>参数</td><td>类型</td><td>说明</td></tr>
+<tr><td>------</td><td>------</td><td>------</td></tr>
+<tr><td><code>df_mfs</code></td><td>pandas.DataFrame</td><td>由<code>get_mfs()</code>返回的数据框</td></tr>
+<h4>绘制的图表</h4>
+<p>1. <strong>H(q) vs q</strong>: 广义Hurst指数随q的变化
+2. <strong>τ(q) vs q</strong>: 质量指数随q的变化
+3. <strong>D(q) vs q</strong>: 广义维数随q的变化
+4. <strong>α(q) vs q</strong>: 奇异性强度随q的变化
+5. <strong>f(α) vs α</strong>: 多重分形谱曲线(最重要的图表)
+6. <strong>Overview vs q</strong>: 归一化的综合对比图</p>
+<h4>使用示例</h4>
+<pre><code># 可视化结果
+mfs.plot(df_mfs)
+</code></pre>
+<h2>完整使用示例</h2>
+<h3>示例1: 基本使用</h3>
+<pre><code>import numpy as np
+from FreeAeonFractal.FA1DMFS import CFA1DMFS
+<h1>生成布朗运动时间序列</h1>
+np.random.seed(42)
+x = np.cumsum(np.random.randn(5000))
+<h1>创建分析对象</h1>
+mfs = CFA1DMFS(x, q_list=np.linspace(-5, 5, 21))
+<h1>计算多重分形谱</h1>
+df_mfs = mfs.get_mfs()
+<h1>输出关键指标</h1>
+print("广义Hurst指数 H(2):", df_mfs[df_mfs['q']==2]['h(q)'].values[0])
+print("信息维数 D(1):", df_mfs[df_mfs['q']==1]['d(q)'].values[0])
+print("关联维数 D(2):", df_mfs[df_mfs['q']==2]['d(q)'].values[0])
+<h1>可视化</h1>
+mfs.plot(df_mfs)
+</code></pre>
+<h3>示例2: 自定义尺度</h3>
+<pre><code># 自定义尺度窗口
+custom_lags = np.array([16, 32, 64, 128, 256, 512, 1024])
+<h1>计算多重分形谱</h1>
+df_mfs = mfs.get_mfs(lag_list=custom_lags, order=3)
+<h1>可视化</h1>
+mfs.plot(df_mfs)
+</code></pre>
+<h3>示例3: 金融数据分析</h3>
+<pre><code>import pandas as pd
+import numpy as np
+from FreeAeonFractal.FA1DMFS import CFA1DMFS
+<h1>读取股票价格数据</h1>
+prices = pd.read_csv('stock_prices.csv')['Close'].values
+<h1>计算对数收益率</h1>
+returns = np.diff(np.log(prices))
+<h1>分析收益率的多重分形特性</h1>
+mfs = CFA1DMFS(returns, q_list=np.linspace(-10, 10, 41))
+df_mfs = mfs.get_mfs()
+<h1>判断是否具有多重分形特性</h1>
+h_min = df_mfs['h(q)'].min()
+h_max = df_mfs['h(q)'].max()
+is_multifractal = (h_max - h_min) > 0.1
+<p>print(f"Hurst指数范围: [{h_min:.4f}, {h_max:.4f}]")
+print(f"是否具有多重分形特性: {is_multifractal}")</p>
+<p>mfs.plot(df_mfs)
+</code></pre></p>
+<h2>辅助函数</h2>
+<h3>recommended_lag() - 推荐尺度窗口</h3>
+<p>为中短序列生成密集的尺度窗口集,用于高精度多重分形分析。</p>
+<h4>函数签名</h4>
+<pre><code>recommended_lag(x_len, order=2, num_scales=40, s_min=None, s_max_ratio=0.25)
+</code></pre>
+<h4>参数说明</h4>
+<tr><td>参数</td><td>类型</td><td>默认值</td><td>说明</td></tr>
+<tr><td>------</td><td>------</td><td>--------</td><td>------</td></tr>
+<tr><td><code>x_len</code></td><td>int</td><td>必需</td><td>输入序列的长度</td></tr>
+<tr><td><code>order</code></td><td>int</td><td><code>2</code></td><td>DFA的多项式拟合阶数</td></tr>
+<tr><td><code>num_scales</code></td><td>int</td><td><code>40</code></td><td>要生成的尺度数量(推荐30-40)</td></tr>
+<tr><td><code>s_min</code></td><td>int</td><td><code>None</code></td><td>最小尺度(默认: max(16, order+4))</td></tr>
+<tr><td><code>s_max_ratio</code></td><td>float</td><td><code>0.25</code></td><td>最大尺度占序列长度的比例</td></tr>
+<h4>返回值</h4>
+<p>返回numpy数组,包含推荐的尺度窗口整数数组。</p>
+<h4>使用示例</h4>
+<pre><code>from FreeAeonFractal.FA1DMFS import recommended_lag
+<h1>为5000点序列生成推荐尺度</h1>
+lags = recommended_lag(5000, order=2, num_scales=40)
+print("推荐尺度:", lags)
+<h1>使用推荐尺度进行分析</h1>
+df_mfs = mfs.get_mfs(lag_list=lags)
+</code></pre>
+<h2>理论背景</h2>
+<h3>多重分形谱的物理意义</h3>
+<p>1. <strong>广义Hurst指数 h(q)</strong>
+<ul>
+<li>h(2) 即经典的Hurst指数</li>
+<li>反映时间序列的长程相关性</li>
+<li>h > 0.5: 持续性(persistence)</li>
+<li>h < 0.5: 反持续性(anti-persistence)</li>
+<li>h = 0.5: 随机游走</li>
+</ul></p>
+<p>2. <strong>质量指数 τ(q)</strong>
+<ul>
+<li>τ(q) = q·h(q) - 1</li>
+<li>非线性的τ(q)表明存在多重分形特性</li>
+<li>线性的τ(q)表明单分形特性</li>
+</ul></p>
+<p>3. <strong>奇异性强度 α(q)</strong>
+<ul>
+<li>α = dτ/dq</li>
+<li>描述不同尺度下的局部Hölder指数</li>
+<li>α的范围反映了信号的复杂度</li>
+</ul></p>
+<p>4. <strong>多重分形谱 f(α)</strong>
+<ul>
+<li>f(α) = q·α - τ(q)</li>
+<li>描述具有相同奇异性强度α的子集的分形维数</li>
+<li>谱宽度 Δα = α_max - α_min 反映多重分形程度</li>
+</ul></p>
+<p>5. <strong>广义维数 D(q)</strong>
+<ul>
+<li>D(q) = τ(q)/(q-1) for q≠1</li>
+<li>D(0): 容量维数(Capacity dimension)</li>
+<li>D(1): 信息维数(Information dimension)</li>
+<li>D(2): 关联维数(Correlation dimension)</li>
+</ul></p>
+<h3>计算流程</h3>
+<p>1. 使用MF-DFA(多重分形去趋势波动分析)方法
+2. 对每个尺度s和每个q值计算波动函数F_q(s)
+3. 通过对数坐标线性拟合得到h(q)
+4. 计算τ(q) = q·h(q) - 1
+5. 通过数值微分计算α(q) = dτ/dq
+6. 计算f(α) = q·α - τ(q)
+7. 计算D(q) = τ(q)/(q-1)</p>
+<h2>注意事项</h2>
+<p>1. <strong>数据长度</strong>: 建议时间序列长度≥1000点,更长的序列能获得更可靠的结果
+2. <strong>q值范围</strong>: 通常q∈[-10,10]已足够,过大的|q|可能导致数值不稳定
+3. <strong>尺度选择</strong>: 默认尺度范围为[16, 0.25×序列长度],可根据需要调整
+4. <strong>多项式阶数</strong>: order=1适用于趋势明显的数据,order=2适用于大多数情况
+5. <strong>D(1)近似</strong>: 在q=1处,D(1)通过相邻点平均值近似计算</p>
+<h2>性能优化建议</h2>
+<p>1. 对于短序列(<1000点),减少num_scales可加快计算
+2. 关闭进度条(<code>with_progress=False</code>)可略微提升批量处理速度
+3. 对于多个序列的批量分析,考虑使用并行处理</p>
+<h2>相关文献</h2>
+<p>1. Kantelhardt, J. W., et al. (2002). "Multifractal detrended fluctuation analysis of nonstationary time series." Physica A, 316(1-4), 87-114.
+2. Feder, J. (1988). "Fractals." Plenum Press, New York.</p>
+<p>---</p>
+<strong>文件位置</strong>: <code>/Users/jim_xie/Desktop/FreeAeon-Fractal/FreeAeonFractal/FA1DMFS.py</code>
+<strong>类名</strong>: <code>CFA1DMFS</code>
+<strong>功能类别</strong>: 多重分形谱分析
+        <div class="footer">
+            <p><strong>FreeAeon-Fractal</strong> - Python Toolkit for Fractal and Multifractal Analysis</p>
+            <p>GitHub: <a href="https://github.com/jim-xie-cn/FreeAeon-Fractal" target="_blank">https://github.com/jim-xie-cn/FreeAeon-Fractal</a></p>
+            <p>© 2025 Jim Xie | MIT License</p>
+        </div>
+    </div>
+</body>
+</html>
