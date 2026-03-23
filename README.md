@@ -84,7 +84,7 @@ from FreeAeonFractal.FA2DMFSGPU import CFA2DMFSGPU as CFA2DMFS
 
 完整使用说明、详细参数介绍及进阶示例请参考：
 
-🔗 https://github.com/jim-xie-cn/FreeAeon-ML/blob/dev/docs/markdown/README.md
+🔗 https://github.com/jim-xie-cn/FreeAeon-Fractal/blob/dev/docs/markdown/en/index.md
 
 ## 📁 Directory Structure
 
