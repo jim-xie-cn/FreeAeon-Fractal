@@ -2,6 +2,8 @@
 
 **FreeAeon-Fractal** is a Python toolkit for computing **Multifractal Spectra**, **Fractal Dimensions**, **Fractal Lacunarity** and **Fourier Spectra** of images or series.
 
+ 🔗 [More](https://github.com/jim-xie-cn/FreeAeon-Fractal/wiki)
+
 ## 📦 Installation
 
 Install via pip:
@@ -11,10 +13,6 @@ pip install FreeAeon-Fractal
 ```
 
 > 💡 Requires Python 3.6+ and OpenCV (`cv2`) support.
-
-## 📁 More introduction
-
-  🔗 [FreeAeon-Fractal](https://github.com/jim-xie-cn/FreeAeon-Fractal/wiki)
 
 
 ## 🖼 Usage
