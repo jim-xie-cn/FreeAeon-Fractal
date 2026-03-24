@@ -80,11 +80,12 @@ Example:
 from FreeAeonFractal.FAImageDimensionGPU import CFAImageDimensionGPU as CFAImageDimension
 from FreeAeonFractal.FA2DMFSGPU import CFA2DMFSGPU as CFA2DMFS
 ```
-## 📚 使用文档
+## 📚 User Guide
+See the following for complete usage, parameter details, and advanced examples:
 
-完整使用说明、详细参数介绍及进阶示例请参考：
+🔗 English Edition: https://github.com/jim-xie-cn/FreeAeon-Fractal/blob/main/docs/markdown/en/index.md
 
-🔗 https://github.com/jim-xie-cn/FreeAeon-Fractal/blob/main/docs/markdown/en/index.md
+🔗 Chinese Edition: https://github.com/jim-xie-cn/FreeAeon-Fractal/blob/main/docs/markdown/zh/index.md
 
 ## 📁 Directory Structure
 
