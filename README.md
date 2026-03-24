@@ -54,7 +54,7 @@ pip install FreeAeon-Fractal
 ### Get sample code
 
 ```bash
-git clone git@github.com:jim-xie-cn/FreeAeon-Fractal.git
+git clone https://github.com/jim-xie-cn/FreeAeon-Fractal.git
 cd FreeAeon-Fractal
 ```
 
