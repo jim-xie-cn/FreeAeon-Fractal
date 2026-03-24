@@ -2,6 +2,42 @@
 
 **FreeAeon-Fractal** is a Python toolkit for computing **Multifractal Spectra**, **Fractal Dimensions**, **Fractal Lacunarity** and **Fourier Spectra** of images or series.  🔗 [More](https://github.com/jim-xie-cn/FreeAeon-Fractal/wiki)
 
+### Key Features
+
+- 🎯 **Multifractal Spectrum Analysis**: Supports 2D images and 1D time series
+- 📏 **Fractal Dimension Calculation**: BC, DBC, and SDBC methods
+- 🔍 **Lacunarity Analysis**: Quantify spatial heterogeneity
+- 🌊 **Fourier Analysis**: Frequency domain analysis and filtering
+- ⚡ **GPU Acceleration**: Optional GPU support for faster computation
+- 📊 **Visualization**: Built-in rich visualization capabilities
+
+## Application Domains
+
+### Medical Imaging
+- **Tissue Complexity**: Quantify tissue structure via fractal dimension
+- **Heterogeneity Analysis**: Reveal lesion characteristics via multifractal spectrum
+- **Texture Classification**: Image classification based on fractal features
+
+### Materials Science
+- **Surface Morphology**: Describe surface roughness via fractal dimension
+- **Porous Structure**: Analyze internal structure via lacunarity
+- **Fracture Analysis**: Identify fracture patterns via multifractal features
+
+### Financial Analysis
+- **Price Fluctuations**: Analyze stock prices via multifractal spectrum
+- **Risk Assessment**: Quantify risk based on fractal features
+- **Market Prediction**: Long-range correlation analysis
+
+### Earth Sciences
+- **Terrain Analysis**: Describe terrain complexity via fractal dimension
+- **Vegetation Distribution**: Quantify vegetation coverage via lacunarity
+- **Climate Series**: Multifractal analysis of time series
+
+### Image Processing
+- **Texture Classification**: Texture recognition based on fractal features
+- **Image Segmentation**: ROI extraction based on multifractal analysis
+- **Quality Assessment**: Image complexity evaluation
+
 ## 📦 Installation
 
 Install via pip:
