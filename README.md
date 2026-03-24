@@ -85,17 +85,17 @@ See the following for complete usage, parameter details, and advanced examples:
 
 ## 📚 User Guide
 
-### Guide (HTML) - 🌐 [Browser View]
-> 💡 Recommended for direct reading in browser.
-
-🔗 [English Edition](https://jim-xie-cn.github.io/FreeAeon-Fractal/docs/html/en/index.html)
-🔗 [Chinese Edition](https://jim-xie-cn.github.io/FreeAeon-Fractal/docs/html/zh/index.html)
-
 ### Guide (Markdown) - 🐙 [GitHub View]
 > 💡 Best for viewing directly on GitHub.
 
 🔗 [English Edition](docs/markdown/en/index.md)
 🔗 [Chinese Edition](docs/markdown/zh/index.md)
+
+### Guide (HTML) - 🌐 [Browser View]
+> 💡 Recommended for direct reading in browser.
+
+🔗 [English Edition](https://jim-xie-cn.github.io/FreeAeon-Fractal/docs/html/en/index.html)
+🔗 [Chinese Edition](https://jim-xie-cn.github.io/FreeAeon-Fractal/docs/html/zh/index.html)
 
 ## 📁 Directory Structure
 
