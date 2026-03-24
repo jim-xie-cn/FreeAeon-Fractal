@@ -12,6 +12,11 @@ pip install FreeAeon-Fractal
 
 > 💡 Requires Python 3.6+ and OpenCV (`cv2`) support.
 
+## 📁 More introduction
+
+  🔗 [FreeAeon-Fractal](https://github.com/jim-xie-cn/FreeAeon-Fractal/wiki)
+
+
 ## 🖼 Usage
 
 ### Calculate the **Multifractal Spectrum** of an image
@@ -82,8 +87,6 @@ from FreeAeonFractal.FA2DMFSGPU import CFA2DMFSGPU as CFA2DMFS
 ```
 ## 📚 User Guide
 See the following for complete usage, parameter details, and advanced examples:
-
-## 📚 User Guide
 
 ### Guide (Markdown) - 🐙 [GitHub View]
 > 💡 Best for viewing directly on GitHub.
