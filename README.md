@@ -83,6 +83,14 @@ from FreeAeonFractal.FA2DMFSGPU import CFA2DMFSGPU as CFA2DMFS
 ## 📚 User Guide
 See the following for complete usage, parameter details, and advanced examples:
 
+### Guide (HTML)
+
+🔗 English Edition: https://github.com/jim-xie-cn/FreeAeon-Fractal/blob/main/docs/html/en/index.html
+
+🔗 Chinese Edition: https://github.com/jim-xie-cn/FreeAeon-Fractal/blob/main/docs/html/zh/index.html
+
+### Guide (Markdown)
+
 🔗 English Edition: https://github.com/jim-xie-cn/FreeAeon-Fractal/blob/main/docs/markdown/en/index.md
 
 🔗 Chinese Edition: https://github.com/jim-xie-cn/FreeAeon-Fractal/blob/main/docs/markdown/zh/index.md
