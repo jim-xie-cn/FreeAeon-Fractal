@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fractal Sample Generator - CFASample</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.8;
+            color: #333;
+            background: #f5f7fa;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+        }
+        header h1 { font-size: 2em; margin-bottom: 10px; }
+        header p { opacity: 0.9; }
+        nav {
+            background: #f8f9fa;
+            padding: 15px 30px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        nav a {
+            color: #667eea;
+            text-decoration: none;
+            margin-right: 20px;
+            font-weight: 500;
+        }
+        nav a:hover { color: #764ba2; }
+        main { padding: 40px; }
+        h2 {
+            color: #667eea;
+            font-size: 1.8em;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        h3 {
+            color: #764ba2;
+            font-size: 1.4em;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        h4 {
+            color: #555;
+            font-size: 1.1em;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        .code-inline {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #c7254e;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+        th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+        tr:hover { background: #f8f9fa; }
+        .note {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            background: #667eea;
+            color: white;
+            border-radius: 12px;
+            font-size: 0.85em;
+            margin-right: 5px;
+        }
+        ul, ol { margin-left: 30px; margin-bottom: 15px; }
+        li { margin-bottom: 8px; }
+        a { color: #667eea; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .section { margin-bottom: 30px; }
+        footer {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Fractal Sample Generator - CFASample</h1>
+            <p></p>
+        </header>
+
+        <nav>
+            <a href="index.html">← Back to Home</a>
+            
+        </nav>
+
+        <main>
+
+<h2>Application Scenarios</h2>
+<p>The <code class="code-inline">CFASample</code> class generates classic fractal patterns based on Iterated Function Systems (IFS). Main application scenarios include:</p>
+
+<ul>
+<li><strong>Fractal Pattern Generation</strong>: Generate classic fractal geometric patterns</li>
+<li><strong>Teaching Demonstrations</strong>: Demonstrate basic principles of fractal geometry</li>
+<li><strong>Test Data</strong>: Provide test data for fractal analysis algorithms</li>
+<li><strong>Artistic Creation</strong>: Generate beautiful fractal art patterns</li>
+<li><strong>Algorithm Validation</strong>: Verify correctness of fractal dimension calculations</li>
+</ul>
+
+<h2>Usage Examples</h2>
+
+<h3>Cantor Set</h3>
+
+<div class="code-block">from FreeAeonFractal.FASample import CFASample
+from FreeAeonFractal.CFAVisual import CFAVisual
+import matplotlib.pyplot as plt
+<p># Generate Cantor Set (fractal dimension ≈ 0.63)</p>
+cantor = CFASample.get_Cantor_Set(
+    init_point=np.array([0.0]),
+    iterations=2000
+)
+<p># Visualize</p>
+plt.figure(figsize=(12, 2))
+CFAVisual.plot_1d_points(cantor)
+plt.title('Cantor Set (Dimension ≈ 0.63)')
+plt.show()</div>
+
+<h3>Sierpinski Triangle</h3>
+
+<div class="code-block"># Generate Sierpinski Triangle (fractal dimension ≈ 1.58)
+triangle = CFASample.get_Sierpinski_Triangle(
+    init_point=np.array([0.0, 0.0]),
+    iterations=10000
+)
+<p># Visualize</p>
+plt.figure(figsize=(8, 8))
+CFAVisual.plot_2d_points(triangle)
+plt.title('Sierpinski Triangle (Dimension ≈ 1.58)')
+plt.axis('equal')
+plt.show()</div>
+
+<h3>Barnsley Fern</h3>
+
+<div class="code-block"># Generate Barnsley Fern (fractal dimension ≈ 1.67)
+fern = CFASample.get_Barnsley_Fern(
+    init_point=np.array([0.0, 0.0]),
+    iterations=50000
+)
+<p># Visualize</p>
+plt.figure(figsize=(6, 10))
+CFAVisual.plot_2d_points(fern)
+plt.title('Barnsley Fern (Dimension ≈ 1.67)')
+plt.axis('equal')
+plt.show()</div>
+
+<h3>Convert Points to Image</h3>
+
+<div class="code-block"># Generate fractal point set
+points = CFASample.get_Sierpinski_Triangle(iterations=50000)
+<p># Convert to image</p>
+image = CFASample.get_image_from_points(
+    points,
+    img_size=(512, 512),
+    margin=0.05
+)
+<p># Visualize</p>
+plt.figure(figsize=(8, 8))
+CFAVisual.plot_2d_image(image, cmap='binary')
+plt.title('Sierpinski Triangle as Image')
+plt.show()</div>
+
+<h3>Installation</h3>
+
+<div class="code-block">pip install FreeAeon-Fractal</div>
+
+<h2>Class Description</h2>
+
+<h3>CFASample</h3>
+
+<strong>Description</strong>: Fractal sample generator using Iterated Function Systems (IFS) to generate classic fractal patterns.
+<p>All methods are static, called using <code class="code-inline">CFASample.method_name()</code>.</p>
+
+<h4>Main Generation Methods</h4>
+<p><tr><td>Method</td><td>Dimension</td><td>Fractal Dim</td><td>Transforms</td><td>Default Iter</td></tr></p>
+<table>
+<tr><td>--------</td><td>-----------</td><td>-------------</td><td>------------</td><td>--------------</td></tr>
+<tr><td><code class="code-inline">get_Cantor_Set()</code></td><td>1D</td><td>0.63</td><td>2</td><td>256</td></tr>
+<tr><td><code class="code-inline">get_Sierpinski_Triangle()</code></td><td>2D</td><td>1.58</td><td>3</td><td>256</td></tr>
+<tr><td><code class="code-inline">get_Barnsley_Fern()</code></td><td>2D</td><td>1.67</td><td>4</td><td>4096</td></tr>
+<tr><td><code class="code-inline">get_Menger_Sponge()</code></td><td>3D</td><td>2.73</td><td>20</td><td>10240</td></tr>
+</table>
+
+<h4>Methods</h4>
+<p>##### 1. get_Cantor_Set(init_point, iterations)</p>
+
+<strong>Description</strong>: Generate Cantor Set (1D fractal).
+
+<strong>Parameters</strong>:
+<ul>
+<li><code class="code-inline">init_point</code> (numpy.ndarray): Initial point, shape (1,), default [0.0]</li>
+<li><code class="code-inline">iterations</code> (int): Number of iterations, default 256</li>
+</ul>
+
+<strong>Return</strong>: numpy.ndarray, shape (iterations, 1)
+
+<strong>Fractal Dimension</strong>: ≈ 0.6309
+<p>##### 2. get_image_from_points(points, img_size=(512, 512), margin=0.05)</p>
+
+<strong>Description</strong>: Convert 2D point set to image.
+
+<strong>Parameters</strong>:
+<ul>
+<li><code class="code-inline">points</code> (numpy.ndarray): 2D point array, shape (N, 2)</li>
+<li><code class="code-inline">img_size</code> (tuple): Output image size (height, width)</li>
+<li><code class="code-inline">margin</code> (float): Margin ratio, default 0.05 (5%)</li>
+</ul>
+
+<strong>Return</strong>: numpy.ndarray, uint8 binary image
+<ul>
+<li>Point locations: 255 (white)</li>
+<li>Background: 0 (black)</li>
+</ul>
+
+<h2>References</h2>
+
+<ul>
+<li>Barnsley, M. F. (1993). Fractals Everywhere (2nd ed.).</li>
+<li>Mandelbrot, B. B. (1982). The Fractal Geometry of Nature.</li>
+</ul>
+
+        </main>
+
+        <footer>
+            <p>© 2025 FreeAeon-Fractal. All rights reserved</p>
+            <p><a href="https://github.com/jim-xie-cn/FreeAeon-Fractal" target="_blank" style="color: #667eea;">GitHub</a></p>
+        </footer>
+    </div>
+</body>
+</html>

@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Processing Utilities - CFAImage</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.8;
+            color: #333;
+            background: #f5f7fa;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+        }
+        header h1 { font-size: 2em; margin-bottom: 10px; }
+        header p { opacity: 0.9; }
+        nav {
+            background: #f8f9fa;
+            padding: 15px 30px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        nav a {
+            color: #667eea;
+            text-decoration: none;
+            margin-right: 20px;
+            font-weight: 500;
+        }
+        nav a:hover { color: #764ba2; }
+        main { padding: 40px; }
+        h2 {
+            color: #667eea;
+            font-size: 1.8em;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        h3 {
+            color: #764ba2;
+            font-size: 1.4em;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        h4 {
+            color: #555;
+            font-size: 1.1em;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        .code-inline {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #c7254e;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+        th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+        tr:hover { background: #f8f9fa; }
+        .note {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            background: #667eea;
+            color: white;
+            border-radius: 12px;
+            font-size: 0.85em;
+            margin-right: 5px;
+        }
+        ul, ol { margin-left: 30px; margin-bottom: 15px; }
+        li { margin-bottom: 8px; }
+        a { color: #667eea; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .section { margin-bottom: 30px; }
+        footer {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Image Processing Utilities - CFAImage</h1>
+            <p></p>
+        </header>
+
+        <nav>
+            <a href="index.html">← Back to Home</a>
+            
+        </nav>
+
+        <main>
+
+<h2>Application Scenarios</h2>
+<p>The <code class="code-inline">CFAImage</code> class provides basic image processing utility functions, including image blocking, merging, mask generation, and ROI extraction. Main application scenarios include:</p>
+
+<ul>
+<li><strong>Image Block Processing</strong>: Split images into fixed-size blocks for analysis</li>
+<li><strong>Image Preprocessing</strong>: Auto-binarization, cropping, padding</li>
+<li><strong>ROI Extraction</strong>: Extract regions of interest based on multifractal properties</li>
+<li><strong>Data Augmentation</strong>: Random sampling of image patches for training</li>
+<li><strong>Image Analysis</strong>: Support for fractal dimension and multifractal spectrum calculation</li>
+</ul>
+
+<h2>Usage Examples</h2>
+
+<h3>Otsu Auto-Binarization</h3>
+
+<div class="code-block">import cv2
+from FreeAeonFractal.FAImage import CFAImage
+<p># Read grayscale image</p>
+gray_image = cv2.imread('./images/face.png', cv2.IMREAD_GRAYSCALE)
+<p># Otsu auto-thresholding</p>
+bin_image, threshold = CFAImage.otsu_binarize(gray_image)
+<p>print(f"Auto threshold: {threshold}")</p>
+
+# Visualize
+import matplotlib.pyplot as plt
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
+ax1.imshow(gray_image, cmap='gray')
+ax1.set_title('Original Image')
+ax2.imshow(bin_image, cmap='gray')
+ax2.set_title(f'Binary Image (threshold={threshold:.1f})')
+plt.show()</div>
+
+<h3>Image Blocking and Merging</h3>
+
+<div class="code-block">import numpy as np
+<p># Create test image</p>
+image = np.zeros((256, 256), dtype=np.uint8)
+cv2.circle(image, (128, 128), 80, 255, -1)
+<p># Block splitting</p>
+block_size = (64, 64)
+boxes, raw_blocks = CFAImage.get_boxes_from_image(
+    image,
+    block_size,
+    corp_type=-1  # Auto crop
+)
+<p>print(f"Total blocks: {boxes.shape[0]}")</p>
+print(f"Raw blocks shape: {raw_blocks.shape}")
+<p># Merge back to image</p>
+merged_image = CFAImage.get_image_from_boxes(raw_blocks)
+<p># Verify</p>
+assert np.array_equal(merged_image, image[:256, :256])</div>
+
+<h3>Create Mask</h3>
+
+<div class="code-block"># Create mask (block specific blocks)
+mask_positions = [(0, 0), (1, 1), (2, 2)]  # Block diagonal blocks
+mask_image = CFAImage.get_mask_from_boxes(raw_blocks, mask_positions)
+<p># Apply mask</p>
+masked_image = (merged_image <em> mask_image).astype(np.uint8)</div>
+
+<h3>ROI Extraction</h3>
+
+<div class="code-block"># Extract ROI based on multifractal properties
+rgb_image = cv2.imread('./images/face.png')
+<p>mask_union, masked_image = CFAImage.get_roi_by_q(</p>
+    image=rgb_image,
+    q_range=(-5, 5),
+    step=1.0,
+    box_size=16,
+    target_mass=0.90,
+    combine_mode="or",
+    use_grayscale_measure=True
+)
+<p># Visualize</p>
+fig, (ax1, ax2, ax3) = plt.subplots(1, 3, figsize=(15, 4))
+ax1.imshow(cv2.cvtColor(rgb_image, cv2.COLOR_BGR2RGB))
+ax1.set_title('Original Image')
+ax2.imshow(mask_union, cmap='gray')
+ax2.set_title('ROI Mask')
+ax3.imshow(cv2.cvtColor(masked_image, cv2.COLOR_BGR2RGB))
+ax3.set_title('Extracted ROI')
+plt.show()</div>
+
+<h3>Installation</h3>
+
+<div class="code-block">pip install FreeAeon-Fractal</div>
+
+<h2>Class Description</h2>
+
+<h3>CFAImage</h3>
+
+<strong>Description</strong>: Image processing utility class providing static methods for image cropping, padding, blocking, merging, and other operations.
+
+<h4>Static Methods List</h4>
+<p>All methods are static, called using <code class="code-inline">CFAImage.method_name()</code>.</p>
+
+##### 1. otsu_binarize(img)
+
+<strong>Description</strong>: Auto-threshold image using Otsu method.
+
+<strong>Parameters</strong>:
+<ul>
+<li><code class="code-inline">img</code> (ndarray): Input image (grayscale or color)</li>
+</ul>
+
+<strong>Return Value</strong> (tuple):
+<div class="code-block">(bin_img, threshold)</div>
+<ul>
+<li><code class="code-inline">bin_img</code>: Binary image (uint8, values 0 or 255)</li>
+<li><code class="code-inline">threshold</code>: Auto-calculated threshold</li>
+</ul>
+
+<strong>Features</strong>:
+<ul>
+<li>Automatically converts color images to grayscale</li>
+<li>Automatically handles float and uint8 types</li>
+<li>Otsu method minimizes intra-class variance</li>
+</ul>
+<p>##### 2. crop_data(data, block_size)</p>
+
+<strong>Description</strong>: Crop image so dimensions are multiples of block_size.
+
+<strong>Parameters</strong>:
+<ul>
+<li><code class="code-inline">data</code> (ndarray): Input image (2D or 3D)</li>
+<li><code class="code-inline">block_size</code> (tuple): (bh, bw) block size</li>
+</ul>
+
+<strong>Return Value</strong>: Cropped image
+<p>##### 3. pad_data(data, block_size, mode="constant", constant_values=0)</p>
+
+<strong>Description</strong>: Pad image so dimensions are multiples of block_size.
+
+<strong>Parameters</strong>:
+<ul>
+<li><code class="code-inline">data</code> (ndarray): Input image</li>
+<li><code class="code-inline">block_size</code> (tuple): Block size</li>
+<li><code class="code-inline">mode</code> (str): Padding mode ('constant', 'edge', 'reflect', etc.)</li>
+<li><code class="code-inline">constant_values</code>: Constant padding value (when mode='constant')</li>
+</ul>
+
+<strong>Return Value</strong>: Padded image
+<p>##### 4. get_boxes_from_image(image, block_size, corp_type=-1)</p>
+
+<strong>Description</strong>: Split image into fixed-size blocks.
+
+<strong>Parameters</strong>:
+<ul>
+<li><code class="code-inline">image</code> (ndarray): Input image</li>
+<li><code class="code-inline">block_size</code> (tuple): (bh, bw) block size</li>
+<li><code class="code-inline">corp_type</code> (int): Crop type</li>
+</ul>
+  - <code class="code-inline">-1</code>: Auto crop
+  - <code class="code-inline">0</code>: No processing (requires size already matched)
+  - <code class="code-inline">1</code>: Padding
+
+<strong>Return Value</strong> (tuple):
+<div class="code-block">(blocks_reshaped, raw_blocks)</div>
+
+<ul>
+<li><strong>Grayscale image</strong>:</li>
+</ul>
+  - <code class="code-inline">blocks_reshaped</code>: (num_blocks, bh, bw)
+  - <code class="code-inline">raw_blocks</code>: (nY, nX, bh, bw)
+
+<ul>
+<li><strong>Color image</strong>:</li>
+</ul>
+  - <code class="code-inline">blocks_reshaped</code>: (num_blocks, bh, bw, c)
+  - <code class="code-inline">raw_blocks</code>: (nY, nX, bh, bw, c)
+<p>##### 5. get_image_from_boxes(raw_blocks)</p>
+
+<strong>Description</strong>: Merge blocks back into image.
+
+<strong>Parameters</strong>:
+<ul>
+<li><code class="code-inline">raw_blocks</code> (ndarray): Block array (raw_blocks returned by get_boxes_from_image)</li>
+</ul>
+
+<strong>Return Value</strong>: Merged image
+
+<strong>Supported Shapes</strong>:
+<ul>
+<li>Grayscale: (nY, nX, bh, bw) → (H, W)</li>
+<li>Color: (nY, nX, bh, bw, c) → (H, W, c)</li>
+</ul>
+<p>##### 6. get_random_patches(image, num_patches=100, ratio=0.25)</p>
+
+<strong>Description</strong>: Randomly sample rectangular patches from image (possibly partially overlapping).
+
+<strong>Parameters</strong>:
+<ul>
+<li><code class="code-inline">image</code> (ndarray): Input image</li>
+<li><code class="code-inline">num_patches</code> (int): Number of patches to sample</li>
+<li><code class="code-inline">ratio</code> (float): Patch size ratio (relative to image dimensions)</li>
+</ul>
+
+<strong>Return Value</strong>: List of image patches
+
+<strong>Features</strong>:
+<ul>
+<li>Sampling without replacement (different top-left coordinates)</li>
+<li>May have partial overlap</li>
+<li>Suitable for data augmentation</li>
+</ul>
+<p>##### 7. get_roi_by_q(image, q_range=(-5,5), step=1.0, box_size=16, target_mass=0.95, combine_mode="and", use_grayscale_measure=True)</p>
+
+<strong>Description</strong>: Extract region of interest (ROI) based on multifractal properties.
+
+<strong>Return Value</strong> (tuple):
+<div class="code-block">(mask_union, masked_image)</div>
+<ul>
+<li><code class="code-inline">mask_union</code>: Boolean mask (H, W)</li>
+<li><code class="code-inline">masked_image</code>: Image with mask applied</li>
+</ul>
+
+<h2>Theoretical Background</h2>
+
+<h3>Otsu Thresholding</h3>
+<p>Otsu method automatically selects threshold by minimizing intra-class variance:</p>
+
+<div class="code-block">σ²ω(t) = ω₀(t)σ²₀(t) + ω₁(t)σ²₁(t)</div>
+<p>Where:</p>
+<ul>
+<li>ω₀, ω₁: Weights of two classes</li>
+<li>σ²₀, σ²₁: Variances of two classes</li>
+<li>t: Threshold</li>
+</ul>
+<p>Optimal threshold:</p>
+<div class="code-block">t</em> = argmin σ²ω(t)</div>
+
+<h2>Important Notes</h2>
+<p>1. <strong>Image Types</strong>:</p>
+   - Supports grayscale (2D) and color (3D)
+   - Automatically handles different data types
+<p>2. <strong>Blocking Operations</strong>:</p>
+   - Uses <code class="code-inline">view_as_blocks</code> to avoid copying
+   - Supports grayscale and color images
+   - Channel dimensions remain unchanged
+<p>3. <strong>corp_type Selection</strong>:</p>
+   - <code class="code-inline">-1</code>: Suitable for most cases, loses boundaries
+   - <code class="code-inline">0</code>: Strict mode, requires pre-adjusted size
+   - <code class="code-inline">1</code>: Padding mode, preserves all pixels
+<p>4. <strong>Performance</strong>:</p>
+   - Blocking operations use views, memory efficient
+   - ROI extraction is compute-intensive, slow for large images
+
+<h2>References</h2>
+
+<ul>
+<li>Otsu, N. (1979). A threshold selection method from gray-level histograms. IEEE Transactions on Systems, Man, and Cybernetics.</li>
+<li>Mandelbrot, B. B. (1982). The Fractal Geometry of Nature.</li>
+</ul>
+
+        </main>
+
+        <footer>
+            <p>© 2025 FreeAeon-Fractal. All rights reserved</p>
+            <p><a href="https://github.com/jim-xie-cn/FreeAeon-Fractal" target="_blank" style="color: #667eea;">GitHub</a></p>
+        </footer>
+    </div>
+</body>
+</html>

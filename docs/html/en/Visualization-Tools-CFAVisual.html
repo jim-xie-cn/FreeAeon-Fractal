@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualization Tools - CFAVisual</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.8;
+            color: #333;
+            background: #f5f7fa;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+        }
+        header h1 { font-size: 2em; margin-bottom: 10px; }
+        header p { opacity: 0.9; }
+        nav {
+            background: #f8f9fa;
+            padding: 15px 30px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        nav a {
+            color: #667eea;
+            text-decoration: none;
+            margin-right: 20px;
+            font-weight: 500;
+        }
+        nav a:hover { color: #764ba2; }
+        main { padding: 40px; }
+        h2 {
+            color: #667eea;
+            font-size: 1.8em;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        h3 {
+            color: #764ba2;
+            font-size: 1.4em;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        h4 {
+            color: #555;
+            font-size: 1.1em;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        .code-inline {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #c7254e;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+        th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+        tr:hover { background: #f8f9fa; }
+        .note {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            background: #667eea;
+            color: white;
+            border-radius: 12px;
+            font-size: 0.85em;
+            margin-right: 5px;
+        }
+        ul, ol { margin-left: 30px; margin-bottom: 15px; }
+        li { margin-bottom: 8px; }
+        a { color: #667eea; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .section { margin-bottom: 30px; }
+        footer {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Visualization Tools - CFAVisual</h1>
+            <p></p>
+        </header>
+
+        <nav>
+            <a href="index.html">← Back to Home</a>
+            
+        </nav>
+
+        <main>
+
+<h2>Application Scenarios</h2>
+<p>The <code class="code-inline">CFAVisual</code> class provides visualization tools for fractal point sets and images. Main application scenarios include:</p>
+
+<ul>
+<li><strong>Fractal Point Set Display</strong>: Visualize 1D, 2D, and 3D fractal point sets</li>
+<li><strong>Fractal Pattern Verification</strong>: Verify generated fractal patterns</li>
+<li><strong>Teaching Demonstrations</strong>: Demonstrate basic concepts of fractal geometry</li>
+<li><strong>Data Visualization</strong>: Display point clouds and image data</li>
+</ul>
+
+<h2>Usage Examples</h2>
+
+<h3>1D Point Set Visualization</h3>
+
+<div class="code-block">import numpy as np
+from FreeAeonFractal.CFAVisual import CFAVisual
+from FreeAeonFractal.FASample import CFASample
+import matplotlib.pyplot as plt
+<p># Generate Cantor Set</p>
+points_1d = CFASample.get_Cantor_Set(iterations=1000)
+<p># Visualize 1D point set</p>
+plt.figure(figsize=(10, 2))
+CFAVisual.plot_1d_points(points_1d)
+plt.title('Cantor Set (1D)')
+plt.show()</div>
+
+<h3>2D Point Set Visualization</h3>
+
+<div class="code-block"># Generate Sierpinski Triangle
+points_2d = CFASample.get_Sierpinski_Triangle(iterations=10000)
+<p># Visualize 2D point set</p>
+plt.figure(figsize=(8, 8))
+CFAVisual.plot_2d_points(points_2d)
+plt.title('Sierpinski Triangle (2D)')
+plt.axis('equal')
+plt.show()</div>
+
+<h3>3D Point Set Visualization</h3>
+
+<div class="code-block">from mpl_toolkits.mplot3d import Axes3D
+<p># Generate Menger Sponge</p>
+points_3d = CFASample.get_Menger_Sponge(iterations=50000)
+<p># Visualize 3D point set</p>
+fig = plt.figure(figsize=(10, 10))
+ax = fig.add_subplot(111, projection='3d')
+CFAVisual.plot_3d_points(points_3d, ax)
+ax.set_title('Menger Sponge (3D)')
+plt.show()</div>
+
+<h3>Installation</h3>
+
+<div class="code-block">pip install FreeAeon-Fractal</div>
+
+<h2>Class Description</h2>
+
+<h3>CFAVisual</h3>
+
+<strong>Description</strong>: Utility class providing static methods for visualizing fractal point sets and images.
+<p>All methods are static, called using <code class="code-inline">CFAVisual.method_name()</code>.</p>
+
+<h4>Static Methods</h4>
+<p>##### 1. plot_1d_points(points, ax=plt)</p>
+
+<strong>Description</strong>: Display 1D point set (e.g., Cantor Set).
+
+<strong>Parameters</strong>:
+<ul>
+<li><code class="code-inline">points</code> (numpy.ndarray): 1D point array, shape (N,)</li>
+<li><code class="code-inline">ax</code> (matplotlib axis): Matplotlib axis object, default is plt</li>
+</ul>
+
+<strong>Display Features</strong>:
+<ul>
+<li>Points plotted on horizontal line at y=0</li>
+<li>y-axis hidden</li>
+<li>Fixed point size (s=1)</li>
+</ul>
+<p>##### 2. plot_2d_points(points, ax=plt)</p>
+
+<strong>Description</strong>: Display 2D point set (e.g., Sierpinski Triangle, Barnsley Fern).
+
+<strong>Parameters</strong>:
+<ul>
+<li><code class="code-inline">points</code> (numpy.ndarray): 2D point array, shape (N, 2)</li>
+<li><code class="code-inline">ax</code> (matplotlib axis): Matplotlib axis object</li>
+</ul>
+
+<strong>Display Features</strong>:
+<ul>
+<li>Red point markers</li>
+<li>Point size: s=1</li>
+<li>Scatter plot display</li>
+</ul>
+<p>##### 3. plot_3d_points(points, ax=None)</p>
+
+<strong>Description</strong>: Display 3D point set (e.g., Menger Sponge).
+
+<strong>Parameters</strong>:
+<ul>
+<li><code class="code-inline">points</code> (numpy.ndarray): 3D point array, shape (N, 3)</li>
+<li><code class="code-inline">ax</code> (matplotlib 3D axis): 3D axis object. If None, automatically created</li>
+</ul>
+<p>##### 4. plot_2d_image(image, cmap='gray', ax=plt)</p>
+
+<strong>Description</strong>: Display 2D image.
+
+<strong>Parameters</strong>:
+<ul>
+<li><code class="code-inline">image</code> (numpy.ndarray): 2D image array</li>
+<li><code class="code-inline">cmap</code> (str): Colormap, default 'gray'</li>
+<li><code class="code-inline">ax</code> (matplotlib axis): Matplotlib axis object</li>
+</ul>
+
+<h2>References</h2>
+
+<ul>
+<li>Mandelbrot, B. B. (1982). The Fractal Geometry of Nature.</li>
+</ul>
+
+        </main>
+
+        <footer>
+            <p>© 2025 FreeAeon-Fractal. All rights reserved</p>
+            <p><a href="https://github.com/jim-xie-cn/FreeAeon-Fractal" target="_blank" style="color: #667eea;">GitHub</a></p>
+        </footer>
+    </div>
+</body>
+</html>

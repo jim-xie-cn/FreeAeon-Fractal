@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPU Acceleration</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.8;
+            color: #333;
+            background: #f5f7fa;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+        }
+        header h1 { font-size: 2em; margin-bottom: 10px; }
+        header p { opacity: 0.9; }
+        nav {
+            background: #f8f9fa;
+            padding: 15px 30px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        nav a {
+            color: #667eea;
+            text-decoration: none;
+            margin-right: 20px;
+            font-weight: 500;
+        }
+        nav a:hover { color: #764ba2; }
+        main { padding: 40px; }
+        h2 {
+            color: #667eea;
+            font-size: 1.8em;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        h3 {
+            color: #764ba2;
+            font-size: 1.4em;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        h4 {
+            color: #555;
+            font-size: 1.1em;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        .code-inline {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #c7254e;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+        th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+        tr:hover { background: #f8f9fa; }
+        .note {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            background: #667eea;
+            color: white;
+            border-radius: 12px;
+            font-size: 0.85em;
+            margin-right: 5px;
+        }
+        ul, ol { margin-left: 30px; margin-bottom: 15px; }
+        li { margin-bottom: 8px; }
+        a { color: #667eea; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .section { margin-bottom: 30px; }
+        footer {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>GPU Acceleration</h1>
+            <p></p>
+        </header>
+
+        <nav>
+            <a href="index.html">← Back to Home</a>
+            
+        </nav>
+
+        <main>
+
+<h2>Application Scenarios</h2>
+<p>FreeAeon-Fractal provides GPU-accelerated versions of core computational modules, significantly improving computation speed for large images and multi-scale analysis.</p>
+
+<h2>Supported GPU Modules</h2>
+<p><tr><td>CPU Module</td><td>GPU Module</td><td>Speedup</td></tr></p>
+<table>
+<tr><td>------------</td><td>------------</td><td>---------</td></tr>
+<tr><td><code class="code-inline">FA2DMFS.CFA2DMFS</code></td><td><code class="code-inline">FA2DMFSGPU.CFA2DMFSGPU</code></td><td>5-20x</td></tr>
+<tr><td><code class="code-inline">FAImageDimension.CFAImageDimension</code></td><td><code class="code-inline">FAImageDimensionGPU.CFAImageDimensionGPU</code></td><td>3-10x</td></tr>
+<tr><td><code class="code-inline">FAImageLacunarity.CFAImageLacunarity</code></td><td><code class="code-inline">FAImageLacunarityGPU.CFAImageLacunarityGPU</code></td><td>5-15x</td></tr>
+</table>
+
+<h2>System Requirements</h2>
+
+<h3>Hardware</h3>
+<ul>
+<li>NVIDIA GPU (CUDA support)</li>
+<li>Recommended VRAM ≥ 4GB</li>
+<li>Preferred VRAM ≥ 8GB (for large images)</li>
+</ul>
+
+<h3>Software</h3>
+<div class="code-block"># Install PyTorch (CUDA version)
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+<p># Install FreeAeon-Fractal</p>
+pip install FreeAeon-Fractal</div>
+
+<h2>Usage Examples</h2>
+
+<h3>GPU-Accelerated 2D Multifractal Spectrum</h3>
+
+<div class="code-block">import cv2
+import numpy as np
+from FreeAeonFractal.FA2DMFSGPU import CFA2DMFSGPU
+<p># Load image</p>
+gray_image = cv2.imread('./images/face.png', cv2.IMREAD_GRAYSCALE)
+<p># Create GPU version</p>
+MFS = CFA2DMFSGPU(
+    gray_image,
+    q_list=np.linspace(-5, 5, 26),
+    device='cuda'
+)
+<p># Compute (GPU accelerated)</p>
+df_mass, df_fit, df_spec = MFS.get_mfs()
+<p># Visualize</p>
+MFS.plot(df_mass, df_fit, df_spec)</div>
+
+<h3>Easy Migration from CPU to GPU</h3>
+
+<strong>CPU version</strong>:
+<div class="code-block">from FreeAeonFractal.FA2DMFS import CFA2DMFS</div>
+
+<strong>GPU version</strong> (just change import):
+<div class="code-block">from FreeAeonFractal.FA2DMFSGPU import CFA2DMFSGPU as CFA2DMFS
+# Rest of code remains identical!</div>
+
+<h3>Auto Device Selection</h3>
+
+<div class="code-block">import torch
+<p># Automatically choose based on GPU availability</p>
+if torch.cuda.is_available():
+    from FreeAeonFractal.FA2DMFSGPU import CFA2DMFSGPU as CFA2DMFS
+    print("Using GPU acceleration")
+else:
+    from FreeAeonFractal.FA2DMFS import CFA2DMFS
+    print("Using CPU")
+<p>MFS = CFA2DMFS(image, q_list=np.linspace(-5, 5, 26))</div></p>
+
+<h3>Installation</h3>
+
+<div class="code-block">pip install FreeAeon-Fractal</div>
+
+<h2>Performance Comparison</h2>
+
+<h3>Test Environment</h3>
+<ul>
+<li>CPU: Intel i7-10700K</li>
+<li>GPU: NVIDIA RTX 3080 (10GB)</li>
+<li>Image: 1024x1024 grayscale</li>
+</ul>
+
+<h3>Performance Data</h3>
+<p><tr><td>Task</td><td>CPU Time</td><td>GPU Time</td><td>Speedup</td></tr></p>
+<table>
+<tr><td>------</td><td>----------</td><td>----------</td><td>---------</td></tr>
+<tr><td>2D Multifractal (q=51)</td><td>45s</td><td>4s</td><td>11.3x</td></tr>
+<tr><td>Fractal Dim BC</td><td>8s</td><td>2s</td><td>4.0x</td></tr>
+<tr><td>Fractal Dim DBC</td><td>25s</td><td>3s</td><td>8.3x</td></tr>
+<tr><td>Lacunarity</td><td>35s</td><td>4s</td><td>8.8x</td></tr>
+</table>
+
+<h2>GPU-Specific Parameters</h2>
+
+<h3>CFA2DMFSGPU</h3>
+<p>Additional parameters:</p>
+<ul>
+<li><code class="code-inline">device</code> (str): Device selection ('cuda', 'cpu', 'cuda:0', etc.)</li>
+<li><code class="code-inline">dtype</code> (torch.dtype): Data type (torch.float32 or torch.float64)</li>
+</ul>
+
+<strong>Example</strong>:
+<div class="code-block">MFS = CFA2DMFSGPU(
+    image,
+    device='cuda:0',           # Use first GPU
+    dtype=torch.float32        # Use single precision
+)</div>
+
+<h2>Best Practices</h2>
+<p>1. <strong>Development</strong>: Use CPU version for quick testing</p>
+2. <strong>Production</strong>: Use GPU version for large-scale data
+3. <strong>Parameter Tuning</strong>: Test on CPU, run on GPU
+4. <strong>Memory Management</strong>: Monitor VRAM usage regularly
+5. <strong>Error Handling</strong>: Gracefully fallback to CPU on errors
+
+<h2>Troubleshooting</h2>
+
+<h3>CUDA Out of Memory</h3>
+<div class="code-block"># Solutions:
+# 1. Reduce image size
+# 2. Use float32
+# 3. Reduce parameters
+# 4. Clear cache
+torch.cuda.empty_cache()</div>
+
+<h2>References</h2>
+
+<ul>
+<li><strong>PyTorch</strong>: https://pytorch.org/</li>
+<li><strong>CUDA Toolkit</strong>: https://developer.nvidia.com/cuda-toolkit</li>
+</ul>
+
+        </main>
+
+        <footer>
+            <p>© 2025 FreeAeon-Fractal. All rights reserved</p>
+            <p><a href="https://github.com/jim-xie-cn/FreeAeon-Fractal" target="_blank" style="color: #667eea;">GitHub</a></p>
+        </footer>
+    </div>
+</body>
+</html>

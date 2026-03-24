@@ -1,170 +1,385 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CFA2DMFS - 二维图像多重分形谱分析(CPU版本)</title>
+    <title>多重分形谱分析 - CFA2DMFS</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
+            line-height: 1.8;
             color: #333;
-            max-width: 1200px;
-            margin: 0 auto;
+            background: #f5f7fa;
             padding: 20px;
-            background: #f5f5f5;
         }
         .container {
+            max-width: 1000px;
+            margin: 0 auto;
             background: white;
-            padding: 40px;
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
         }
-        h1 {
-            color: #2c3e50;
-            border-bottom: 3px solid #3498db;
-            padding-bottom: 10px;
-            margin-bottom: 30px;
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
         }
+        header h1 { font-size: 2em; margin-bottom: 10px; }
+        header p { opacity: 0.9; }
+        nav {
+            background: #f8f9fa;
+            padding: 15px 30px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        nav a {
+            color: #667eea;
+            text-decoration: none;
+            margin-right: 20px;
+            font-weight: 500;
+        }
+        nav a:hover { color: #764ba2; }
+        main { padding: 40px; }
         h2 {
-            color: #34495e;
-            margin-top: 30px;
-            margin-bottom: 15px;
-            border-left: 4px solid #3498db;
-            padding-left: 15px;
+            color: #667eea;
+            font-size: 1.8em;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
         }
         h3 {
-            color: #546e7a;
+            color: #764ba2;
+            font-size: 1.4em;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        h4 {
+            color: #555;
+            font-size: 1.1em;
             margin-top: 20px;
             margin-bottom: 10px;
         }
-        h4 {
-            color: #607d8b;
-            margin-top: 15px;
-            margin-bottom: 10px;
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
         }
-        p {
-            margin-bottom: 15px;
-            text-align: justify;
-        }
-        ul, ol {
-            margin-left: 30px;
-            margin-bottom: 15px;
-        }
-        li {
-            margin-bottom: 8px;
-        }
-        code {
-            background: #f4f4f4;
+        .code-inline {
+            background: #f0f0f0;
             padding: 2px 6px;
             border-radius: 3px;
             font-family: 'Courier New', monospace;
             font-size: 0.9em;
-        }
-        pre {
-            background: #2d2d2d;
-            color: #f8f8f2;
-            padding: 15px;
-            border-radius: 5px;
-            overflow-x: auto;
-            margin-bottom: 20px;
-        }
-        pre code {
-            background: none;
-            color: inherit;
-            padding: 0;
+            color: #c7254e;
         }
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        table th, table td {
-            border: 1px solid #ddd;
-            padding: 12px;
+        th, td {
+            padding: 12px 15px;
             text-align: left;
+            border-bottom: 1px solid #e9ecef;
         }
-        table th {
-            background: #3498db;
+        th {
+            background: #667eea;
             color: white;
-            font-weight: bold;
+            font-weight: 600;
         }
-        table tr:nth-child(even) {
-            background: #f9f9f9;
-        }
-        table tr:hover {
-            background: #f5f5f5;
-        }
-        .nav {
-            background: #34495e;
-            color: white;
+        tr:hover { background: #f8f9fa; }
+        .note {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
             padding: 15px;
-            margin: -40px -40px 30px -40px;
-            border-radius: 8px 8px 0 0;
-        }
-        .nav a {
-            color: #3498db;
-            text-decoration: none;
-            font-weight: bold;
-        }
-        .nav a:hover {
-            color: #5dade2;
-            text-decoration: underline;
-        }
-        .footer {
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid #ddd;
-            color: #666;
-            font-size: 0.9em;
+            margin: 20px 0;
+            border-radius: 4px;
         }
         .badge {
             display: inline-block;
-            background: #3498db;
+            padding: 4px 10px;
+            background: #667eea;
             color: white;
-            padding: 3px 8px;
-            border-radius: 3px;
+            border-radius: 12px;
             font-size: 0.85em;
             margin-right: 5px;
         }
-        blockquote {
-            border-left: 4px solid #3498db;
-            margin: 20px 0;
-            padding: 10px 20px;
-            background: #ecf0f1;
-            font-style: italic;
-        }
-        .note {
-            background: #fff3cd;
-            border: 1px solid #ffc107;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 20px 0;
-        }
-        .warning {
-            background: #f8d7da;
-            border: 1px solid #f5c6cb;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 20px 0;
+        ul, ol { margin-left: 30px; margin-bottom: 15px; }
+        li { margin-bottom: 8px; }
+        a { color: #667eea; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .section { margin-bottom: 30px; }
+        footer {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 0.9em;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="nav">
-            <a href="index.html">← 返回索引</a>
-        </div>
-        <h1>CFA2DMFS - 二维图像多重分形谱分析(CPU版本)</h1>
-<p>请参考demo.py和源代码获取详细使用说明。</p>
-<strong>类名</strong>: <code>CFA2DMFS</code>
-<strong>功能类别</strong>: 多重分形谱分析
-        <div class="footer">
-            <p><strong>FreeAeon-Fractal</strong> - Python Toolkit for Fractal and Multifractal Analysis</p>
-            <p>GitHub: <a href="https://github.com/jim-xie-cn/FreeAeon-Fractal" target="_blank">https://github.com/jim-xie-cn/FreeAeon-Fractal</a></p>
-            <p>© 2025 Jim Xie | MIT License</p>
-        </div>
+        <header>
+            <h1>多重分形谱分析 - CFA2DMFS</h1>
+            <p>2D图像多重分形谱分析</p>
+        </header>
+
+        <nav>
+            <a href="index.html">← 返回首页</a>
+            
+        </nav>
+
+        <main>
+
+<h2>应用场景</h2>
+
+<code class="code-inline">CFA2DMFS</code> 类用于计算2D灰度图像的多重分形谱（Multifractal Spectrum），是分析图像复杂度和异质性的高级工具。主要应用场景包括：
+
+<ul>
+<li><strong>纹理分析</strong>：量化图像纹理的多尺度特性</li>
+<li><strong>医学图像</strong>：分析组织结构的异质性</li>
+<li><strong>材料科学</strong>：研究材料表面的多重分形特征</li>
+<li><strong>金融分析</strong>：分析价格波动的多重分形特性</li>
+<li><strong>地球科学</strong>：研究地形地貌的多尺度特征</li>
+</ul>
+
+<h2>调用示例</h2>
+
+<h3>基础用法</h3>
+
+<div class="code-block">import cv2
+import numpy as np
+from FreeAeonFractal.FA2DMFS import CFA2DMFS
+<p># 读取并转换为灰度图像</p>
+rgb_image = cv2.imread('./images/face.png')
+gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
+<p># 创建多重分形谱分析对象</p>
+q_list = np.linspace(-5, 5, 26)
+MFS = CFA2DMFS(gray_image, q_list=q_list)
+<p># 计算多重分形谱</p>
+df_mass, df_fit, df_spec = MFS.get_mfs()
+<p># 查看结果</p>
+print(df_spec)
+<p># 可视化结果</p>
+MFS.plot(df_mass, df_fit, df_spec)</div>
+
+<h3>GPU加速版本</h3>
+
+<div class="code-block"># 使用GPU加速版本
+from FreeAeonFractal.FA2DMFSGPU import CFA2DMFSGPU as CFA2DMFS
+<p># 其余代码相同</p>
+MFS = CFA2DMFS(gray_image, q_list=np.linspace(-5, 5, 26))
+df_mass, df_fit, df_spec = MFS.get_mfs()</div>
+
+<h3>安装</h3>
+
+<div class="code-block">pip install FreeAeon-Fractal</div>
+
+<h2>类说明</h2>
+
+<h3>CFA2DMFS</h3>
+
+<strong>描述</strong>：用于计算2D灰度图像多重分形谱的类，基于盒计数方法。
+
+<h4>初始化参数</h4>
+<p><tr><td>参数</td><td>类型</td><td>默认值</td><td>说明</td></tr></p>
+<table>
+<tr><td>------</td><td>------</td><td>--------</td><td>------</td></tr>
+<tr><td><code class="code-inline">image</code></td><td>numpy.ndarray</td><td>必需</td><td>输入灰度图像（2D数组）</td></tr>
+<tr><td><code class="code-inline">corp_type</code></td><td>int</td><td>0</td><td>图像裁剪类型（-1:裁剪, 0:严格匹配, 1:填充）</td></tr>
+<tr><td><code class="code-inline">q_list</code></td><td>array-like</td><td>linspace(-5,5,51)</td><td>q值列表</td></tr>
+<tr><td><code class="code-inline">with_progress</code></td><td>bool</td><td>True</td><td>是否显示进度条</td></tr>
+<tr><td><code class="code-inline">bg_threshold</code></td><td>float</td><td>0.01</td><td>背景阈值</td></tr>
+<tr><td><code class="code-inline">bg_reverse</code></td><td>bool</td><td>False</td><td>是否反转背景阈值</td></tr>
+<tr><td><code class="code-inline">bg_otsu</code></td><td>bool</td><td>False</td><td>是否使用Otsu阈值化</td></tr>
+<tr><td><code class="code-inline">mu_floor</code></td><td>float</td><td>1e-12</td><td>最小概率值（保留用于兼容）</td></tr>
+</table>
+
+<h4>主要方法</h4>
+<p>##### 1. get_mfs(max_size=None, max_scales=80, min_points=6, min_box=2, ...)</p>
+
+<strong>描述</strong>：完整的多重分形谱分析流程，返回质量表、拟合结果和谱参数。
+
+<strong>参数</strong>：
+<ul>
+<li><code class="code-inline">max_size</code> (int): 最大盒子尺寸</li>
+<li><code class="code-inline">max_scales</code> (int): 最大尺度数量</li>
+<li><code class="code-inline">min_points</code> (int): 拟合的最小点数</li>
+<li><code class="code-inline">min_box</code> (int): 最小盒子尺寸</li>
+<li><code class="code-inline">use_middle_scales</code> (bool): 是否只使用中间尺度</li>
+<li><code class="code-inline">fit_scale_frac</code> (tuple): 拟合尺度范围 (0.2, 0.8)</li>
+<li><code class="code-inline">if_auto_line_fit</code> (bool): 是否自动线性拟合</li>
+<li><code class="code-inline">auto_fit_min_len_ratio</code> (float): 自动拟合最小长度比例</li>
+<li><code class="code-inline">spline_s</code> (float): 样条平滑参数</li>
+<li><code class="code-inline">cap_d0_at_2</code> (bool): 是否限制D0≤2</li>
+</ul>
+
+<strong>返回值</strong> (tuple):
+<div class="code-block">(df_mass, df_fit, df_spec)</div>
+
+<ul>
+<li><code class="code-inline">df_mass</code>: 质量表 DataFrame，包含列：</li>
+</ul>
+  - <code class="code-inline">scale</code>: 盒子尺寸
+  - <code class="code-inline">eps</code>: 归一化尺度
+  - <code class="code-inline">q</code>: q值
+  - <code class="code-inline">value</code>: 根据kind不同含义不同
+  - <code class="code-inline">kind</code>: 值类型（'logMq', 'N', 'S'）
+
+<ul>
+<li><code class="code-inline">df_fit</code>: 拟合结果 DataFrame，包含列：</li>
+</ul>
+  - <code class="code-inline">q</code>: q值
+  - <code class="code-inline">tau</code>: τ(q) 质量指数
+  - <code class="code-inline">Dq</code>: D(q) 广义维度
+  - <code class="code-inline">D1</code>: D1 信息维度（仅q=1时）
+  - <code class="code-inline">intercept</code>: 拟合截距
+  - <code class="code-inline">r_value</code>: 相关系数
+  - <code class="code-inline">p_value</code>: p值
+  - <code class="code-inline">std_err</code>: 标准误差
+  - <code class="code-inline">n_points</code>: 拟合点数
+
+<ul>
+<li><code class="code-inline">df_spec</code>: 多重分形谱 DataFrame，包含列：</li>
+</ul>
+  - <code class="code-inline">q</code>: q值
+  - <code class="code-inline">tau</code>: τ(q)
+  - <code class="code-inline">Dq</code>: D(q)
+  - <code class="code-inline">alpha</code>: α(q) 奇异性强度
+  - <code class="code-inline">f_alpha</code>: f(α) 多重分形谱
+<p>##### 2. get_mass_table(max_size=None, max_scales=80, min_box=2, roi_mode="center")</p>
+
+<strong>描述</strong>：计算每个尺度下的盒子质量表。
+
+<strong>返回值</strong>：DataFrame，包含每个尺度和q值的质量信息。
+<p>##### 3. fit_tau_and_D1(df_mass, min_points=6, ...)</p>
+
+<strong>描述</strong>：从质量表拟合τ(q)和D1。
+
+<strong>返回值</strong>：拟合结果DataFrame。
+<p>##### 4. alpha_falpha_from_tau(df_fit, spline_k=3, exclude_q1=True, spline_s=0)</p>
+
+<strong>描述</strong>：从τ(q)计算α(q)和f(α)。
+
+<strong>参数</strong>：
+<ul>
+<li><code class="code-inline">df_fit</code>: 拟合结果DataFrame</li>
+<li><code class="code-inline">spline_k</code> (int): 样条插值阶数</li>
+<li><code class="code-inline">exclude_q1</code> (bool): 是否排除q=1</li>
+<li><code class="code-inline">spline_s</code> (float): 样条平滑参数</li>
+</ul>
+
+<strong>返回值</strong>：多重分形谱DataFrame。
+<p>##### 5. plot(df_mass, df_fit, df_spec)</p>
+
+<strong>描述</strong>：可视化多重分形谱分析结果，包含6个子图：
+1. log M(q, ε) 热图
+2. f(α) vs α 多重分形谱
+3. τ(q) vs q
+4. D(q) vs q 广义维度
+5. α vs q
+6. f(α) vs q
+
+<h2>理论背景</h2>
+
+<h3>多重分形谱</h3>
+<p>多重分形谱描述了图像在不同尺度下的统计特性。核心参数包括：</p>
+
+<h4>1. 配分函数 (Partition Function)</h4>
+<div class="code-block">M(q, ε) = Σ μᵢ^q</div>
+其中 μᵢ 是第i个盒子的归一化质量。
+
+<h4>2. 质量指数 τ(q)</h4>
+<div class="code-block">τ(q) = lim(ε→0) log M(q, ε) / log ε</div>
+
+<h4>3. 广义维度 D(q)</h4>
+<div class="code-block">D(q) = τ(q) / (q - 1), q ≠ 1
+D(1) = lim(ε→0) Σ μᵢ log μᵢ / log ε  (信息维度)</div>
+<p>特殊值：</p>
+<ul>
+<li>D(0): 容量维度</li>
+<li>D(1): 信息维度</li>
+<li>D(2): 关联维度</li>
+</ul>
+
+<h4>4. 多重分形谱 f(α)</h4>
+<div class="code-block">α(q) = dτ(q)/dq  (奇异性强度)
+f(α) = qα - τ(q)  (多重分形谱)</div>
+
+<h3>计算方法</h3>
+<p>本实现使用改进的盒计数方法：</p>
+
+1. <strong>对于 q ≠ 0, 1</strong>：
+   - 在对数空间计算 log M(q, ε)
+   - 使用 logsumexp 避免数值溢出
+<p>2. <strong>对于 q = 0</strong>：</p>
+   - 计算非零盒子数 N
+   - 拟合 log(N) vs log(1/ε)
+<p>3. <strong>对于 q = 1</strong>：</p>
+   - 计算 Shannon 熵 S = -Σ μᵢ log μᵢ
+   - 拟合 S vs log(1/ε)
+<p>4. <strong>固定ROI方案</strong>：</p>
+   - 裁剪为固定的正方形ROI
+   - 只使用ROI尺寸的约数作为盒子大小
+   - 确保跨尺度的一致性
+
+<h2>重要提示</h2>
+<p>1. <strong>图像预处理</strong>：</p>
+   - 输入必须是2D灰度图像
+   - 图像会自动归一化到 [0, 1]
+   - 可使用 <code class="code-inline">bg_threshold</code> 去除背景
+<p>2. <strong>q值选择</strong>：</p>
+   - 负q值对稀疏区域敏感
+   - 正q值对密集区域敏感
+   - 建议范围：-5 到 5
+   - 点数建议：20-50个
+<p>3. <strong>尺度参数</strong>：</p>
+   - <code class="code-inline">max_scales</code> 影响采样密度，建议60-100
+   - <code class="code-inline">min_box</code> 不要小于2
+   - 使用固定ROI避免边界效应
+<p>4. <strong>结果解释</strong>：</p>
+   - f(α) 曲线越宽，多重分形性越强
+   - Δα = α_max - α_min 量化异质性
+   - D(q) 单调递减表示多重分形
+   - r_value 接近1表示良好拟合
+<p>5. <strong>性能优化</strong>：</p>
+   - 使用GPU版本可显著加速
+   - 大图像可先降采样
+   - 减少q值数量可提高速度
+
+<h2>常见问题</h2>
+
+<h3>Q: D(0) > 2 怎么办？</h3>
+A: 可以设置 <code class="code-inline">cap_d0_at_2=True</code> 限制D(0)≤2，或检查图像预处理是否正确。
+
+<h3>Q: 如何判断是否为多重分形？</h3>
+A: 检查 D(q) 是否随q单调变化，或者 f(α) 是否为凸函数且有一定宽度。
+
+<h3>Q: 计算结果不稳定？</h3>
+A: 增加 <code class="code-inline">max_scales</code>，使用 <code class="code-inline">use_middle_scales=True</code>，或调整 <code class="code-inline">fit_scale_frac</code>。
+
+<h2>参考文献</h2>
+
+<ul>
+<li>Chhabra, A., & Jensen, R. V. (1989). Direct determination of the f(α) singularity spectrum. Physical Review Letters.</li>
+<li>Evertsz, C. J., & Mandelbrot, B. B. (1992). Multifractal measures. Chaos and Fractals.</li>
+</ul>
+
+        </main>
+
+        <footer>
+            <p>© 2025 FreeAeon-Fractal. 保留所有权利</p>
+            <p><a href="https://github.com/jim-xie-cn/FreeAeon-Fractal" target="_blank" style="color: #667eea;">GitHub</a></p>
+        </footer>
     </div>
 </body>
 </html>

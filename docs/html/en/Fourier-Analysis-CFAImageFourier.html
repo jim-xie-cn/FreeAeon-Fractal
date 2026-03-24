@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fourier Analysis - CFAImageFourier</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.8;
+            color: #333;
+            background: #f5f7fa;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+        }
+        header h1 { font-size: 2em; margin-bottom: 10px; }
+        header p { opacity: 0.9; }
+        nav {
+            background: #f8f9fa;
+            padding: 15px 30px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        nav a {
+            color: #667eea;
+            text-decoration: none;
+            margin-right: 20px;
+            font-weight: 500;
+        }
+        nav a:hover { color: #764ba2; }
+        main { padding: 40px; }
+        h2 {
+            color: #667eea;
+            font-size: 1.8em;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        h3 {
+            color: #764ba2;
+            font-size: 1.4em;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        h4 {
+            color: #555;
+            font-size: 1.1em;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        .code-inline {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #c7254e;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+        th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+        tr:hover { background: #f8f9fa; }
+        .note {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            background: #667eea;
+            color: white;
+            border-radius: 12px;
+            font-size: 0.85em;
+            margin-right: 5px;
+        }
+        ul, ol { margin-left: 30px; margin-bottom: 15px; }
+        li { margin-bottom: 8px; }
+        a { color: #667eea; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .section { margin-bottom: 30px; }
+        footer {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Fourier Analysis - CFAImageFourier</h1>
+            <p></p>
+        </header>
+
+        <nav>
+            <a href="index.html">← Back to Home</a>
+            
+        </nav>
+
+        <main>
+
+<h2>Application Scenarios</h2>
+<p>The <code class="code-inline">CFAImageFourier</code> class provides tools for Fourier spectrum analysis of images, used to analyze frequency components and perform frequency domain processing. Main application scenarios include:</p>
+
+<ul>
+<li><strong>Frequency Domain Analysis</strong>: Analyze frequency distribution characteristics of images</li>
+<li><strong>Image Filtering</strong>: High-pass, low-pass, and band-pass filtering through frequency domain masks</li>
+<li><strong>Texture Analysis</strong>: Extract periodicity and directionality features</li>
+<li><strong>Image Enhancement</strong>: Frequency domain image enhancement and restoration</li>
+<li><strong>Pattern Recognition</strong>: Image classification based on spectral features</li>
+</ul>
+
+<h2>Usage Examples</h2>
+
+<h3>Basic Usage</h3>
+
+<div class="code-block">import cv2
+import numpy as np
+from FreeAeonFractal.FAImageFourier import CFAImageFourier
+<p># Read image (supports grayscale or RGB)</p>
+rgb_image = cv2.imread('./images/face.png')
+<p># Create Fourier analysis object</p>
+fourier = CFAImageFourier(rgb_image)
+<p># Get raw spectrum</p>
+raw_mag, raw_phase = fourier.get_raw_spectrum()
+<p># Get display spectrum</p>
+raw_mag_disp, raw_phase_disp = fourier.get_display_spectrum(alpha=1.5)
+<p># Reconstruct image</p>
+reconstructed = fourier.get_reconstruct()
+<p># Display results</p>
+fourier.plot(raw_mag_disp, raw_phase_disp,
+             [], [], reconstructed, np.array([]))</div>
+
+<h3>Frequency Domain Filtering Example</h3>
+
+<div class="code-block"># Read grayscale image
+gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
+fourier = CFAImageFourier(gray_image)
+<p># Get raw spectrum</p>
+raw_mag, raw_phase = fourier.get_raw_spectrum()
+<p># Create frequency mask (preserve odd frequencies)</p>
+h, w = raw_mag[0].shape
+Y, X = np.ogrid[:h, :w]
+mask = ((X % 2 == 1) & (Y % 2 == 1)).astype(np.uint8)
+<p># Apply mask to spectrum</p>
+masked_mag = raw_mag <em> mask
+masked_phase = raw_phase </em> mask
+<p># Get masked display spectrum</p>
+customized_mag_disp, customized_phase_disp = fourier.get_display_spectrum(
+    alpha=1.5,
+    magnitude=masked_mag,
+    phase=masked_phase
+)
+<p># Reconstruct filtered image</p>
+masked_reconstructed = fourier.extract_by_freq_mask(mask)
+<p># Visualize comparison</p>
+fourier.plot(raw_mag_disp, raw_phase_disp,
+             customized_mag_disp, customized_phase_disp,
+             reconstructed, masked_reconstructed)</div>
+
+<h3>Low-Pass Filter</h3>
+
+<div class="code-block"># Create low-pass filter mask (preserve low-frequency components)
+h, w = raw_mag[0].shape
+center_y, center_x = h // 2, w // 2
+radius = 30  # Cutoff radius
+<p>Y, X = np.ogrid[:h, :w]</p>
+distance = np.sqrt((X - center_x)<strong>2 + (Y - center_y)</strong>2)
+low_pass_mask = (distance <= radius).astype(np.uint8)
+<p># Apply low-pass filter</p>
+low_pass_result = fourier.extract_by_freq_mask(low_pass_mask)</div>
+
+<h3>Installation</h3>
+
+<div class="code-block">pip install FreeAeon-Fractal</div>
+
+<h2>Class Description</h2>
+
+<h3>CFAImageFourier</h3>
+
+<strong>Description</strong>: Provides image Fourier analysis tools, supporting frequency domain analysis and reconstruction of grayscale and RGB images.
+
+<h4>Initialization Parameters</h4>
+<p><tr><td>Parameter</td><td>Type</td><td>Default</td><td>Description</td></tr></p>
+<table>
+<tr><td>-----------</td><td>------</td><td>---------</td><td>-------------</td></tr>
+<tr><td><code class="code-inline">image</code></td><td>numpy.ndarray</td><td>Required</td><td>Input image (grayscale or RGB)</td></tr>
+</table>
+
+<strong>Note</strong>: Fourier transform is automatically calculated during initialization, no manual call needed.
+
+<h4>Main Methods</h4>
+<p>##### 1. get_raw_spectrum()</p>
+
+<strong>Description</strong>: Get raw magnitude and phase spectrum (for reconstruction).
+
+<strong>Parameters</strong>: None
+
+<strong>Return Value</strong> (tuple):
+<div class="code-block">(magnitude_list, phase_list)</div>
+<ul>
+<li><code class="code-inline">magnitude_list</code>: Magnitude spectrum list (one per channel)</li>
+<li><code class="code-inline">phase_list</code>: Phase spectrum list (one per channel)</li>
+</ul>
+<p>For grayscale images, list length is 1; for RGB images, length is 3.</p>
+
+##### 2. get_display_spectrum(alpha=1.0, beta=0, magnitude=np.array([]), phase=np.array([]))
+
+<strong>Description</strong>: Generate enhanced visualization of spectrum images.
+
+<strong>Parameters</strong>:
+<ul>
+<li><code class="code-inline">alpha</code> (float): Contrast enhancement factor (default 1.0)</li>
+<li><code class="code-inline">beta</code> (float): Brightness offset (default 0)</li>
+<li><code class="code-inline">magnitude</code> (array): Custom magnitude spectrum (optional)</li>
+<li><code class="code-inline">phase</code> (array): Custom phase spectrum (optional)</li>
+</ul>
+
+<strong>Return Value</strong> (tuple):
+<div class="code-block">(display_mag_list, display_phase_list)</div>
+Returns lists of 8-bit images normalized to 0-255, suitable for visualization.
+
+<strong>Enhancement Notes</strong>:
+<ul>
+<li>Magnitude uses logarithmic transform: log(1 + mag)</li>
+<li>Phase normalized to [0, 1]</li>
+</ul>
+<p>##### 3. get_reconstruct(magnitude=np.array([]), phase=np.array([]))</p>
+
+<strong>Description</strong>: Reconstruct spatial domain image from frequency domain.
+
+<strong>Parameters</strong>:
+<ul>
+<li><code class="code-inline">magnitude</code> (array): Magnitude spectrum (optional, default uses original)</li>
+<li><code class="code-inline">phase</code> (array): Phase spectrum (optional, default uses original)</li>
+</ul>
+
+<strong>Return Value</strong>:
+<ul>
+<li>Grayscale image: (H, W) uint8 array</li>
+<li>RGB image: (H, W, 3) uint8 array</li>
+</ul>
+<p>##### 4. extract_by_freq_mask(mask_mag=np.array([]), mask_phase=np.array([]))</p>
+
+<strong>Description</strong>: Use binary mask to selectively preserve frequency components, then reconstruct image.
+
+<strong>Parameters</strong>:
+<ul>
+<li><code class="code-inline">mask_mag</code> (array): Magnitude mask (same shape as spectrum, 1=keep/0=remove)</li>
+<li><code class="code-inline">mask_phase</code> (array): Phase mask (optional)</li>
+</ul>
+
+<strong>Return Value</strong>: Reconstructed filtered image
+
+<strong>Applications</strong>:
+<ul>
+<li>High-pass/low-pass filtering</li>
+<li>Directional filtering</li>
+<li>Periodic noise removal</li>
+</ul>
+<p>##### 5. plot(raw_magnitude_disp, raw_phase_disp, customized_magnitude_disp, customized_phase_disp, full_reconstructed, mask_reconstructed)</p>
+
+<strong>Description</strong>: Visualize analysis results, displaying up to 7 subplots.
+
+<strong>Subplot Layout</strong>:
+1. Original image
+2. Raw magnitude spectrum
+3. Raw phase spectrum
+4. Customized magnitude spectrum
+5. Customized phase spectrum
+6. Full reconstruction
+7. Masked reconstruction
+
+<h2>Theoretical Background</h2>
+
+<h3>2D Fourier Transform</h3>
+<p>For image I(x, y), its 2D Fourier transform is:</p>
+
+<div class="code-block">F(u, v) = ∫∫ I(x, y) exp[-j2π(ux + vy)] dx dy</div>
+<p>Discrete form:</p>
+
+<div class="code-block">F(u, v) = Σₓ Σᵧ I(x, y) exp[-j2π(ux/M + vy/N)]</div>
+
+<h3>Spectrum Components</h3>
+
+<strong>Magnitude Spectrum</strong>:
+<div class="code-block"><tr><td>F(u, v)</td></tr> = √[R²(u, v) + I²(u, v)]</div>
+
+<strong>Phase Spectrum</strong>:
+<div class="code-block">φ(u, v) = arctan[I(u, v) / R(u, v)]</div>
+
+<h3>Frequency Shift</h3>
+<p>Uses <code class="code-inline">np.fft.fftshift</code> to move zero-frequency component to center for easier visualization.</p>
+
+<h3>Inverse Transform</h3>
+
+<div class="code-block">I(x, y) = ∫∫ F(u, v) exp[j2π(ux + vy)] du dv</div>
+
+<h2>Important Notes</h2>
+<p>1. <strong>Input Image</strong>:</p>
+   - Supports grayscale and RGB images
+   - Automatically performs Fourier transform
+<p>2. <strong>Spectrum Visualization</strong>:</p>
+   - Uses logarithmic transform for better visualization
+   - <code class="code-inline">alpha</code> parameter controls contrast
+<p>3. <strong>Mask Design</strong>:</p>
+   - Mask size must match spectrum
+   - Binary mask: 1=keep, 0=remove
+   - Symmetric masks maintain real-valued images
+<p>4. <strong>RGB Processing</strong>:</p>
+   - Each channel processed independently
+   - Finally merged for reconstruction
+<p>5. <strong>Performance Considerations</strong>:</p>
+   - FFT complexity: O(N log N)
+   - Large images may be slow
+   - Use grayscale for speedup
+
+<h2>References</h2>
+
+<ul>
+<li>Gonzalez, R. C., & Woods, R. E. (2018). Digital Image Processing (4th ed.).</li>
+<li>Bracewell, R. N. (2000). The Fourier Transform and Its Applications (3rd ed.).</li>
+</ul>
+
+        </main>
+
+        <footer>
+            <p>© 2025 FreeAeon-Fractal. All rights reserved</p>
+            <p><a href="https://github.com/jim-xie-cn/FreeAeon-Fractal" target="_blank" style="color: #667eea;">GitHub</a></p>
+        </footer>
+    </div>
+</body>
+</html>
