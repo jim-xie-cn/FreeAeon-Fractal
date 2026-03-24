@@ -88,8 +88,8 @@ See the following for complete usage, parameter details, and advanced examples:
 ### Guide (HTML) - 🌐 [Browser View]
 > 💡 Recommended for direct reading in browser.
 
-🔗 [English Edition](https://jim-xie-cn.github.io)
-🔗 [Chinese Edition](https://jim-xie-cn.github.io)
+🔗 [English Edition](https://jim-xie-cn.github.io/FreeAeon-Fractal/docs/html/en/index.html)
+🔗 [Chinese Edition](https://jim-xie-cn.github.io/FreeAeon-Fractal/docs/html/zh/index.html)
 
 ### Guide (Markdown) - 🐙 [GitHub View]
 > 💡 Best for viewing directly on GitHub.
