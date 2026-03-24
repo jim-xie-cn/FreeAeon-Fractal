@@ -51,6 +51,13 @@ pip install FreeAeon-Fractal
 
 ## 🖼 Usage
 
+### Get sample code
+
+```bash
+git clone git@github.com:jim-xie-cn/FreeAeon-Fractal.git
+cd FreeAeon-Fractal
+```
+
 ### Calculate the **Multifractal Spectrum** of an image
 
 ```bash
@@ -123,8 +130,8 @@ See the following for complete usage, parameter details, and advanced examples:
 ### Guide (Markdown) - 🐙 [GitHub View]
 > 💡 Best for viewing directly on GitHub.
 
-🔗 [English Edition](docs/markdown/en/index.md)
-🔗 [Chinese Edition](docs/markdown/zh/index.md)
+🔗 [English Edition](https://jim-xie-cn.github.io/FreeAeon-Fractal/docs/markdown/en/index.md)
+🔗 [Chinese Edition](https://jim-xie-cn.github.io/FreeAeon-Fractal/docs/markdown/zh/index.md)
 
 ### Guide (HTML) - 🌐 [Browser View]
 > 💡 Recommended for direct reading in browser.
