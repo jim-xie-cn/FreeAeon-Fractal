@@ -130,8 +130,8 @@ See the following for complete usage, parameter details, and advanced examples:
 ### Guide (Markdown) - 🐙 [GitHub View]
 > 💡 Best for viewing directly on GitHub.
 
-🔗 [English Edition](https://github.com/jim-xie-cn/FreeAeon-ML/blob/main/docs/markdown/en/index.md)
-🔗 [Chinese Edition](https://github.com/jim-xie-cn/FreeAeon-ML/blob/main/docs/markdown/zh/index.md)
+🔗 [English Edition](https://github.com/jim-xie-cn/FreeAeon-Fractal/blob/main/docs/markdown/en/index.md)
+🔗 [Chinese Edition](https://github.com/jim-xie-cn/FreeAeon-Fractal/blob/main/docs/markdown/zh/index.md)
 
 ### Guide (HTML) - 🌐 [Browser View]
 > 💡 Recommended for direct reading in browser.
