@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>可视化工具 - CFAVisual</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.8;
+            color: #333;
+            background: #f5f7fa;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+        }
+        header h1 { font-size: 2em; margin-bottom: 10px; }
+        header p { opacity: 0.9; }
+        nav {
+            background: #f8f9fa;
+            padding: 15px 30px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        nav a {
+            color: #667eea;
+            text-decoration: none;
+            margin-right: 20px;
+            font-weight: 500;
+        }
+        nav a:hover { color: #764ba2; }
+        main { padding: 40px; }
+        h2 {
+            color: #667eea;
+            font-size: 1.8em;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        h3 {
+            color: #764ba2;
+            font-size: 1.4em;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        h4 {
+            color: #555;
+            font-size: 1.1em;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        .code-inline {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #c7254e;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+        th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+        tr:hover { background: #f8f9fa; }
+        .note {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            background: #667eea;
+            color: white;
+            border-radius: 12px;
+            font-size: 0.85em;
+            margin-right: 5px;
+        }
+        ul, ol { margin-left: 30px; margin-bottom: 15px; }
+        li { margin-bottom: 8px; }
+        a { color: #667eea; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .section { margin-bottom: 30px; }
+        footer {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>可视化工具 - CFAVisual</h1>
+            <p></p>
+        </header>
+
+        <nav>
+            <a href="index.html">← 返回首页</a>
+            
+        </nav>
+
+        <main>
+
+<h2>应用场景</h2>
+
+<code class="code-inline">CFAVisual</code> 类提供分形点集和图像的可视化工具，用于展示分形数据的空间分布。主要应用场景包括：
+
+<ul>
+<li><strong>分形点集展示</strong>：可视化1D、2D、3D分形点集</li>
+<li><strong>分形图案验证</strong>：验证生成的分形图案是否正确</li>
+<li><strong>教学演示</strong>：展示分形几何的基本概念</li>
+<li><strong>数据可视化</strong>：展示点云和图像数据</li>
+</ul>
+
+<h2>调用示例</h2>
+
+<h3>1D点集可视化</h3>
+
+<div class="code-block">import numpy as np
+from FreeAeonFractal.CFAVisual import CFAVisual
+from FreeAeonFractal.FASample import CFASample
+import matplotlib.pyplot as plt
+<p># 生成康托集</p>
+points_1d = CFASample.get_Cantor_Set(iterations=1000)
+<p># 可视化1D点集</p>
+plt.figure(figsize=(10, 2))
+CFAVisual.plot_1d_points(points_1d)
+plt.title('Cantor Set (1D)')
+plt.show()</div>
+
+<h3>2D点集可视化</h3>
+
+<div class="code-block"># 生成谢尔宾斯基三角形
+points_2d = CFASample.get_Sierpinski_Triangle(iterations=10000)
+<p># 可视化2D点集</p>
+plt.figure(figsize=(8, 8))
+CFAVisual.plot_2d_points(points_2d)
+plt.title('Sierpinski Triangle (2D)')
+plt.axis('equal')
+plt.show()</div>
+
+<h3>3D点集可视化</h3>
+
+<div class="code-block">from mpl_toolkits.mplot3d import Axes3D
+<p># 生成门格海绵</p>
+points_3d = CFASample.get_Menger_Sponge(iterations=50000)
+<p># 可视化3D点集</p>
+fig = plt.figure(figsize=(10, 10))
+ax = fig.add_subplot(111, projection='3d')
+CFAVisual.plot_3d_points(points_3d, ax=ax)
+ax.set_title('Menger Sponge (3D)')
+plt.show()</div>
+
+<h3>图像可视化</h3>
+
+<div class="code-block">import cv2
+<p># 读取图像</p>
+image = cv2.imread('./images/fractal.png', cv2.IMREAD_GRAYSCALE)
+<p># 可视化图像</p>
+plt.figure(figsize=(8, 8))
+CFAVisual.plot_2d_image(image, cmap='gray')
+plt.title('Fractal Image')
+plt.show()</div>
+
+<h3>综合示例</h3>
+
+<div class="code-block"># 综合展示多个分形图案
+fig = plt.figure(figsize=(12, 8))
+<p># 1D: 康托集</p>
+ax1 = fig.add_subplot(221)
+points_1d = CFASample.get_Cantor_Set(iterations=1000)
+CFAVisual.plot_1d_points(points_1d, ax1)
+ax1.set_title('Cantor Set')
+<p># 2D: 谢尔宾斯基三角形</p>
+ax2 = fig.add_subplot(222)
+points_2d = CFASample.get_Sierpinski_Triangle(iterations=10000)
+CFAVisual.plot_2d_points(points_2d, ax2)
+ax2.set_title('Sierpinski Triangle')
+<p># 2D: 巴恩斯利蕨</p>
+ax3 = fig.add_subplot(223)
+fern = CFASample.get_Barnsley_Fern(iterations=20000)
+CFAVisual.plot_2d_points(fern, ax3)
+ax3.set_title('Barnsley Fern')
+<p># 3D: 门格海绵</p>
+ax4 = fig.add_subplot(224, projection='3d')
+sponge = CFASample.get_Menger_Sponge(iterations=50000)
+CFAVisual.plot_3d_points(sponge, ax4)
+ax4.set_title('Menger Sponge')
+<p>plt.tight_layout()</p>
+plt.show()</div>
+
+<h3>安装</h3>
+
+<div class="code-block">pip install FreeAeon-Fractal</div>
+
+<h2>类说明</h2>
+
+<h3>CFAVisual</h3>
+
+<strong>描述</strong>：提供分形点集和图像可视化的静态方法工具类。
+<p>所有方法都是静态方法，使用 <code class="code-inline">CFAVisual.方法名()</code> 调用。</p>
+
+<h4>静态方法</h4>
+<p>##### 1. plot_1d_points(points, ax=plt)</p>
+
+<strong>描述</strong>：显示1D点集（如康托集）。
+
+<strong>参数</strong>：
+<ul>
+<li><code class="code-inline">points</code> (numpy.ndarray): 1D点数组，形状为 (N,)</li>
+<li><code class="code-inline">ax</code> (matplotlib axis): Matplotlib轴对象，默认为plt</li>
+</ul>
+
+<strong>显示效果</strong>：
+<ul>
+<li>点绘制在y=0的水平线上</li>
+<li>y轴隐藏</li>
+<li>点的大小固定（s=1）</li>
+</ul>
+
+<strong>示例</strong>：
+<div class="code-block">points = np.array([0.1, 0.3, 0.7, 0.9])
+CFAVisual.plot_1d_points(points)
+plt.show()</div>
+<p>##### 2. plot_2d_points(points, ax=plt)</p>
+
+<strong>描述</strong>：显示2D点集（如谢尔宾斯基三角形、巴恩斯利蕨）。
+
+<strong>参数</strong>：
+<ul>
+<li><code class="code-inline">points</code> (numpy.ndarray): 2D点数组，形状为 (N, 2)</li>
+</ul>
+  - points[:, 0]: x坐标
+  - points[:, 1]: y坐标
+<ul>
+<li><code class="code-inline">ax</code> (matplotlib axis): Matplotlib轴对象，默认为plt</li>
+</ul>
+
+<strong>显示效果</strong>：
+<ul>
+<li>红色点标记</li>
+<li>点大小：s=1</li>
+<li>散点图显示</li>
+</ul>
+
+<strong>示例</strong>：
+<div class="code-block">points = np.random.rand(1000, 2)
+CFAVisual.plot_2d_points(points)
+plt.axis('equal')
+plt.show()</div>
+<p>##### 3. plot_3d_points(points, ax=None)</p>
+
+<strong>描述</strong>：显示3D点集（如门格海绵）。
+
+<strong>参数</strong>：
+<ul>
+<li><code class="code-inline">points</code> (numpy.ndarray): 3D点数组，形状为 (N, 3)</li>
+</ul>
+  - points[:, 0]: x坐标
+  - points[:, 1]: y坐标
+  - points[:, 2]: z坐标
+<ul>
+<li><code class="code-inline">ax</code> (matplotlib 3D axis): 3D轴对象。如果为None，自动创建</li>
+</ul>
+
+<strong>显示效果</strong>：
+<ul>
+<li>红色点标记</li>
+<li>点大小：s=1</li>
+<li>3D散点图</li>
+</ul>
+
+<strong>注意</strong>：需要导入 <code class="code-inline">from mpl_toolkits.mplot3d import Axes3D</code>
+
+<strong>示例</strong>：
+<div class="code-block">from mpl_toolkits.mplot3d import Axes3D
+<p>points = np.random.rand(1000, 3)</p>
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+CFAVisual.plot_3d_points(points, ax)
+plt.show()</div>
+<p>##### 4. plot_2d_image(image, cmap='gray', ax=plt)</p>
+
+<strong>描述</strong>：显示2D图像。
+
+<strong>参数</strong>：
+<ul>
+<li><code class="code-inline">image</code> (numpy.ndarray): 2D图像数组</li>
+<li><code class="code-inline">cmap</code> (str): 色图，默认为'gray'</li>
+<li><code class="code-inline">ax</code> (matplotlib axis): Matplotlib轴对象，默认为plt</li>
+</ul>
+
+<strong>示例</strong>：
+<div class="code-block">import cv2
+<p>image = cv2.imread('image.png', cv2.IMREAD_GRAYSCALE)</p>
+CFAVisual.plot_2d_image(image, cmap='viridis')
+plt.show()</div>
+<p>##### 5. plot_3d_image(img, ax=plt)</p>
+
+<strong>描述</strong>：显示3D图像（点云形式）。
+
+<strong>参数</strong>：
+<ul>
+<li><code class="code-inline">img</code> (numpy.ndarray): 3D或4D点数组</li>
+</ul>
+  - 形状为 (N, 3): 只有坐标
+  - 形状为 (N, 4): 坐标+值
+<ul>
+<li><code class="code-inline">ax</code> (matplotlib axis): Matplotlib轴对象</li>
+</ul>
+
+<strong>显示效果</strong>：
+<ul>
+<li>使用viridis色图</li>
+<li>点大小根据值缩放</li>
+<li>3D散点图</li>
+</ul>
+
+<strong>示例</strong>：
+<div class="code-block"># 带值的3D点云
+points = np.random.rand(1000, 4)
+CFAVisual.plot_3d_image(points)
+plt.show()</div>
+
+<h2>与FASample配合使用</h2>
+
+<code class="code-inline">CFAVisual</code> 通常与 <code class="code-inline">CFASample</code> 类配合使用，用于可视化生成的分形图案。
+
+<div class="code-block">from FreeAeonFractal.FASample import CFASample
+from FreeAeonFractal.CFAVisual import CFAVisual
+<p># 生成并可视化康托集</p>
+cantor = CFASample.get_Cantor_Set(iterations=2000)
+CFAVisual.plot_1d_points(cantor)
+plt.title('Cantor Set (D ≈ 0.63)')
+plt.show()
+<p># 生成并可视化谢尔宾斯基三角形</p>
+triangle = CFASample.get_Sierpinski_Triangle(iterations=10000)
+CFAVisual.plot_2d_points(triangle)
+plt.title('Sierpinski Triangle (D ≈ 1.58)')
+plt.axis('equal')
+plt.show()
+<p># 生成并可视化巴恩斯利蕨</p>
+fern = CFASample.get_Barnsley_Fern(iterations=50000)
+CFAVisual.plot_2d_points(fern)
+plt.title('Barnsley Fern (D ≈ 1.67)')
+plt.axis('equal')
+plt.show()</div>
+
+<h2>重要提示</h2>
+<p>1. <strong>坐标轴</strong>：</p>
+   - 1D点集：y轴自动隐藏
+   - 2D点集：建议使用 <code class="code-inline">plt.axis('equal')</code> 保持比例
+   - 3D点集：需要创建3D轴
+<p>2. <strong>点的大小</strong>：</p>
+   - 默认 s=1，适合大量点
+   - 可以通过修改源码调整大小
+<p>3. <strong>颜色</strong>：</p>
+   - 1D/2D/3D点集默认红色
+   - 图像可通过cmap参数调整
+<p>4. <strong>性能</strong>：</p>
+   - 大量点（>100万）可能较慢
+   - 建议适当减少点数
+
+<h2>依赖</h2>
+
+<div class="code-block">import matplotlib.pyplot as plt
+import numpy as np
+from mpl_toolkits.mplot3d import Axes3D  # 3D可视化需要</div>
+
+<h2>参考文献</h2>
+
+<ul>
+<li>Mandelbrot, B. B. (1982). The Fractal Geometry of Nature.</li>
+</ul>
+
+        </main>
+
+        <footer>
+            <p>© 2025 FreeAeon-Fractal. 保留所有权利</p>
+            <p><a href="https://github.com/jim-xie-cn/FreeAeon-Fractal" target="_blank" style="color: #667eea;">GitHub</a></p>
+        </footer>
+    </div>
+</body>
+</html>

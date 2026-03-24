@@ -1,170 +1,486 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CFAImageFourier - 傅里叶频域分析</title>
+    <title>傅里叶分析 - CFAImageFourier</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.6;
+            line-height: 1.8;
             color: #333;
-            max-width: 1200px;
-            margin: 0 auto;
+            background: #f5f7fa;
             padding: 20px;
-            background: #f5f5f5;
         }
         .container {
+            max-width: 1000px;
+            margin: 0 auto;
             background: white;
-            padding: 40px;
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
         }
-        h1 {
-            color: #2c3e50;
-            border-bottom: 3px solid #3498db;
-            padding-bottom: 10px;
-            margin-bottom: 30px;
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
         }
+        header h1 { font-size: 2em; margin-bottom: 10px; }
+        header p { opacity: 0.9; }
+        nav {
+            background: #f8f9fa;
+            padding: 15px 30px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        nav a {
+            color: #667eea;
+            text-decoration: none;
+            margin-right: 20px;
+            font-weight: 500;
+        }
+        nav a:hover { color: #764ba2; }
+        main { padding: 40px; }
         h2 {
-            color: #34495e;
-            margin-top: 30px;
-            margin-bottom: 15px;
-            border-left: 4px solid #3498db;
-            padding-left: 15px;
+            color: #667eea;
+            font-size: 1.8em;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
         }
         h3 {
-            color: #546e7a;
+            color: #764ba2;
+            font-size: 1.4em;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        h4 {
+            color: #555;
+            font-size: 1.1em;
             margin-top: 20px;
             margin-bottom: 10px;
         }
-        h4 {
-            color: #607d8b;
-            margin-top: 15px;
-            margin-bottom: 10px;
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
         }
-        p {
-            margin-bottom: 15px;
-            text-align: justify;
-        }
-        ul, ol {
-            margin-left: 30px;
-            margin-bottom: 15px;
-        }
-        li {
-            margin-bottom: 8px;
-        }
-        code {
-            background: #f4f4f4;
+        .code-inline {
+            background: #f0f0f0;
             padding: 2px 6px;
             border-radius: 3px;
             font-family: 'Courier New', monospace;
             font-size: 0.9em;
-        }
-        pre {
-            background: #2d2d2d;
-            color: #f8f8f2;
-            padding: 15px;
-            border-radius: 5px;
-            overflow-x: auto;
-            margin-bottom: 20px;
-        }
-        pre code {
-            background: none;
-            color: inherit;
-            padding: 0;
+            color: #c7254e;
         }
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
-        table th, table td {
-            border: 1px solid #ddd;
-            padding: 12px;
+        th, td {
+            padding: 12px 15px;
             text-align: left;
+            border-bottom: 1px solid #e9ecef;
         }
-        table th {
-            background: #3498db;
+        th {
+            background: #667eea;
             color: white;
-            font-weight: bold;
+            font-weight: 600;
         }
-        table tr:nth-child(even) {
-            background: #f9f9f9;
-        }
-        table tr:hover {
-            background: #f5f5f5;
-        }
-        .nav {
-            background: #34495e;
-            color: white;
+        tr:hover { background: #f8f9fa; }
+        .note {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
             padding: 15px;
-            margin: -40px -40px 30px -40px;
-            border-radius: 8px 8px 0 0;
-        }
-        .nav a {
-            color: #3498db;
-            text-decoration: none;
-            font-weight: bold;
-        }
-        .nav a:hover {
-            color: #5dade2;
-            text-decoration: underline;
-        }
-        .footer {
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid #ddd;
-            color: #666;
-            font-size: 0.9em;
+            margin: 20px 0;
+            border-radius: 4px;
         }
         .badge {
             display: inline-block;
-            background: #3498db;
+            padding: 4px 10px;
+            background: #667eea;
             color: white;
-            padding: 3px 8px;
-            border-radius: 3px;
+            border-radius: 12px;
             font-size: 0.85em;
             margin-right: 5px;
         }
-        blockquote {
-            border-left: 4px solid #3498db;
-            margin: 20px 0;
-            padding: 10px 20px;
-            background: #ecf0f1;
-            font-style: italic;
-        }
-        .note {
-            background: #fff3cd;
-            border: 1px solid #ffc107;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 20px 0;
-        }
-        .warning {
-            background: #f8d7da;
-            border: 1px solid #f5c6cb;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 20px 0;
+        ul, ol { margin-left: 30px; margin-bottom: 15px; }
+        li { margin-bottom: 8px; }
+        a { color: #667eea; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .section { margin-bottom: 30px; }
+        footer {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 0.9em;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="nav">
-            <a href="index.html">← 返回索引</a>
-        </div>
-        <h1>CFAImageFourier - 傅里叶频域分析</h1>
-<p>请参考demo.py和源代码获取详细使用说明。</p>
-<strong>类名</strong>: <code>CFAImageFourier</code>
-<strong>功能类别</strong>: 傅里叶分析
-        <div class="footer">
-            <p><strong>FreeAeon-Fractal</strong> - Python Toolkit for Fractal and Multifractal Analysis</p>
-            <p>GitHub: <a href="https://github.com/jim-xie-cn/FreeAeon-Fractal" target="_blank">https://github.com/jim-xie-cn/FreeAeon-Fractal</a></p>
-            <p>© 2025 Jim Xie | MIT License</p>
-        </div>
+        <header>
+            <h1>傅里叶分析 - CFAImageFourier</h1>
+            <p></p>
+        </header>
+
+        <nav>
+            <a href="index.html">← 返回首页</a>
+            
+        </nav>
+
+        <main>
+
+<h2>应用场景</h2>
+
+<code class="code-inline">CFAImageFourier</code> 类提供图像的傅里叶频谱分析工具，用于分析图像的频率成分和进行频域处理。主要应用场景包括：
+
+<ul>
+<li><strong>频域分析</strong>：分析图像的频率分布特征</li>
+<li><strong>图像滤波</strong>：通过频域掩码进行高通、低通、带通滤波</li>
+<li><strong>纹理分析</strong>：提取图像的周期性和方向性特征</li>
+<li><strong>图像增强</strong>：频域图像增强和复原</li>
+<li><strong>模式识别</strong>：基于频谱特征的图像分类</li>
+</ul>
+
+<h2>调用示例</h2>
+
+<h3>基础用法</h3>
+
+<div class="code-block">import cv2
+import numpy as np
+from FreeAeonFractal.FAImageFourier import CFAImageFourier
+<p># 读取图像（支持灰度或RGB）</p>
+rgb_image = cv2.imread('./images/face.png')
+<p># 创建傅里叶分析对象</p>
+fourier = CFAImageFourier(rgb_image)
+<p># 获取原始频谱</p>
+raw_mag, raw_phase = fourier.get_raw_spectrum()
+<p># 获取可视化频谱</p>
+raw_mag_disp, raw_phase_disp = fourier.get_display_spectrum(alpha=1.5)
+<p># 重构图像</p>
+reconstructed = fourier.get_reconstruct()
+<p># 显示结果</p>
+fourier.plot(raw_mag_disp, raw_phase_disp,
+             [], [], reconstructed, np.array([]))</div>
+
+<h3>频域滤波示例</h3>
+
+<div class="code-block"># 读取灰度图像
+gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
+fourier = CFAImageFourier(gray_image)
+<p># 获取原始频谱</p>
+raw_mag, raw_phase = fourier.get_raw_spectrum()
+<p># 创建频率掩码（保留奇数频率）</p>
+h, w = raw_mag[0].shape
+Y, X = np.ogrid[:h, :w]
+mask = ((X % 2 == 1) & (Y % 2 == 1)).astype(np.uint8)
+<p># 应用掩码到频谱</p>
+masked_mag = raw_mag <em> mask
+masked_phase = raw_phase </em> mask
+<p># 获取掩码后的可视化频谱</p>
+customized_mag_disp, customized_phase_disp = fourier.get_display_spectrum(
+    alpha=1.5,
+    magnitude=masked_mag,
+    phase=masked_phase
+)
+<p># 重构滤波后的图像</p>
+masked_reconstructed = fourier.extract_by_freq_mask(mask)
+<p># 可视化对比</p>
+fourier.plot(raw_mag_disp, raw_phase_disp,
+             customized_mag_disp, customized_phase_disp,
+             reconstructed, masked_reconstructed)</div>
+
+<h3>低通滤波器</h3>
+
+<div class="code-block"># 创建低通滤波器掩码（保留低频成分）
+h, w = raw_mag[0].shape
+center_y, center_x = h // 2, w // 2
+radius = 30  # 截止半径
+<p>Y, X = np.ogrid[:h, :w]</p>
+distance = np.sqrt((X - center_x)<strong>2 + (Y - center_y)</strong>2)
+low_pass_mask = (distance <= radius).astype(np.uint8)
+<p># 应用低通滤波</p>
+low_pass_result = fourier.extract_by_freq_mask(low_pass_mask)</div>
+
+<h3>高通滤波器</h3>
+
+<div class="code-block"># 创建高通滤波器掩码（去除低频成分）
+high_pass_mask = (distance > radius).astype(np.uint8)
+<p># 应用高通滤波</p>
+high_pass_result = fourier.extract_by_freq_mask(high_pass_mask)</div>
+
+<h3>安装</h3>
+
+<div class="code-block">pip install FreeAeon-Fractal</div>
+
+<h2>类说明</h2>
+
+<h3>CFAImageFourier</h3>
+
+<strong>描述</strong>：提供图像傅里叶分析工具，支持灰度和RGB图像的频域分析和重构。
+
+<h4>初始化参数</h4>
+<p><tr><td>参数</td><td>类型</td><td>默认值</td><td>说明</td></tr></p>
+<table>
+<tr><td>------</td><td>------</td><td>--------</td><td>------</td></tr>
+<tr><td><code class="code-inline">image</code></td><td>numpy.ndarray</td><td>必需</td><td>输入图像（灰度或RGB）</td></tr>
+</table>
+
+<strong>注意</strong>：初始化时自动计算傅里叶变换，无需手动调用。
+
+<h4>主要方法</h4>
+<p>##### 1. get_raw_spectrum()</p>
+
+<strong>描述</strong>：获取原始的幅度和相位频谱（用于重构）。
+
+<strong>参数</strong>：无
+
+<strong>返回值</strong> (tuple):
+<div class="code-block">(magnitude_list, phase_list)</div>
+<ul>
+<li><code class="code-inline">magnitude_list</code>: 幅度频谱列表（每个通道一个）</li>
+<li><code class="code-inline">phase_list</code>: 相位频谱列表（每个通道一个）</li>
+</ul>
+<p>对于灰度图像，列表长度为1；RGB图像长度为3。</p>
+
+##### 2. get_display_spectrum(alpha=1.0, beta=0, magnitude=np.array([]), phase=np.array([]))
+
+<strong>描述</strong>：生成增强的可视化频谱图像。
+
+<strong>参数</strong>：
+<ul>
+<li><code class="code-inline">alpha</code> (float): 对比度增强因子（默认1.0）</li>
+<li><code class="code-inline">beta</code> (float): 亮度偏移（默认0）</li>
+<li><code class="code-inline">magnitude</code> (array): 自定义幅度频谱（可选）</li>
+<li><code class="code-inline">phase</code> (array): 自定义相位频谱（可选）</li>
+</ul>
+
+<strong>返回值</strong> (tuple):
+<div class="code-block">(display_mag_list, display_phase_list)</div>
+返回归一化到0-255的8位图像列表，适合可视化。
+
+<strong>增强说明</strong>：
+<ul>
+<li>幅度采用对数变换：log(1 + mag)</li>
+<li>相位归一化到 [0, 1]</li>
+</ul>
+<p>##### 3. get_reconstruct(magnitude=np.array([]), phase=np.array([]))</p>
+
+<strong>描述</strong>：从频域重构空间域图像。
+
+<strong>参数</strong>：
+<ul>
+<li><code class="code-inline">magnitude</code> (array): 幅度频谱（可选，默认使用原始）</li>
+<li><code class="code-inline">phase</code> (array): 相位频谱（可选，默认使用原始）</li>
+</ul>
+
+<strong>返回值</strong>：
+<ul>
+<li>灰度图像：(H, W) uint8数组</li>
+<li>RGB图像：(H, W, 3) uint8数组</li>
+</ul>
+<p>##### 4. extract_by_freq_mask(mask_mag=np.array([]), mask_phase=np.array([]))</p>
+
+<strong>描述</strong>：使用二值掩码选择性保留频率成分，然后重构图像。
+
+<strong>参数</strong>：
+<ul>
+<li><code class="code-inline">mask_mag</code> (array): 幅度掩码（与频谱同形状，1保留/0去除）</li>
+<li><code class="code-inline">mask_phase</code> (array): 相位掩码（可选）</li>
+</ul>
+
+<strong>返回值</strong>：重构的滤波后图像
+
+<strong>应用</strong>：
+<ul>
+<li>高通/低通滤波</li>
+<li>方向性滤波</li>
+<li>周期性噪声去除</li>
+</ul>
+<p>##### 5. plot(raw_magnitude_disp, raw_phase_disp, customized_magnitude_disp, customized_phase_disp, full_reconstructed, mask_reconstructed)</p>
+
+<strong>描述</strong>：可视化分析结果，显示最多7个子图。
+
+<strong>参数</strong>：
+<ul>
+<li><code class="code-inline">raw_magnitude_disp</code> (list): 原始幅度可视化</li>
+<li><code class="code-inline">raw_phase_disp</code> (list): 原始相位可视化</li>
+<li><code class="code-inline">customized_magnitude_disp</code> (list): 自定义幅度可视化</li>
+<li><code class="code-inline">customized_phase_disp</code> (list): 自定义相位可视化</li>
+<li><code class="code-inline">full_reconstructed</code> (array): 完整重构图像</li>
+<li><code class="code-inline">mask_reconstructed</code> (array): 掩码重构图像</li>
+</ul>
+
+<strong>子图布局</strong>：
+1. 原始图像
+2. 原始幅度谱
+3. 原始相位谱
+4. 自定义幅度谱
+5. 自定义相位谱
+6. 完整重构
+7. 掩码重构
+
+<h2>静态方法</h2>
+
+<h3>get_image_components(image)</h3>
+
+<strong>描述</strong>：计算单通道图像的幅度和相位。
+
+<strong>参数</strong>：
+<ul>
+<li><code class="code-inline">image</code> (ndarray): 单通道图像</li>
+</ul>
+
+<strong>返回值</strong> (tuple):
+<div class="code-block">(magnitude, phase)</div>
+
+<h3>normalize_and_enhance(array, alpha=1.0, beta=0)</h3>
+
+<strong>描述</strong>：归一化数组到0-255并应用线性增强。
+
+<strong>参数</strong>：
+<ul>
+<li><code class="code-inline">array</code> (ndarray): 输入数据</li>
+<li><code class="code-inline">alpha</code> (float): 对比度缩放因子</li>
+<li><code class="code-inline">beta</code> (float): 亮度偏移</li>
+</ul>
+
+<strong>返回值</strong>：uint8数组
+
+<h2>理论背景</h2>
+
+<h3>2D傅里叶变换</h3>
+<p>对于图像 I(x, y)，其2D傅里叶变换为：</p>
+
+<div class="code-block">F(u, v) = ∫∫ I(x, y) exp[-j2π(ux + vy)] dx dy</div>
+<p>离散形式：</p>
+
+<div class="code-block">F(u, v) = Σₓ Σᵧ I(x, y) exp[-j2π(ux/M + vy/N)]</div>
+
+<h3>频谱组成</h3>
+
+<strong>幅度谱</strong>：
+<div class="code-block"><tr><td>F(u, v)</td></tr> = √[R²(u, v) + I²(u, v)]</div>
+
+<strong>相位谱</strong>：
+<div class="code-block">φ(u, v) = arctan[I(u, v) / R(u, v)]</div>
+
+<h3>频移</h3>
+<p>使用 <code class="code-inline">np.fft.fftshift</code> 将零频率分量移到中心，便于可视化。</p>
+
+<h3>逆变换</h3>
+
+<div class="code-block">I(x, y) = ∫∫ F(u, v) exp[j2π(ux + vy)] du dv</div>
+
+<h2>应用案例</h2>
+
+<h3>案例1：周期性噪声去除</h3>
+
+<div class="code-block"># 读取带周期性噪声的图像
+noisy_image = cv2.imread('noisy_image.png', cv2.IMREAD_GRAYSCALE)
+fourier = CFAImageFourier(noisy_image)
+<p># 获取频谱</p>
+mag, phase = fourier.get_raw_spectrum()
+<p># 可视化找到噪声峰值位置</p>
+mag_disp, _ = fourier.get_display_spectrum(alpha=2.0)
+# (手动识别噪声峰值的坐标)
+<p># 创建带阻滤波器，去除特定频率</p>
+h, w = mag[0].shape
+mask = np.ones((h, w), dtype=np.uint8)
+# 假设噪声在 (y1, x1) 和 (y2, x2)
+mask[y1-5:y1+5, x1-5:x1+5] = 0
+mask[y2-5:y2+5, x2-5:x2+5] = 0
+<p># 重构去噪图像</p>
+denoised = fourier.extract_by_freq_mask(mask)</div>
+
+<h3>案例2：边缘检测（高通滤波）</h3>
+
+<div class="code-block"># 高通滤波突出边缘
+gray_image = cv2.imread('image.png', cv2.IMREAD_GRAYSCALE)
+fourier = CFAImageFourier(gray_image)
+<p># 创建高通滤波器</p>
+h, w = gray_image.shape
+Y, X = np.meshgrid(np.arange(h), np.arange(w), indexing='ij')
+center = (h // 2, w // 2)
+dist = np.sqrt((Y - center[0])<strong>2 + (X - center[1])</strong>2)
+<p># 保留高频（远离中心）</p>
+cutoff = 30
+high_pass = (dist > cutoff).astype(np.uint8)
+<p># 提取边缘</p>
+edges = fourier.extract_by_freq_mask(high_pass)</div>
+
+<h3>案例3：方向性滤波</h3>
+
+<div class="code-block"># 提取特定方向的特征
+gray_image = cv2.imread('image.png', cv2.IMREAD_GRAYSCALE)
+fourier = CFAImageFourier(gray_image)
+<p>h, w = gray_image.shape</p>
+Y, X = np.meshgrid(np.arange(h), np.arange(w), indexing='ij')
+center = (h // 2, w // 2)
+<p># 计算角度</p>
+angle = np.arctan2(Y - center[0], X - center[1])
+<p># 保留水平方向（0° 和 180°）</p>
+angle_deg = np.degrees(angle)
+horizontal_mask = ((np.abs(angle_deg) < 15) | (np.abs(angle_deg - 180) < 15)).astype(np.uint8)
+<p># 提取水平纹理</p>
+horizontal_texture = fourier.extract_by_freq_mask(horizontal_mask)</div>
+
+<h2>重要提示</h2>
+<p>1. <strong>输入图像</strong>：</p>
+   - 支持灰度和RGB图像
+   - 自动进行傅里叶变换
+<p>2. <strong>频谱可视化</strong>：</p>
+   - 使用对数变换增强可视化效果
+   - <code class="code-inline">alpha</code> 参数控制对比度
+<p>3. <strong>掩码设计</strong>：</p>
+   - 掩码大小必须与频谱一致
+   - 二值掩码：1保留，0去除
+   - 对称掩码保持实值图像
+<p>4. <strong>RGB处理</strong>：</p>
+   - 每个通道独立处理
+   - 最终合并重构
+<p>5. <strong>性能考虑</strong>：</p>
+   - FFT复杂度：O(N log N)
+   - 大图像可能较慢
+   - 使用灰度图像可加速
+
+<h2>常见问题</h2>
+
+<h3>Q: 重构图像与原图不完全一致？</h3>
+A: 浮点运算精度和归一化可能引入微小差异，但视觉上应一致。
+
+<h3>Q: 相位重要吗？</h3>
+A: 相位包含图像结构信息，通常比幅度更重要。仅改变幅度影响较小。
+
+<h3>Q: 如何设计特定滤波器？</h3>
+A: 了解频谱布局：中心=低频，边缘=高频；根据需求设计掩码形状。
+
+<h3>Q: 为什么用频移？</h3>
+A: 将低频移到中心便于可视化和设计滤波器。
+
+<h2>参考文献</h2>
+
+<ul>
+<li>Gonzalez, R. C., & Woods, R. E. (2018). Digital Image Processing (4th ed.).</li>
+<li>Bracewell, R. N. (2000). The Fourier Transform and Its Applications (3rd ed.).</li>
+</ul>
+
+        </main>
+
+        <footer>
+            <p>© 2025 FreeAeon-Fractal. 保留所有权利</p>
+            <p><a href="https://github.com/jim-xie-cn/FreeAeon-Fractal" target="_blank" style="color: #667eea;">GitHub</a></p>
+        </footer>
     </div>
 </body>
 </html>

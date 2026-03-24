@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lacunarity Analysis - CFAImageLacunarity</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.8;
+            color: #333;
+            background: #f5f7fa;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+        }
+        header h1 { font-size: 2em; margin-bottom: 10px; }
+        header p { opacity: 0.9; }
+        nav {
+            background: #f8f9fa;
+            padding: 15px 30px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        nav a {
+            color: #667eea;
+            text-decoration: none;
+            margin-right: 20px;
+            font-weight: 500;
+        }
+        nav a:hover { color: #764ba2; }
+        main { padding: 40px; }
+        h2 {
+            color: #667eea;
+            font-size: 1.8em;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        h3 {
+            color: #764ba2;
+            font-size: 1.4em;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        h4 {
+            color: #555;
+            font-size: 1.1em;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        .code-inline {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #c7254e;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+        th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+        tr:hover { background: #f8f9fa; }
+        .note {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            background: #667eea;
+            color: white;
+            border-radius: 12px;
+            font-size: 0.85em;
+            margin-right: 5px;
+        }
+        ul, ol { margin-left: 30px; margin-bottom: 15px; }
+        li { margin-bottom: 8px; }
+        a { color: #667eea; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .section { margin-bottom: 30px; }
+        footer {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Lacunarity Analysis - CFAImageLacunarity</h1>
+            <p></p>
+        </header>
+
+        <nav>
+            <a href="index.html">← Back to Home</a>
+            
+        </nav>
+
+        <main>
+
+<h2>Application Scenarios</h2>
+<p>The <code class="code-inline">CFAImageLacunarity</code> class is used to calculate the lacunarity of 2D images, serving as an important tool for quantifying spatial distribution heterogeneity. Main application scenarios include:</p>
+
+<ul>
+<li><strong>Texture Analysis</strong>: Quantify gaps and void characteristics in textures</li>
+<li><strong>Landscape Ecology</strong>: Analyze spatial distribution of vegetation coverage</li>
+<li><strong>Materials Science</strong>: Study material pore structures</li>
+<li><strong>Medical Imaging</strong>: Analyze tissue distribution uniformity</li>
+<li><strong>Urban Planning</strong>: Study spatial distribution of buildings</li>
+</ul>
+
+<h2>Usage Examples</h2>
+
+<h3>Basic Usage</h3>
+
+<div class="code-block">import cv2
+from FreeAeonFractal.FAImageLacunarity import CFAImageLacunarity
+from FreeAeonFractal.FAImage import CFAImage
+<p># Read image</p>
+rgb_image = cv2.imread('./images/fractal.png')
+gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
+<p># Create lacunarity analysis object</p>
+lacunarity = CFAImageLacunarity(
+    gray_image,
+    max_scales=256,
+    with_progress=True,
+    partition_mode="gliding"  # or "non-overlapping"
+)
+<p># Calculate lacunarity</p>
+lac_result = lacunarity.get_lacunarity(
+    corp_type=-1,
+    use_binary_mass=False,
+    include_zero=True
+)
+<p># Fit lacunarity</p>
+fit_result = lacunarity.fit_lacunarity(lac_result)
+<p># Output results</p>
+print("Lacunarity values:", lac_result["lacunarity"])
+print("Fit slope:", fit_result["slope"])
+print("Fit R²:", fit_result["r_value"]<strong>2)
+<p># Visualize</p>
+lacunarity.plot(lac_result, fit_result)</div>
+
+<h3>Binary Image Analysis</h3>
+
+<div class="code-block"># Use Otsu auto-binarization
+bin_image, threshold = CFAImage.otsu_binarize(gray_image)
+<p># Lacunarity of binary image</p>
+lacunarity_bin = CFAImageLacunarity(bin_image, partition_mode="gliding")
+lac_bin = lacunarity_bin.get_lacunarity(use_binary_mass=True)
+fit_bin = lacunarity_bin.fit_lacunarity(lac_bin)
+<p>print("Binary image lacunarity:", lac_bin["lacunarity"])</div></p>
+
+<h3>Installation</h3>
+
+<div class="code-block">pip install FreeAeon-Fractal</div>
+
+<h2>Class Description</h2>
+
+<h3>CFAImageLacunarity</h3>
+
+</strong>Description<strong>: Class for calculating 2D image lacunarity, supporting two box partition strategies.
+
+<h4>Initialization Parameters</h4>
+<p><tr><td>Parameter</td><td>Type</td><td>Default</td><td>Description</td></tr></p>
+<table>
+<tr><td>-----------</td><td>------</td><td>---------</td><td>-------------</td></tr>
+<tr><td><code class="code-inline">image</code></td><td>numpy.ndarray</td><td>Required</td><td>Input image (grayscale or binary)</td></tr>
+<tr><td><code class="code-inline">max_size</code></td><td>int</td><td>None</td><td>Maximum box size (default: minimum image dimension)</td></tr>
+<tr><td><code class="code-inline">max_scales</code></td><td>int</td><td>100</td><td>Maximum number of scales</td></tr>
+<tr><td><code class="code-inline">with_progress</code></td><td>bool</td><td>True</td><td>Whether to show progress bar</td></tr>
+<tr><td><code class="code-inline">scales_mode</code></td><td>str</td><td>"powers"</td><td>Scale generation mode ("powers" or "logspace")</td></tr>
+<tr><td><code class="code-inline">partition_mode</code></td><td>str</td><td>"gliding"</td><td>Partition mode ("gliding" or "non-overlapping")</td></tr>
+</table>
+
+</strong>scales_mode<strong> Options:
+<ul>
+<li><code class="code-inline">"powers"</code>: Powers of 2 scales (2, 4, 8, 16, ...)</li>
+<li><code class="code-inline">"logspace"</code>: Logarithmically uniform distributed scales</li>
+</ul>
+
+</strong>partition_mode<strong> Options:
+<ul>
+<li><code class="code-inline">"gliding"</code>: Sliding window (overlapping), efficient computation using integral images</li>
+<li><code class="code-inline">"non-overlapping"</code>: Non-overlapping fixed blocks</li>
+</ul>
+
+<h4>Main Methods</h4>
+<p>##### 1. get_lacunarity(corp_type=-1, use_binary_mass=False, include_zero=True)</p>
+
+</strong>Description<strong>: Calculate lacunarity at each scale.
+
+</strong>Parameters<strong>:
+<ul>
+<li><code class="code-inline">corp_type</code> (int): Image cropping method (non-overlapping mode only)</li>
+</ul>
+  - <code class="code-inline">-1</code>: Auto crop
+  - <code class="code-inline">0</code>: No processing
+  - <code class="code-inline">1</code>: Padding
+<ul>
+<li><code class="code-inline">use_binary_mass</code> (bool): Whether to use binary mass</li>
+</ul>
+  - <code class="code-inline">True</code>: Only count non-zero pixels
+  - <code class="code-inline">False</code>: Use actual pixel values
+<ul>
+<li><code class="code-inline">include_zero</code> (bool): Whether to include zero-mass boxes</li>
+</ul>
+
+</strong>Return Value<strong> (dict):
+<div class="code-block">{
+    'scales': list,        # Scale list
+    'lacunarity': list,    # Lacunarity values at each scale
+    'mass_stats': list     # Mass statistics info list
+}</div>
+<p>Each element in <code class="code-inline">mass_stats</code> contains:</p>
+<div class="code-block">{
+    'scale': int,          # Scale
+    'num_boxes': int,      # Number of boxes
+    'mean_mass': float,    # Mean mass
+    'var_mass': float,     # Mass variance
+    'lambda': float        # Lacunarity value
+}</div>
+<p>##### 2. fit_lacunarity(lac_result, min_valid_lambda=1.0+1e-12)</p>
+
+</strong>Description<strong>: Perform power-law fitting on lacunarity: log(Λ-1) vs log(r)
+
+</strong>Parameters<strong>:
+<ul>
+<li><code class="code-inline">lac_result</code> (dict): Return result from <code class="code-inline">get_lacunarity()</code></li>
+<li><code class="code-inline">min_valid_lambda</code> (float): Minimum valid lacunarity value</li>
+</ul>
+
+</strong>Return Value<strong> (dict):
+<div class="code-block">{
+    'slope': float,                    # Fit slope
+    'intercept': float,                # Fit intercept
+    'r_value': float,                  # Correlation coefficient
+    'p_value': float,                  # p-value
+    'std_err': float,                  # Standard error
+    'log_scales': list,                # Logarithmic scales
+    'log_lambda_minus_1': list         # log(Λ-1)
+}</div>
+<p>##### 3. plot(lac_result, fit_result=None, ax=None, show=True, title="Lacunarity", label=None)</p>
+
+</strong>Description<strong>: Visualize lacunarity curves and fitting results.
+
+</strong>Parameters<strong>:
+<ul>
+<li><code class="code-inline">lac_result</code> (dict): Lacunarity results</li>
+<li><code class="code-inline">fit_result</code> (dict): Fitting results (optional)</li>
+<li><code class="code-inline">ax</code>: Matplotlib axis object (optional)</li>
+<li><code class="code-inline">show</code> (bool): Whether to display immediately</li>
+<li><code class="code-inline">title</code> (str): Plot title</li>
+<li><code class="code-inline">label</code> (str): Curve label</li>
+</ul>
+
+</strong>Plots<strong>:
+<ul>
+<li>Left plot: Λ(r) vs r</li>
+<li>Right plot (if fit_result provided): log(Λ-1) vs log(r) with fit line</li>
+</ul>
+
+<h2>Theoretical Background</h2>
+
+<h3>Lacunarity Definition</h3>
+<p>Lacunarity Λ(r) is defined as the ratio of the second moment to the square of the first moment of box masses:</p>
+
+<div class="code-block">Λ(r) = E[M²(r)] / E[M(r)]²</div>
+<p>Where:</p>
+<ul>
+<li>M(r): Box mass at scale r</li>
+<li>E[·]: Expectation value</li>
+</ul>
+
+<h3>Physical Meaning</h3>
+
+<ul>
+<li></strong>Λ = 1<strong>: Completely uniform distribution</li>
+<li></strong>Λ > 1<strong>: Presence of gaps, non-uniform distribution</li>
+<li></strong>Larger Λ<strong>: More gaps, stronger clustering</li>
+</ul>
+
+<h3>Scaling Law</h3>
+<p>Lacunarity typically follows a power law:</p>
+
+<div class="code-block">Λ(r) - 1 ∝ r^β</div>
+<p>Where β is the lacunarity exponent.</p>
+
+<h2>Important Notes</h2>
+<p>1. </strong>Partition Mode Selection<strong>:</p>
+   - <code class="code-inline">"gliding"</code>: Recommended for general analysis, smoother results
+   - <code class="code-inline">"non-overlapping"</code>: Faster, suitable for large images
+<p>2. </strong>Mass Mode<strong>:</p>
+   - <code class="code-inline">use_binary_mass=True</code>: Binary images or only concerned with occupancy
+   - <code class="code-inline">use_binary_mass=False</code>: Grayscale images, considering intensity information
+<p>3. </strong>Scale Mode<strong>:</p>
+   - <code class="code-inline">"powers"</code>: Fewer scale points, faster computation
+   - <code class="code-inline">"logspace"</code>: More scale points, finer results
+<p>4. </strong>Zero Value Processing<strong>:</p>
+   - <code class="code-inline">include_zero=True</code>: Include all boxes
+   - <code class="code-inline">include_zero=False</code>: Only consider non-zero boxes
+<p>5. </strong>Result Interpretation<strong>:</p>
+   - Lacunarity value range: [1, +∞)
+   - Slope β: Quantifies scale dependency
+   - R² close to 1: Good power-law fit
+<p>6. </strong>Performance Optimization**:</p>
+   - Use <code class="code-inline">partition_mode="non-overlapping"</code> for speedup
+   - Reduce <code class="code-inline">max_scales</code> value
+   - Use <code class="code-inline">scales_mode="powers"</code>
+
+<h2>References</h2>
+
+<ul>
+<li>Plotnick, R. E., et al. (1996). Lacunarity analysis: A general technique for the analysis of spatial patterns. Physical Review E.</li>
+<li>Allain, C., & Cloitre, M. (1991). Characterizing the lacunarity of random and deterministic fractal sets. Physical Review A.</li>
+</ul>
+
+        </main>
+
+        <footer>
+            <p>© 2025 FreeAeon-Fractal. All rights reserved</p>
+            <p><a href="https://github.com/jim-xie-cn/FreeAeon-Fractal" target="_blank" style="color: #667eea;">GitHub</a></p>
+        </footer>
+    </div>
+</body>
+</html>

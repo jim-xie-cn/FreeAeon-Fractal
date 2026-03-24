@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分形维度分析 - CFAImageDimension</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.8;
+            color: #333;
+            background: #f5f7fa;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+        }
+        header h1 { font-size: 2em; margin-bottom: 10px; }
+        header p { opacity: 0.9; }
+        nav {
+            background: #f8f9fa;
+            padding: 15px 30px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        nav a {
+            color: #667eea;
+            text-decoration: none;
+            margin-right: 20px;
+            font-weight: 500;
+        }
+        nav a:hover { color: #764ba2; }
+        main { padding: 40px; }
+        h2 {
+            color: #667eea;
+            font-size: 1.8em;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        h3 {
+            color: #764ba2;
+            font-size: 1.4em;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        h4 {
+            color: #555;
+            font-size: 1.1em;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        .code-inline {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #c7254e;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+        th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+        tr:hover { background: #f8f9fa; }
+        .note {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            background: #667eea;
+            color: white;
+            border-radius: 12px;
+            font-size: 0.85em;
+            margin-right: 5px;
+        }
+        ul, ol { margin-left: 30px; margin-bottom: 15px; }
+        li { margin-bottom: 8px; }
+        a { color: #667eea; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .section { margin-bottom: 30px; }
+        footer {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>分形维度分析 - CFAImageDimension</h1>
+            <p>图像分形维度计算 (BC, DBC, SDBC)</p>
+        </header>
+
+        <nav>
+            <a href="index.html">← 返回首页</a>
+            
+        </nav>
+
+        <main>
+
+<h2>应用场景</h2>
+
+<code class="code-inline">CFAImageDimension</code> 类用于计算2D图像的分形维度，是图像复杂度分析和纹理特征提取的重要工具。主要应用场景包括：
+
+<ul>
+<li><strong>图像纹理分析</strong>：量化图像的粗糙度和复杂度</li>
+<li><strong>医学图像分析</strong>：分析组织结构的复杂性</li>
+<li><strong>材料科学</strong>：研究材料表面的分形特征</li>
+<li><strong>计算机视觉</strong>：图像特征提取和分类</li>
+<li><strong>地质学</strong>：地形地貌的复杂度分析</li>
+</ul>
+
+<h2>调用示例</h2>
+
+<h3>基础用法</h3>
+
+<div class="code-block">import cv2
+from FreeAeonFractal.FAImageDimension import CFAImageDimension
+from FreeAeonFractal.FAImage import CFAImage
+<p># 读取图像</p>
+rgb_image = cv2.imread('./images/fractal.png')
+gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
+<p># 对于BC方法，需要二值化图像</p>
+bin_image, threshold = CFAImage.otsu_binarize(gray_image)
+<p># 计算三种分形维度</p>
+fd_bc = CFAImageDimension(bin_image).get_bc_fd(corp_type=-1)
+fd_dbc = CFAImageDimension(gray_image).get_dbc_fd(corp_type=-1)
+fd_sdbc = CFAImageDimension(gray_image).get_sdbc_fd(corp_type=-1)
+<p># 输出结果</p>
+print("BC分形维度:", fd_bc['fd'])
+print("DBC分形维度:", fd_dbc['fd'])
+print("SDBC分形维度:", fd_sdbc['fd'])
+<p># 可视化结果</p>
+CFAImageDimension.plot(rgb_image, bin_image, fd_bc, fd_dbc, fd_sdbc)</div>
+
+<h3>安装</h3>
+
+<div class="code-block">pip install FreeAeon-Fractal</div>
+
+<h2>类说明</h2>
+
+<h3>CFAImageDimension</h3>
+
+<strong>描述</strong>：用于计算2D图像分形维度的类，支持三种不同的计算方法。
+
+<h4>初始化参数</h4>
+<p><tr><td>参数</td><td>类型</td><td>默认值</td><td>说明</td></tr></p>
+<table>
+<tr><td>------</td><td>------</td><td>--------</td><td>------</td></tr>
+<tr><td><code class="code-inline">image</code></td><td>numpy.ndarray</td><td>必需</td><td>输入图像（单通道）</td></tr>
+<tr><td><code class="code-inline">max_size</code></td><td>int</td><td>None</td><td>最大盒子尺寸（默认为图像最小边长）</td></tr>
+<tr><td><code class="code-inline">max_scales</code></td><td>int</td><td>100</td><td>最大尺度数量</td></tr>
+<tr><td><code class="code-inline">with_progress</code></td><td>bool</td><td>True</td><td>是否显示进度条</td></tr>
+</table>
+
+<h4>主要方法</h4>
+<p>##### 1. get_bc_fd(corp_type=-1)</p>
+
+<strong>描述</strong>：使用盒计数（Box-Counting, BC）方法计算分形维度。
+
+<strong>参数</strong>：
+<ul>
+<li><code class="code-inline">corp_type</code> (int): 图像裁剪方法</li>
+</ul>
+  - <code class="code-inline">-1</code>: 自动裁剪到盒子尺寸的倍数
+  - <code class="code-inline">0</code>: 不处理（需要图像尺寸已是盒子尺寸的倍数）
+  - <code class="code-inline">1</code>: 填充
+
+<strong>返回值</strong> (dict):
+<div class="code-block">{
+    'fd': float,              # 分形维度值
+    'scales': list,           # 尺度列表
+    'counts': list,           # 盒子计数列表
+    'log_scales': list,       # 对数尺度
+    'log_counts': list,       # 对数计数
+    'intercept': float,       # 拟合截距
+    'r_value': float,         # 相关系数
+    'p_value': float,         # p值
+    'std_err': float          # 标准误差
+}</div>
+
+<strong>适用场景</strong>：适用于二值图像，计算其占据空间的维度。
+<p>##### 2. get_dbc_fd(corp_type=-1)</p>
+
+<strong>描述</strong>：使用差分盒计数（Differential Box-Counting, DBC）方法计算分形维度。
+
+<strong>参数</strong>：同 <code class="code-inline">get_bc_fd</code>
+
+<strong>返回值</strong>：同 <code class="code-inline">get_bc_fd</code>
+
+<strong>适用场景</strong>：适用于灰度图像，考虑灰度信息的分形维度计算。
+<p>##### 3. get_sdbc_fd(corp_type=-1)</p>
+
+<strong>描述</strong>：使用改进的差分盒计数（Simplified DBC, SDBC）方法计算分形维度。
+
+<strong>参数</strong>：同 <code class="code-inline">get_bc_fd</code>
+
+<strong>返回值</strong>：同 <code class="code-inline">get_bc_fd</code>
+
+<strong>适用场景</strong>：SDBC是DBC的简化版本，计算更快，适用于灰度图像。
+<p>##### 4. plot(raw_img, gray_img, fd_bc, fd_dbc, fd_sdbc)</p>
+
+<strong>描述</strong>：静态方法，可视化原始图像、二值图像和三种分形维度的拟合结果。
+
+<strong>参数</strong>：
+<ul>
+<li><code class="code-inline">raw_img</code>: 原始RGB图像</li>
+<li><code class="code-inline">gray_img</code>: 二值化或灰度图像</li>
+<li><code class="code-inline">fd_bc</code>: BC方法的结果字典</li>
+<li><code class="code-inline">fd_dbc</code>: DBC方法的结果字典</li>
+<li><code class="code-inline">fd_sdbc</code>: SDBC方法的结果字典</li>
+</ul>
+
+<h2>算法说明</h2>
+
+<h3>BC (Box-Counting) 方法</h3>
+盒计数法通过在不同尺度下统计覆盖图像所需的非空盒子数量来计算分形维度。计算公式为：
+
+<div class="code-block">D = lim(ε→0) log(N(ε)) / log(1/ε)</div>
+<p>其中 N(ε) 是尺度为 ε 时的盒子数量。</p>
+
+<h3>DBC (Differential Box-Counting) 方法</h3>
+差分盒计数法考虑灰度值的高度信息，将图像视为三维表面。每个盒子的高度由该区域的灰度范围决定。
+
+<h3>SDBC (Simplified DBC) 方法</h3>
+简化差分盒计数法是DBC的改进版本，使用更简化的计算方式，在保持精度的同时提高计算效率。
+
+<h2>重要提示</h2>
+<p>1. <strong>图像预处理</strong>：</p>
+   - BC方法需要二值图像，建议使用Otsu自动阈值化
+   - DBC和SDBC方法适用于灰度图像
+<p>2. <strong>尺度选择</strong>：</p>
+   - <code class="code-inline">max_size</code> 影响分析的尺度范围
+   - <code class="code-inline">max_scales</code> 影响采样密度，建议使用默认值100
+<p>3. <strong>结果解释</strong>：</p>
+   - 分形维度范围通常在1-2之间（2D图像）
+   - 值越大表示图像越复杂
+   - <code class="code-inline">r_value</code> 接近1表示良好的幂律拟合
+<p>4. <strong>性能优化</strong>：</p>
+   - 对于大图像，可以先降采样
+   - 设置 <code class="code-inline">with_progress=False</code> 可以提高计算速度
+
+<h2>参考文献</h2>
+
+<ul>
+<li>Mandelbrot, B. B. (1982). The Fractal Geometry of Nature.</li>
+<li>Sarkar, N., & Chaudhuri, B. B. (1994). An efficient differential box-counting approach to compute fractal dimension of image.</li>
+</ul>
+
+        </main>
+
+        <footer>
+            <p>© 2025 FreeAeon-Fractal. 保留所有权利</p>
+            <p><a href="https://github.com/jim-xie-cn/FreeAeon-Fractal" target="_blank" style="color: #667eea;">GitHub</a></p>
+        </footer>
+    </div>
+</body>
+</html>

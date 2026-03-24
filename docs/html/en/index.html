@@ -3,299 +3,419 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FreeAeon-Fractal Documentation Index</title>
+    <title>FreeAeon-Fractal Documentation</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             line-height: 1.6;
             color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
             max-width: 1200px;
             margin: 0 auto;
-            padding: 20px;
-            background: #f5f5f5;
-        }
-        .container {
             background: white;
-            padding: 40px;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
         }
-        h1 {
-            color: #2c3e50;
-            border-bottom: 3px solid #3498db;
-            padding-bottom: 10px;
-            margin-bottom: 30px;
+
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
         }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+
+        header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        nav {
+            background: #f8f9fa;
+            padding: 20px 30px;
+            border-bottom: 2px solid #e9ecef;
+        }
+
+        nav a {
+            display: inline-block;
+            margin-right: 20px;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        nav a:hover {
+            color: #764ba2;
+        }
+
+        main {
+            padding: 40px 30px;
+        }
+
+        .section {
+            margin-bottom: 50px;
+        }
+
         h2 {
-            color: #34495e;
+            color: #667eea;
+            font-size: 2em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        h3 {
+            color: #764ba2;
+            font-size: 1.5em;
             margin-top: 30px;
             margin-bottom: 15px;
-            border-left: 4px solid #3498db;
-            padding-left: 15px;
         }
-        h3 {
-            color: #546e7a;
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
             margin-top: 20px;
+        }
+
+        .feature-card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .feature-card h4 {
+            color: #667eea;
+            font-size: 1.3em;
             margin-bottom: 10px;
         }
-        h4 {
-            color: #607d8b;
-            margin-top: 15px;
-            margin-bottom: 10px;
-        }
-        p {
-            margin-bottom: 15px;
-            text-align: justify;
-        }
-        ul, ol {
-            margin-left: 30px;
+
+        .feature-card p {
+            color: #555;
+            font-size: 0.95em;
             margin-bottom: 15px;
         }
-        li {
-            margin-bottom: 8px;
+
+        .feature-card a {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            font-size: 0.9em;
+            transition: background 0.3s;
         }
-        code {
-            background: #f4f4f4;
-            padding: 2px 6px;
-            border-radius: 3px;
+
+        .feature-card a:hover {
+            background: #764ba2;
+        }
+
+        .code-block {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+
+        pre {
+            margin: 0;
             font-family: 'Courier New', monospace;
             font-size: 0.9em;
         }
-        pre {
-            background: #2d2d2d;
-            color: #f8f8f2;
-            padding: 15px;
-            border-radius: 5px;
-            overflow-x: auto;
-            margin-bottom: 20px;
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            background: #667eea;
+            color: white;
+            border-radius: 12px;
+            font-size: 0.8em;
+            margin-right: 5px;
         }
-        pre code {
-            background: none;
-            color: inherit;
-            padding: 0;
-        }
+
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 20px;
+            margin: 20px 0;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
-        table th, table td {
-            border: 1px solid #ddd;
-            padding: 12px;
+
+        th, td {
+            padding: 12px 15px;
             text-align: left;
+            border-bottom: 1px solid #e9ecef;
         }
-        table th {
-            background: #3498db;
+
+        th {
+            background: #667eea;
             color: white;
-            font-weight: bold;
+            font-weight: 600;
         }
-        table tr:nth-child(even) {
-            background: #f9f9f9;
+
+        tr:hover {
+            background: #f8f9fa;
         }
-        table tr:hover {
-            background: #f5f5f5;
+
+        .install-box {
+            background: #1e1e1e;
+            color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
         }
-        .nav {
-            background: #34495e;
+
+        .install-box code {
+            color: #9cdcfe;
+            font-family: 'Courier New', monospace;
+        }
+
+        footer {
+            background: #2c3e50;
             color: white;
-            padding: 15px;
-            margin: -40px -40px 30px -40px;
-            border-radius: 8px 8px 0 0;
+            padding: 30px;
+            text-align: center;
         }
-        .nav a {
-            color: #3498db;
+
+        footer a {
+            color: #667eea;
             text-decoration: none;
-            font-weight: bold;
         }
-        .nav a:hover {
-            color: #5dade2;
+
+        footer a:hover {
             text-decoration: underline;
-        }
-        .footer {
-            margin-top: 40px;
-            padding-top: 20px;
-            border-top: 1px solid #ddd;
-            color: #666;
-            font-size: 0.9em;
-        }
-        .badge {
-            display: inline-block;
-            background: #3498db;
-            color: white;
-            padding: 3px 8px;
-            border-radius: 3px;
-            font-size: 0.85em;
-            margin-right: 5px;
-        }
-        blockquote {
-            border-left: 4px solid #3498db;
-            margin: 20px 0;
-            padding: 10px 20px;
-            background: #ecf0f1;
-            font-style: italic;
-        }
-        .note {
-            background: #fff3cd;
-            border: 1px solid #ffc107;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 20px 0;
-        }
-        .warning {
-            background: #f8d7da;
-            border: 1px solid #f5c6cb;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 20px 0;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="nav">
-            <a href="index.html">← Back to Index</a>
-        </div>
-        <h1>FreeAeon-Fractal Documentation Index</h1>
-<h2>Overview</h2>
-<p>FreeAeon-Fractal is a powerful Python toolkit for computing <strong>Multifractal Spectra</strong>, <strong>Fractal Dimensions</strong>, <strong>Lacunarity</strong>, and <strong>Fourier Spectra</strong> of images or time series. This toolkit provides both CPU and GPU implementations, suitable for data analysis tasks of various scales.</p>
-<h2>Core Functional Modules</h2>
-<h3>1. Multifractal Spectrum Analysis</h3>
-<ul>
-<li><strong><a href="./MultifractalSpectrum-CFA1DMFS.md">CFA1DMFS</a></strong> - 1D Time Series Multifractal Spectrum Analysis</li>
-<li>Use Cases: Financial time series, physiological signal analysis, seismic data analysis</li>
-<li>Key Features: Compute h(q), τ(q), α(q), f(α), and D(q)</li>
-</ul>
-<ul>
-<li><strong><a href="./MultifractalSpectrum-CFA2DMFS.md">CFA2DMFS</a></strong> - 2D Image Multifractal Spectrum (CPU Version)</li>
-<li>Use Cases: Medical imaging, remote sensing, texture analysis</li>
-<li>Key Features: Box-counting based multifractal spectrum computation</li>
-</ul>
-<ul>
-<li><strong><a href="./MultifractalSpectrum-CFA2DMFSGPU.md">CFA2DMFSGPU</a></strong> - 2D Image Multifractal Spectrum (GPU Accelerated)</li>
-<li>Use Cases: Large-scale image batch processing, real-time analysis</li>
-<li>Key Features: GPU-accelerated multifractal computation, batch processing support</li>
-</ul>
-<h3>2. Fractal Dimension Calculation</h3>
-<ul>
-<li><strong><a href="./FractalDimension-CFAImageDimension.md">CFAImageDimension</a></strong> - Fractal Dimension Calculation (CPU Version)</li>
-<li>Use Cases: Image complexity assessment, texture feature extraction, morphological analysis</li>
-<li>Methods: BC (Box Counting), DBC (Differential Box Counting), SDBC (Simplified DBC)</li>
-</ul>
-<ul>
-<li><strong><a href="./FractalDimension-CFAImageDimensionGPU.md">CFAImageDimensionGPU</a></strong> - Fractal Dimension (GPU Accelerated)</li>
-<li>Use Cases: High-resolution image analysis, batch image processing</li>
-<li>Key Features: GPU-accelerated BC/DBC/SDBC, batch processing support</li>
-</ul>
-<h3>3. Lacunarity Analysis</h3>
-<ul>
-<li><strong><a href="./Lacunarity-CFAImageLacunarity.md">CFAImageLacunarity</a></strong> - Image Lacunarity Analysis (CPU Version)</li>
-<li>Use Cases: Texture heterogeneity analysis, spatial distribution features, image quality assessment</li>
-<li>Methods: Gliding box and non-overlapping box partition</li>
-</ul>
-<ul>
-<li><strong><a href="./Lacunarity-CFAImageLacunarityGPU.md">CFAImageLacunarityGPU</a></strong> - Image Lacunarity (GPU Accelerated)</li>
-<li>Use Cases: Large-scale image dataset analysis, real-time lacunarity computation</li>
-<li>Key Features: GPU-accelerated lacunarity, batch processing support</li>
-</ul>
-<h3>4. Fourier Frequency Domain Analysis</h3>
-<ul>
-<li><strong><a href="./FourierAnalysis-CFAImageFourier.md">CFAImageFourier</a></strong> - Fourier Frequency Domain Analysis</li>
-<li>Use Cases: Frequency component analysis, image filtering, frequency feature extraction</li>
-<li>Key Features: Magnitude and phase spectrum, frequency reconstruction, frequency masking</li>
-</ul>
-<h3>5. Image Preprocessing Tools</h3>
-<ul>
-<li><strong><a href="./ImageProcessing-CFAImage.md">CFAImage</a></strong> - Image Preprocessing and ROI Extraction</li>
-<li>Use Cases: Image preprocessing, ROI extraction, data augmentation</li>
-<li>Key Features: Crop/pad, blocking, Otsu binarization, q-based ROI extraction, random sampling</li>
-</ul>
-<h3>6. Fractal Sample Generation</h3>
-<ul>
-<li><strong><a href="./SampleGeneration-CFASample.md">CFASample</a></strong> - Classic Fractal Pattern Generator</li>
-<li>Use Cases: Algorithm testing, teaching demonstrations, benchmark data generation</li>
-<li>Supported Fractals: Cantor Set, Sierpinski Triangle, Barnsley Fern, Menger Sponge</li>
-</ul>
-<h3>7. Visualization Tools</h3>
-<ul>
-<li><strong><a href="./Visualization-CFAVisual.md">CFAVisual</a></strong> - Point Set and Image Visualization</li>
-<li>Use Cases: Result presentation, data exploration, visual analysis</li>
-<li>Key Features: 1D/2D/3D point visualization, image display</li>
-</ul>
-<h2>Quick Start</h2>
-<h3>Installation</h3>
-<pre><code>pip install FreeAeon-Fractal
-</code></pre>
-<h3>Basic Usage Examples</h3>
-<h4>Compute Multifractal Spectrum of an Image</h4>
-<pre><code>import cv2
+        <header>
+            <h1>FreeAeon-Fractal</h1>
+            <p>Python Toolkit for Multifractal Spectra, Fractal Dimensions, Lacunarity, and Fourier Spectra</p>
+        </header>
+
+        <nav>
+            <a href="#applications">Applications</a>
+            <a href="#install">Installation</a>
+            <a href="#features">Features</a>
+            <a href="#quickstart">Quick Start</a>
+            <a href="../../markdown/en/index.md" target="_blank">Full Docs (Markdown)</a>
+        </nav>
+
+        <main>
+            <section id="applications" class="section">
+                <h2>💡 Application Domains</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Domain</th>
+                            <th>Applications</th>
+                            <th>Related Modules</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Medical Imaging</td>
+                            <td>Tissue complexity, heterogeneity analysis</td>
+                            <td>Multifractal spectrum, fractal dimension</td>
+                        </tr>
+                        <tr>
+                            <td>Materials Science</td>
+                            <td>Surface morphology, porous structure</td>
+                            <td>Fractal dimension, lacunarity</td>
+                        </tr>
+                        <tr>
+                            <td>Financial Analysis</td>
+                            <td>Price fluctuations, risk assessment</td>
+                            <td>Series multifractal spectrum</td>
+                        </tr>
+                        <tr>
+                            <td>Earth Sciences</td>
+                            <td>Terrain analysis, vegetation distribution</td>
+                            <td>Fractal dimension, lacunarity</td>
+                        </tr>
+                        <tr>
+                            <td>Image Processing</td>
+                            <td>Texture classification, image segmentation</td>
+                            <td>All modules</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section id="install" class="section">
+                <h2>📦 Installation</h2>
+                <div class="install-box">
+                    <code>pip install FreeAeon-Fractal</code>
+                </div>
+                <p><strong>Requirements:</strong></p>
+                <ul>
+                    <li>Python 3.6+</li>
+                    <li>OpenCV (cv2) support</li>
+                </ul>
+            </section>
+
+            <section id="features" class="section">
+                <h2>🎯 Feature Modules</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Module</th>
+                            <th>Class</th>
+                            <th>Features</th>
+                            <th>Docs</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Multifractal</strong></td>
+                            <td>CFA2DMFS</td>
+                            <td>2D image multifractal spectrum</td>
+                            <td><a href="Multifractal-Spectrum-CFA2DMFS.html">View</a></td>
+                        </tr>
+                        <tr>
+                            <td></td>
+                            <td>CFA1DMFS</td>
+                            <td>1D series multifractal spectrum</td>
+                            <td><a href="Series-Multifractal-CFA1DMFS.html">View</a></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Fractal Dimension</strong></td>
+                            <td>CFAImageDimension</td>
+                            <td>BC/DBC/SDBC methods</td>
+                            <td><a href="Fractal-Dimension-CFAImageDimension.html">View</a></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Lacunarity</strong></td>
+                            <td>CFAImageLacunarity</td>
+                            <td>Gliding/Non-overlapping modes</td>
+                            <td><a href="Lacunarity-Analysis-CFAImageLacunarity.html">View</a></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Fourier Analysis</strong></td>
+                            <td>CFAImageFourier</td>
+                            <td>Spectrum, filtering, reconstruction</td>
+                            <td><a href="Fourier-Analysis-CFAImageFourier.html">View</a></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Image Utils</strong></td>
+                            <td>CFAImage</td>
+                            <td>Blocking, binarization, ROI</td>
+                            <td><a href="Image-Utils-CFAImage.html">View</a></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Visualization</strong></td>
+                            <td>CFAVisual</td>
+                            <td>1D/2D/3D point & image display</td>
+                            <td><a href="Visualization-Tools-CFAVisual.html">View</a></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Sample Gen</strong></td>
+                            <td>CFASample</td>
+                            <td>Classic fractal patterns (IFS)</td>
+                            <td><a href="Fractal-Sample-Generator-CFASample.html">View</a></td>
+                        </tr>
+                        <tr>
+                            <td><strong>GPU Accel</strong></td>
+                            <td>*GPU versions</td>
+                            <td>5-20x speedup</td>
+                            <td><a href="GPU-Acceleration.html">View</a></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section id="quickstart" class="section">
+                <h2>🚀 Quick Start</h2>
+
+                <h3>Multifractal Spectrum of an Image</h3>
+                <div class="code-block">
+                    <pre>import cv2
 import numpy as np
 from FreeAeonFractal.FA2DMFS import CFA2DMFS
-<h1>Load image</h1>
-image = cv2.imread('image.png', cv2.IMREAD_GRAYSCALE)
-<h1>Create multifractal spectrum analyzer</h1>
-mfs = CFA2DMFS(image, q_list=np.linspace(-5, 5, 26))
-<h1>Compute multifractal spectrum</h1>
-df_mass, df_fit, df_spec = mfs.get_mfs()
-<h1>Visualize results</h1>
-mfs.plot(df_mass, df_fit, df_spec)
-</code></pre>
-<h4>Compute Fractal Dimension of an Image</h4>
-<pre><code>from FreeAeonFractal.FAImageDimension import CFAImageDimension
+
+# Load image
+rgb_image = cv2.imread('./images/face.png')
+gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
+
+# Multifractal analysis
+MFS = CFA2DMFS(gray_image, q_list=np.linspace(-5, 5, 26))
+df_mass, df_fit, df_spec = MFS.get_mfs()
+
+# Visualize
+MFS.plot(df_mass, df_fit, df_spec)</pre>
+                </div>
+
+                <h3>Fractal Dimensions of an Image</h3>
+                <div class="code-block">
+                    <pre>from FreeAeonFractal.FAImageDimension import CFAImageDimension
 from FreeAeonFractal.FAImage import CFAImage
-<h1>Binarize image</h1>
-bin_image, threshold = CFAImage.otsu_binarize(image)
-<h1>Compute fractal dimensions</h1>
+
+# Binarize
+bin_image, threshold = CFAImage.otsu_binarize(gray_image)
+
+# Calculate fractal dimensions
 fd_bc = CFAImageDimension(bin_image).get_bc_fd()
-fd_dbc = CFAImageDimension(image).get_dbc_fd()
-fd_sdbc = CFAImageDimension(image).get_sdbc_fd()
-<p>print(f"BC Fractal Dimension: {fd_bc['fd']:.4f}")
-print(f"DBC Fractal Dimension: {fd_dbc['fd']:.4f}")
-print(f"SDBC Fractal Dimension: {fd_sdbc['fd']:.4f}")
-</code></pre></p>
-<h2>GPU Acceleration</h2>
-<p>For large-scale data processing, use GPU-accelerated versions:</p>
-<pre><code># GPU version of multifractal spectrum analysis
-from FreeAeonFractal.FA2DMFSGPU import CFA2DMFSGPU as CFA2DMFS
-<h1>GPU version of fractal dimension calculation</h1>
-from FreeAeonFractal.FAImageDimensionGPU import CFAImageDimensionGPU as CFAImageDimension
-</code></pre>
-<h2>Technical Features</h2>
-<ul>
-<li><strong>Multifractal Theory</strong>: Based on state-of-the-art box-counting multifractal algorithms</li>
-<li><strong>High Performance</strong>: Supports both CPU and GPU implementations</li>
-<li><strong>Batch Processing</strong>: Supports multi-image batch analysis</li>
-<li><strong>Numerical Stability</strong>: Uses logsumexp and other numerical stability techniques</li>
-<li><strong>Ease of Use</strong>: Simple API design with comprehensive documentation</li>
-</ul>
-<h2>Application Domains</h2>
-<ul>
-<li><strong>Medical Imaging</strong>: Tumor texture analysis, pathology image classification</li>
-<li><strong>Remote Sensing</strong>: Surface texture analysis, land use classification</li>
-<li><strong>Materials Science</strong>: Surface morphology analysis, microstructure characterization</li>
-<li><strong>Financial Analysis</strong>: Market volatility analysis, risk assessment</li>
-<li><strong>Signal Processing</strong>: Physiological signal analysis, seismic data processing</li>
-</ul>
-<h2>Citation</h2>
-<p>If you use this toolkit in academic work, please cite:</p>
-<p>> Jim Xie, <em>FreeAeon-Fractal: A Python Toolkit for Fractal and Multifractal Image Analysis</em>, 2025.
-> GitHub Repository: https://github.com/jim-xie-cn/FreeAeon-Fractal</p>
-<h2>Contact</h2>
-<ul>
-<li><strong>Author</strong>: Jim Xie</li>
-<li><strong>Email</strong>: jim.xie.cn@outlook.com, xiewenwei@sina.com</li>
-<li><strong>GitHub</strong>: https://github.com/jim-xie-cn/FreeAeon-Fractal</li>
-</ul>
-<h2>License</h2>
-<p>MIT License - See <a href="https://github.com/jim-xie-cn/FreeAeon-Fractal/blob/main/LICENSE">LICENSE</a></p>
-<p>---</p>
-<strong>Documentation Version</strong>: 1.0
-<strong>Last Updated</strong>: 2026-03-23
-        <div class="footer">
-            <p><strong>FreeAeon-Fractal</strong> - Python Toolkit for Fractal and Multifractal Analysis</p>
-            <p>GitHub: <a href="https://github.com/jim-xie-cn/FreeAeon-Fractal" target="_blank">https://github.com/jim-xie-cn/FreeAeon-Fractal</a></p>
-            <p>© 2025 Jim Xie | MIT License</p>
-        </div>
+fd_dbc = CFAImageDimension(gray_image).get_dbc_fd()
+fd_sdbc = CFAImageDimension(gray_image).get_sdbc_fd()
+
+# Visualize
+CFAImageDimension.plot(rgb_image, bin_image, fd_bc, fd_dbc, fd_sdbc)</pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>📚 Documentation Navigation</h2>
+                <p>Access detailed documentation for each module:</p>
+                <ul style="line-height: 2;">
+                    <li><a href="Multifractal-Spectrum-CFA2DMFS.html">Multifractal Spectrum Analysis - CFA2DMFS</a></li>
+                    <li><a href="Series-Multifractal-CFA1DMFS.html">Series Multifractal Spectrum - CFA1DMFS</a></li>
+                    <li><a href="Fractal-Dimension-CFAImageDimension.html">Fractal Dimension Analysis - CFAImageDimension</a></li>
+                    <li><a href="Lacunarity-Analysis-CFAImageLacunarity.html">Lacunarity Analysis - CFAImageLacunarity</a></li>
+                    <li><a href="Fourier-Analysis-CFAImageFourier.html">Fourier Analysis - CFAImageFourier</a></li>
+                    <li><a href="Image-Utils-CFAImage.html">Image Utilities - CFAImage</a></li>
+                    <li><a href="Visualization-Tools-CFAVisual.html">Visualization Tools - CFAVisual</a></li>
+                    <li><a href="Fractal-Sample-Generator-CFASample.html">Fractal Sample Generator - CFASample</a></li>
+                    <li><a href="GPU-Acceleration.html">GPU Acceleration</a></li>
+                </ul>
+            </section>
+        </main>
+
+        <footer>
+            <p>© 2025 FreeAeon-Fractal. All rights reserved.</p>
+            <p>
+                <a href="https://github.com/jim-xie-cn/FreeAeon-Fractal" target="_blank">GitHub</a> |
+                <a href="https://pypi.org/project/FreeAeon-Fractal/" target="_blank">PyPI</a>
+            </p>
+        </footer>
     </div>
 </body>
 </html>
