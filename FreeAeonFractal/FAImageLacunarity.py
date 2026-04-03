@@ -89,8 +89,8 @@ class CFAImageLacunarity:
             if not include_zero:
                 masses = masses[masses > 0]
             
-            if masses.size == 0:
-                print(f"[Warning] No non-zero masses at scale {size}")
+            #if masses.size == 0:
+            #print(f"[Warning] No non-zero masses at scale {size}")
 
             lambda_val = self._safe_lacunarity_from_masses(masses)
             scale_list.append(size)
