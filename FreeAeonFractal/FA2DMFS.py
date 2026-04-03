@@ -25,7 +25,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import matplotlib.ticker as mticker
 from skimage.util import view_as_blocks
-
+from FreeAeonFractal.FAImage import CFAImage as CFAImage
 
 # ============================================================
 # Fixed ROI utilities (Scheme A: fixed square ROI, no LCM)
@@ -48,7 +48,6 @@ def crop_square_roi(img, L=None, mode="center"):
     if L is None:
         L = min(H, W)
     L = int(L)
-
     if L <= 0 or L > min(H, W):
         raise ValueError(f"Invalid L={L} for image shape {(H, W)}")
 
@@ -61,57 +60,6 @@ def crop_square_roi(img, L=None, mode="center"):
         raise ValueError("mode must be 'topleft' or 'center'.")
 
     return img[y0:y0 + L, x0:x0 + L].copy(), L
-
-
-# ============================================================
-# Image blocking utilities (2D only)
-# ============================================================
-class CFAImage:
-    @staticmethod
-    def crop_data(data, block_size):
-        """Crop spatial dimensions so H and W are multiples of block_size."""
-        if data is None:
-            raise ValueError("data is None")
-        bh, bw = block_size
-        h, w = data.shape[:2]
-        new_h = (h // bh) * bh
-        new_w = (w // bw) * bw
-        return data[:new_h, :new_w]
-
-    @staticmethod
-    def get_boxes_from_image(image, block_size, corp_type=-1):
-        """
-        Split a 2D grayscale image into blocks.
-
-        Returns:
-            blocks_reshaped: (num_blocks, bh, bw)
-            raw_blocks:      (nY, nX, bh, bw)
-        """
-        if image.ndim != 2:
-            raise ValueError("For MFS, image must be 2D grayscale (H,W).")
-
-        bh, bw = block_size
-
-        if corp_type == -1:
-            img = CFAImage.crop_data(image, block_size)
-        elif corp_type == 0:
-            # strict: require exact tiling, otherwise return empty
-            if image.shape[0] % bh != 0 or image.shape[1] % bw != 0:
-                return (np.empty((0, bh, bw), dtype=image.dtype),
-                        np.empty((0, 0, bh, bw), dtype=image.dtype))
-            img = image
-        else:
-            img = CFAImage.crop_data(image, block_size)
-
-        if img.shape[0] < bh or img.shape[1] < bw:
-            return (np.empty((0, bh, bw), dtype=img.dtype),
-                    np.empty((0, 0, bh, bw), dtype=img.dtype))
-
-        raw_blocks = view_as_blocks(img, block_shape=(bh, bw))  # (nY, nX, bh, bw)
-        nY, nX = raw_blocks.shape[:2]
-        blocks_reshaped = raw_blocks.reshape(nY * nX, bh, bw)
-        return blocks_reshaped, raw_blocks
-
 
 # ============================================================
 # Box-counting multifractal spectrum (MFS)
@@ -138,7 +86,7 @@ class CFA2DMFS:
     mu_floor : float, default 1e-12
         Kept for compatibility; NOT used anymore (we do not floor mu).
     """
-    def __init__(self, image, corp_type=0, q_list=np.linspace(-5, 5, 51),
+    def __init__(self, image, corp_type=-1, q_list=np.linspace(-5, 5, 51),
                  with_progress=True, bg_threshold=0.01, bg_reverse=False, bg_otsu=False, mu_floor=1e-12):
         if image is None:
             raise ValueError("image is None")
@@ -242,9 +190,8 @@ class CFA2DMFS:
         scales = scales[(scales >= min_box) & (scales <= fixed_L_int)]
 
         # keep only divisors of fixed_L => exact tiling, no per-scale crop
-        scales = scales[(fixed_L_int % scales) == 0]
+        # scales = scales[(fixed_L_int % scales) == 0]
         scales = np.array(sorted(scales.astype(int)))
-
         if scales.size == 0:
             return pd.DataFrame()
 
@@ -255,11 +202,11 @@ class CFA2DMFS:
 
         records = []
         iterator = tqdm(scales, desc="Computing per-scale μ") if self.m_with_progress else scales
-
         try:
 
             for size in iterator:
                 size = int(size)
+
                 if size < min_box:
                     continue
 
