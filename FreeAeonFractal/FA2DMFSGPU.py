@@ -49,7 +49,7 @@ class CFA2DMFSGPU:
     - Regression/spline kept on CPU.
     """
 
-    def __init__(self, image, corp_type=0, q_list=np.linspace(-5, 5, 51),
+    def __init__(self, image, corp_type=-1, q_list=np.linspace(-5, 5, 51),
                  with_progress=True, bg_threshold=0.01, bg_reverse=False,
                  bg_otsu=False, mu_floor=1e-12, device='cuda', dtype=torch.float64):
 
@@ -101,33 +101,38 @@ class CFA2DMFSGPU:
     # ------------------------------------------------------------
     @torch.no_grad()
     def _mu_at_scale_torch(self, img_t: torch.Tensor, box_size: int):
-        """
-        img_t: (H,W) on device
-        returns mu_pos (1D tensor, mu>0), and also log(mu_pos)
-        """
         H, W = img_t.shape
         s = int(box_size)
-        if s <= 0 or H % s != 0 or W % s != 0:
-            # Scheme A expects exact tiling
+        if s <= 0:
             return None, None
 
-        # (H,W) -> (nY, s, nX, s) -> sum over block dims -> (nY,nX) -> flatten
-        nY = H // s
-        nX = W // s
+        new_H = (H // s) * s
+        new_W = (W // s) * s
+        img_t = img_t[:new_H, :new_W]
+
+        nY = new_H // s
+        nX = new_W // s
         blocks = img_t.reshape(nY, s, nX, s)
+
         block_mass = blocks.sum(dim=(1, 3)).reshape(-1)  # (nY*nX,)
+        block_mass = torch.where(block_mass < 0, torch.tensor(0.0, device=img_t.device), block_mass)
 
         total = block_mass.sum()
         if not torch.isfinite(total) or total <= 0:
             return None, None
 
         mu = block_mass / total
-        # keep only mu>0 to avoid log(0) issues (same as your code)
-        mu_pos = mu[mu > 0]
-        if mu_pos.numel() == 0:
+        mu = torch.where(torch.isfinite(mu) & (mu >= 0), mu, torch.tensor(0.0, device=img_t.device))
+
+        s_sum = mu.sum()
+        if s_sum <= 0 or not torch.isfinite(s_sum):
             return None, None
 
-        log_mu = torch.log(mu_pos)
+        mu /= s_sum
+
+        mu_pos = mu[mu > 0]
+        log_mu = torch.log(mu_pos) if mu_pos.numel() > 0 else None
+
         return mu_pos, log_mu
 
     # ------------------------------------------------------------
@@ -152,7 +157,7 @@ class CFA2DMFSGPU:
         scales = np.logspace(np.log2(min_box), np.log2(fixed_L_int), num=max_scales, base=2.0)
         scales = np.unique(np.maximum(min_box, np.round(scales).astype(int)))
         scales = scales[(scales >= min_box) & (scales <= fixed_L_int)]
-        scales = scales[(fixed_L_int % scales) == 0]
+        #scales = scales[(fixed_L_int % scales) == 0]
         scales = np.array(sorted(scales.astype(int)))
         if scales.size == 0:
             return pd.DataFrame()
@@ -169,6 +174,7 @@ class CFA2DMFSGPU:
         for size in iterator:
             size = int(size)
             mu_pos, log_mu = self._mu_at_scale_torch(img_t, size)
+            
             if mu_pos is None:
                 continue
 
@@ -499,7 +505,7 @@ class CFA2DMFSGPU:
     @staticmethod
     def get_batch_mfs(img_list,
                   q_list=np.linspace(-5, 5, 51),
-                  corp_type=0,
+                  corp_type=-1,
                   max_scales=80,
                   min_box=2,
                   min_points=6,
