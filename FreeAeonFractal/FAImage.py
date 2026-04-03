@@ -502,6 +502,7 @@ def demo_boxes_grayscale():
     cv2.circle(img, (128, 128), 80, 255, -1)
 
     block_size = (64, 64)
+    print("shape",img.shape)
     boxes, raw_blocks = CFAImage.get_boxes_from_image(img, block_size, corp_type=-1)
     print("total boxes:", boxes.shape[0], "raw_blocks shape:", raw_blocks.shape)
 
