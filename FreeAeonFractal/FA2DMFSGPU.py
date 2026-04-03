@@ -108,7 +108,7 @@ class CFA2DMFSGPU:
 
         new_H = (H // s) * s
         new_W = (W // s) * s
-        img_t = img_t[:new_H, :new_W]  
+        img_t = img_t[:new_H, :new_W]
 
         nY = new_H // s
         nX = new_W // s
@@ -129,9 +129,11 @@ class CFA2DMFSGPU:
             return None, None
 
         mu /= s_sum
+
         mu_pos = mu[mu > 0]
         log_mu = torch.log(mu_pos) if mu_pos.numel() > 0 else None
-        return mu, log_mu
+
+        return mu_pos, log_mu
 
     # ------------------------------------------------------------
     # Per-scale table (GPU)
