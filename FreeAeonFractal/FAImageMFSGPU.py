@@ -126,7 +126,7 @@ def _candidate_scales(min_box, fixed_L_int, max_scales):
 # ============================================================
 # Vectorized per-pixel slope on GPU: log mu(eps) vs log eps.
 #
-# Same semantics as FA2DMFS._alpha_map_from_mu_stack:
+# Same semantics as FAImageMFSGPU._alpha_map_from_mu_stack:
 #  - "nan":  NaN/0 entries are dropped from each pixel's regression
 #  - "fill": NaN/0 entries are replaced with the smallest positive value
 #            at that scale before taking log.
@@ -193,7 +193,7 @@ def _alpha_map_from_mu_stack_torch(mu_stack, log_eps, empty_policy="nan"):
 # ============================================================
 # Single-image GPU MFS
 # ============================================================
-class CFA2DMFSGPU:
+class CFAImageMFSGPU:
     """
     GPU version of the single-image MFS pipeline. Identical maths to the
     CPU class; only the per-scale mu / logsumexp loops are pushed to torch.
@@ -322,7 +322,7 @@ class CFA2DMFSGPU:
         return df.sort_values(["kind", "q", "scale"]).reset_index(drop=True)
 
     # --------------------------------------------------------
-    # Fitting / spectrum (CPU; identical maths to FA2DMFS.py)
+    # Fitting / spectrum (CPU; identical maths to FAImageMFSGPU.py)
     # --------------------------------------------------------
     @staticmethod
     def _common_scales_for_fit(df_mass, require_q1=True):
@@ -687,7 +687,7 @@ class CFA2DMFSGPU:
         # `mu_floor` is intentionally unused: the underlying mass-table
         # computation works in log-space without flooring (logsumexp
         # handles -inf gracefully). The argument is accepted only for
-        # API symmetry with CFA2DMFS.get_batch_mfs.
+        # API symmetry with CFAImageMFSGPU.get_batch_mfs.
         del mu_floor  # silence unused-variable linters
 
         if len(img_list) == 0:
@@ -881,7 +881,7 @@ class CFA2DMFSGPU:
         results = []
 
         # Re-use one fitter "shell" for fit + spectrum
-        fitter = CFA2DMFSGPU.__new__(CFA2DMFSGPU)
+        fitter = CFAImageMFSGPU.__new__(CFAImageMFSGPU)
         fitter.m_q_list = q_arr
         fitter.m_with_progress = False
         fitter.m_image = imgs_proc[0]
@@ -951,11 +951,11 @@ class CFA2DMFSGPU:
                           empty_policy="nan"):
         """
         Per-pixel local singularity exponent map alpha(x, y), GPU version
-        of CFA2DMFS.compute_alpha_map. See that docstring for the maths.
+        of CFAImageMFSGPU.compute_alpha_map. See that docstring for the maths.
         Result is returned as a numpy (L, L) float64 array.
         """
         # Delegate to the streaming batch path (B=1).
-        maps, info = CFA2DMFSGPU.compute_alpha_map_batch(
+        maps, info = CFAImageMFSGPU.compute_alpha_map_batch(
             [self.m_image], scales=scales, roi_mode=roi_mode,
             bg_threshold=0.0,            # already preprocessed in __init__
             bg_reverse=False, bg_otsu=False, empty_policy=empty_policy,
@@ -1158,6 +1158,16 @@ class CFA2DMFSGPU:
         return alpha_maps, {"L": L_common, "scales": scales,
                             "log_eps": log_eps_np}
 
+    def plot_alpha_map(self, alpha_map):
+        """
+        Visualize alpha(x,y)
+        """
+        plt.figure(figsize=(6, 6))
+        plt.imshow(alpha_map, cmap="jet")
+        plt.colorbar(label=r"$\alpha(x,y)$")
+        plt.title("Local Multifractal α-map")
+        plt.axis("off")
+        plt.show()
     # --------------------------------------------------------
     # Plotting
     # --------------------------------------------------------
@@ -1209,7 +1219,6 @@ class CFA2DMFSGPU:
         plt.tight_layout()
         plt.show()
 
-
 # ============================================================
 # Demo
 # ============================================================
@@ -1226,7 +1235,7 @@ def main():
 
     start = time.time()
     for img in imgs:
-        mfs = CFA2DMFSGPU(image=img, corp_type=-1, q_list=q_list,
+        mfs = CFAImageMFSGPU(image=img, corp_type=-1, q_list=q_list,
                           with_progress=with_progress, bg_reverse=False,
                           bg_threshold=0.01, bg_otsu=False)
         df_mass, df_fit, df_spec = mfs.get_mfs(
@@ -1237,7 +1246,7 @@ def main():
     print(df_fit.head())
 
     start = time.time()
-    batch_results = CFA2DMFSGPU.get_batch_mfs(
+    batch_results = CFAImageMFSGPU.get_batch_mfs(
         imgs, with_progress=with_progress, q_list=q_list, corp_type=-1,
         bg_reverse=False, bg_threshold=0.01, bg_otsu=False, max_scales=80,
         min_points=6, use_middle_scales=False, if_auto_line_fit=False,

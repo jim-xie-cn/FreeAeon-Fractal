@@ -3,24 +3,25 @@ import argparse
 import numpy as np
 from FreeAeonFractal.FAImageFourier import CFAImageFourier
 from FreeAeonFractal.FAImage import CFAImage
-from FreeAeonFractal.FAImageLacunarity import CFAImageLacunarity
+from FreeAeonFractal.FASeriesMFS import CFASeriesMFS
 
 #CPU version
-from FreeAeonFractal.FAImageDimension import CFAImageDimension
-from FreeAeonFractal.FA2DMFS import CFA2DMFS
+#from FreeAeonFractal.FAImageLAC import CFAImageLAC
+#from FreeAeonFractal.FAImageFD import CFAImageFD
+#from FreeAeonFractal.FAImageMFS import CFAImageMFS
 
 #GPU version
-#from FreeAeonFractal.FAImageDimensionGPU import CFAImageDimensionGPU as CFAImageDimension
-#from FreeAeonFractal.FA2DMFSGPU import CFA2DMFSGPU as CFA2DMFS
-
-from FreeAeonFractal.FA1DMFS import CFA1DMFS
+from FreeAeonFractal.FAImageLACGPU import CFAImageLACGPU as CFAImageLAC
+from FreeAeonFractal.FAImageFDGPU import CFAImageFDGPU as CFAImageFD
+from FreeAeonFractal.FAImageMFSGPU import CFAImageMFSGPU as CFAImageMFS
 
 def demo_1d_mfs():
     x = np.cumsum(np.random.randn(5000))
     q = np.linspace(-5, 5, 21)
-    mfs = CFA1DMFS(x)
+    mfs = CFASeriesMFS(x)
     df_mfs = mfs.get_mfs()
     mfs.plot(df_mfs)
+    print(df_mfs)
 
 def demo_2d_fd(image_path):
     rgb_image = cv2.imread(image_path)
@@ -28,32 +29,37 @@ def demo_2d_fd(image_path):
         raise FileNotFoundError(f"Cannot load image")
     gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
     bin_image,threshold = CFAImage.otsu_binarize(gray_image)
-    fd_bc = CFAImageDimension(bin_image).get_bc_fd(corp_type=-1)
-    fd_dbc = CFAImageDimension(gray_image).get_dbc_fd(corp_type=-1)
-    fd_sdbc = CFAImageDimension(gray_image).get_sdbc_fd(corp_type=-1)
+    fd_bc = CFAImageFD(bin_image).get_bc_fd(corp_type=-1)
+    fd_dbc = CFAImageFD(gray_image).get_dbc_fd(corp_type=-1)
+    fd_sdbc = CFAImageFD(gray_image).get_sdbc_fd(corp_type=-1)
     
     print("bc:",fd_bc['fd'])
     print("dbc:",fd_dbc['fd'])
     print("sdbc:",fd_sdbc['fd'])
 
-    CFAImageDimension.plot(gray_image, bin_image, fd_bc, fd_dbc, fd_sdbc)
+    CFAImageFD.plot(gray_image, bin_image, fd_bc, fd_dbc, fd_sdbc)
     
 def demo_2d_mfs(image_path):
     rgb_image = cv2.imread(image_path)
     if rgb_image is None:
         raise FileNotFoundError(f"Cannot load image")
     gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
-    MFS = CFA2DMFS(gray_image,q_list = np.linspace(-5, 5, 26) )
+    MFS = CFAImageMFS(gray_image,q_list = np.linspace(-5, 5, 26) )
     df_mass, df_fit, df_spec = MFS.get_mfs()
     print(df_spec)
     MFS.plot(df_mass,df_fit,df_spec)
+
+    alpha_map, info = MFS.compute_alpha_map(scales=[2, 4, 8, 16, 32])
+    print(alpha_map)
+    print(info)
+    MFS.plot_alpha_map(alpha_map)
 
 def demo_2d_lacunarity(image_path):
     rgb_image = cv2.imread(image_path)
     if rgb_image is None:
         raise FileNotFoundError(f"Cannot load image")
     gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)   
-    lacunarity = CFAImageLacunarity(gray_image,max_scales=256, with_progress=True) 
+    lacunarity = CFAImageLAC(gray_image,max_scales=256, with_progress=True) 
     lac_gray = lacunarity.get_lacunarity(corp_type=-1, use_binary_mass=False, include_zero=True)
     fit_gray = lacunarity.fit_lacunarity(lac_gray)
     print("Gray lacunarity:", lac_gray["lacunarity"])
@@ -103,7 +109,8 @@ def demo_fourier(image_path):
                  customized_phase_disp,
                  full_reconstructed, 
                  masked_reconstructed)
-    
+    print(masked_reconstructed)
+
 def main(image_path, mode):
     if mode == 'fd':
         demo_2d_fd(image_path)
@@ -120,7 +127,7 @@ def main(image_path, mode):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Compute fractal dimension or multifractal spectrum from an image.")
-    parser.add_argument("--image", type=str, help="Path to the input image")
+    parser.add_argument("--image", type=str, help="Path to the input image",default='./images/fractal.png')
     parser.add_argument("--mode", choices=['fd', 'mfs', 'lacunarity', 'fourier','series'], default='mfs',
                         help="Choose 'fd' to compute fractal dimension, 'mfs' for multifractal spectrum or 'fourier' for Fourier analysis. (default: mfs)")
 

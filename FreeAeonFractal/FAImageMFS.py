@@ -25,7 +25,10 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import matplotlib.ticker as mticker
 from skimage.util import view_as_blocks
-from FAImage import CFAImage as CFAImage
+try:
+    from FreeAeonFractal.FAImage import CFAImage
+except Exception:  # pragma: no cover - fallback for direct import
+    from FAImage import CFAImage
 
 # ============================================================
 # Fixed ROI utilities (Scheme A: fixed square ROI, no LCM)
@@ -64,7 +67,7 @@ def crop_square_roi(img, L=None, mode="center"):
 # ============================================================
 # Box-counting multifractal spectrum (MFS)
 # ============================================================
-class CFA2DMFS:
+class CFAImageMFS:
     """
     Box-counting multifractal analysis on a grayscale image.
 
@@ -807,7 +810,7 @@ class CFA2DMFS:
             {"L": L, "scales": np.ndarray, "log_eps": np.ndarray}
         """
         # Reuse the batch path with B=1 (streaming OLS, low memory).
-        maps, info = CFA2DMFS.compute_alpha_map_batch(
+        maps, info = CFAImageMFS.compute_alpha_map_batch(
             [self.m_image], scales=scales, roi_mode=roi_mode,
             bg_threshold=0.0,             # already preprocessed in __init__
             bg_reverse=False, bg_otsu=False, empty_policy=empty_policy,
@@ -849,7 +852,7 @@ class CFA2DMFS:
                         "log_eps": np.array([], dtype=np.float64)}
 
         def _prep(img):
-            tmp = CFA2DMFS(image=img, corp_type=-1,
+            tmp = CFAImageMFS(image=img, corp_type=-1,
                            q_list=np.array([0.0]),
                            with_progress=False,
                            bg_threshold=bg_threshold,
@@ -1067,7 +1070,7 @@ def main():
         raise FileNotFoundError(image_path)
     with_progress = True
     q_list = np.linspace(-5, 5, 51)
-    mfs = CFA2DMFS(image=image,
+    mfs = CFAImageMFS(image=image,
                       corp_type=-1,
                       q_list=q_list,
                       with_progress=with_progress,
