@@ -180,6 +180,7 @@ def main():
     mfs = CFASeriesMFS(x)
     df_mfs = mfs.get_mfs()
     mfs.plot(df_mfs)
+    print(df_mfs)
 
 if __name__ == "__main__":
     main()
