@@ -525,24 +525,7 @@ def _batch_run_gpu(images: Sequence[np.ndarray], method: str,
 def main():
     import cv2, time, os
     image_path = "../images/fractal.png"
-    if not os.path.exists(image_path):
-        # Synthetic Sierpinski carpet (theory FD = log(8)/log(3))
-        size = 729
-        img = np.ones((size, size), dtype=np.uint8) * 255
-        def carve(x0, y0, n):
-            if n < 1:
-                return
-            t = 3 ** (n - 1)
-            img[y0 + t:y0 + 2 * t, x0 + t:x0 + 2 * t] = 0
-            for dy in range(3):
-                for dx in range(3):
-                    if dx == 1 and dy == 1:
-                        continue
-                    carve(x0 + dx * t, y0 + dy * t, n - 1)
-        carve(0, 0, 6)
-        raw_image = img
-    else:
-        raw_image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
+    raw_image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
 
     raw_image = raw_image.astype(np.float32)
     bin_image = (raw_image < 64).astype(np.uint8)
@@ -561,8 +544,9 @@ def main():
     print(f"  SDBC FD = {fd_sdbc['fd']:.4f}")
 
     # ---- batch ----
-    bin_imgs = [bin_image] * 4
-    gray_imgs = [raw_image] * 4
+    bin_imgs = [bin_image] * 10
+    gray_imgs = [raw_image] * 10
+
     t0 = time.time()
     bc_list = CFAImageFDGPU.get_batch_bc(bin_imgs, max_scales=30,
                                                 with_progress=False)
@@ -570,11 +554,10 @@ def main():
                                                    with_progress=False)
     sdbc_list = CFAImageFDGPU.get_batch_sdbc(gray_imgs, max_scales=30,
                                                      with_progress=False)
-    print(f"Batch (4 imgs): {time.time()-t0:.3f}s")
-    print(f"  batch BC FD[0]   = {bc_list[0]['fd']:.4f}")
-    print(f"  batch DBC FD[0]  = {dbc_list[0]['fd']:.4f}")
-    print(f"  batch SDBC FD[0] = {sdbc_list[0]['fd']:.4f}")
-
+    print(f"Batch (10 imgs): {time.time()-t0:.3f}s")
+    print(f"  batch BC FD[9]   = {bc_list[9]['fd']:.4f}")
+    print(f"  batch DBC FD[9]  = {dbc_list[9]['fd']:.4f}")
+    print(f"  batch SDBC FD[9] = {sdbc_list[9]['fd']:.4f}")
 
 if __name__ == "__main__":
     main()

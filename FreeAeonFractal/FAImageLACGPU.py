@@ -481,11 +481,7 @@ def _push_chunk_results(out_per_image: List[dict],
 def main():
     import cv2, os
     img_path = "../images/face.png"
-    if not os.path.exists(img_path):
-        rng = np.random.default_rng(0)
-        gray_image = rng.integers(0, 256, size=(256, 256)).astype(np.uint8)
-    else:
-        gray_image = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+    gray_image = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
     _, bin_image = cv2.threshold(gray_image, 0, 255,
                                   cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 

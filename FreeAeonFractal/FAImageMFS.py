@@ -1071,21 +1071,12 @@ def main():
     mfs = CFAImageMFS(image=image,
                       corp_type=-1,
                       q_list=q_list,
-                      with_progress=with_progress,
-                      bg_reverse=False,
-                      bg_threshold=0.01,
-                      bg_otsu=False)
+                      with_progress=with_progress)
 
     print(mfs.m_image)
     print("Nonzero pixel ratio (adjust bg_threshold, typically < 0.5):", np.mean(mfs.m_image > 0))
 
-    df_mass, df_fit, df_spec = mfs.get_mfs(max_scales=80,
-                                           min_points=6,
-                                           use_middle_scales=False,
-                                           if_auto_line_fit=False,
-                                           fit_scale_frac=(0.3, 0.7),
-                                           auto_fit_min_len_ratio=0.6,
-                                           cap_d0_at_2=False)
+    df_mass, df_fit, df_spec = mfs.get_mfs(max_scales=80)
     print(df_fit.head())
 
     bad = df_fit[np.isfinite(df_fit["Dq"]) & (df_fit["Dq"] > 2.0)]

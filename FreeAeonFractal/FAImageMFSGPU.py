@@ -193,7 +193,7 @@ def _alpha_map_from_mu_stack_torch(mu_stack, log_eps, empty_policy="nan"):
 # ============================================================
 # Single-image GPU MFS
 # ============================================================
-class CFAImageMFSGPU:
+class CFA2DMFSGPU:
     """
     GPU version of the single-image MFS pipeline. Identical maths to the
     CPU class; only the per-scale mu / logsumexp loops are pushed to torch.
@@ -638,7 +638,7 @@ class CFAImageMFSGPU:
                       bg_otsu=False,
                       mu_floor=1e-12,
                       device=None,
-                      dtype=torch.float32,
+                      dtype=torch.float64,
                       with_progress=True,
                       img_chunk=None,
                       q_chunk=64):
@@ -656,10 +656,10 @@ class CFAImageMFSGPU:
         * For each scale s, every image's ROI is sub-cropped to (roi//s)*s,
           divided into s x s blocks, and probabilities mu_i(s) are computed
           on the GPU in one batched op.
-        * mu and the auxiliary log mu live in `dtype` (default fp32, big
-          speedup vs fp64). The reductions that matter (logsumexp over q,
-          xlogy for S) are done in fp64 to preserve precision near large
-          |q| and around mu ~ 1.
+        * mu and the auxiliary log mu live in `dtype` (default fp64,
+          matches the single-image class). The reductions that matter
+          (logsumexp over q, xlogy for S) are always done in fp64 to
+          preserve precision near large |q| and around mu ~ 1.
         * The q-axis is chunked (`q_chunk`) so the (B, n_blocks, n_q)
           intermediate never exceeds ~q_chunk * B * n_blocks * 8 bytes.
         * The image batch is chunked (`img_chunk`) so VRAM stays bounded
@@ -674,10 +674,11 @@ class CFAImageMFSGPU:
             Kept for API parity with the CPU class. Not used internally
             (the GPU code path is mu-floor-free by design, like the CPU
             class itself in the post-refactor version).
-        dtype : torch.dtype, default torch.float32
-            Compute dtype for ROI tensors. Use torch.float64 for byte-exact
-            agreement with the CPU class; fp32 is typically within 1e-5
-            of the fp64 result and ~2x faster.
+        dtype : torch.dtype, default torch.float64
+            Compute dtype for ROI tensors. fp64 (default) gives byte-exact
+            agreement with the CPU class and the single-image GPU class;
+            pass torch.float32 for ~2x speedup at ~1e-5 typical accuracy
+            loss.
         img_chunk : int or None
             Max images simultaneously resident on the GPU. None = all.
         q_chunk : int
@@ -873,7 +874,7 @@ class CFAImageMFSGPU:
         results = []
 
         # Re-use one fitter "shell" for fit + spectrum
-        fitter = CFAImageMFSGPU.__new__(CFAImageMFSGPU)
+        fitter = CFA2DMFSGPU.__new__(CFA2DMFSGPU)
         fitter.m_q_list = q_arr
         fitter.m_with_progress = False
         fitter.m_image = imgs_proc[0]
@@ -947,7 +948,7 @@ class CFAImageMFSGPU:
         Result is returned as a numpy (L, L) float64 array.
         """
         # Delegate to the streaming batch path (B=1).
-        maps, info = CFAImageMFSGPU.compute_alpha_map_batch(
+        maps, info = CFA2DMFSGPU.compute_alpha_map_batch(
             [self.m_image], scales=scales, roi_mode=roi_mode,
             bg_threshold=0.0,            # already preprocessed in __init__
             bg_reverse=False, bg_otsu=False, empty_policy=empty_policy,
@@ -960,7 +961,7 @@ class CFAImageMFSGPU:
                                 bg_threshold=0.01, bg_reverse=False,
                                 bg_otsu=False, empty_policy="nan",
                                 with_progress=True, device=None,
-                                dtype=torch.float32, img_chunk=None):
+                                dtype=torch.float64, img_chunk=None):
         """
         Batched per-pixel alpha-map on GPU using streaming OLS, with the
         nested-grid optimisation when scales are all multiples of s_min.
@@ -984,7 +985,7 @@ class CFAImageMFSGPU:
         bg_threshold, bg_reverse, bg_otsu : preprocessing flags
         empty_policy : {"nan", "fill"}
         device : torch.device or str
-        dtype : torch.dtype, default fp32
+        dtype : torch.dtype, default fp64
         img_chunk : int or None
 
         Returns
@@ -1213,12 +1214,12 @@ def main():
 
     imgs = [image for _ in range(200)]
 
-    q_list = np.linspace(0, 5, 51)
+    q_list = np.linspace(-5, 5, 51)
     with_progress = False
 
     start = time.time()
     for img in imgs:
-        mfs = CFAImageMFSGPU(image=img, corp_type=0, q_list=q_list,
+        mfs = CFA2DMFSGPU(image=img, corp_type=0, q_list=q_list,
                           with_progress=with_progress, bg_reverse=False,
                           bg_threshold=0.01, bg_otsu=False)
         df_mass, df_fit, df_spec = mfs.get_mfs(
@@ -1229,7 +1230,7 @@ def main():
     print(df_fit.head())
 
     start = time.time()
-    batch_results = CFAImageMFSGPU.get_batch_mfs(
+    batch_results = CFA2DMFSGPU.get_batch_mfs(
         imgs, with_progress=with_progress, q_list=q_list, corp_type=0,
         bg_reverse=False, bg_threshold=0.01, bg_otsu=False, max_scales=80,
         min_points=6, use_middle_scales=False, if_auto_line_fit=False,
@@ -1242,3 +1243,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

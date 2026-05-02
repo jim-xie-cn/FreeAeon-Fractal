@@ -517,27 +517,7 @@ def _prepare_batch(stack: np.ndarray, size: int,
 # ============================================================
 def main():
     image_path = "../images/fractal.png"
-    if not os.path.exists(image_path):
-        # graceful: build a synthetic Sierpinski carpet so the demo runs
-        print(f"{image_path} not found; using synthetic Sierpinski carpet")
-        size = 729  # 3^6
-        img = np.ones((size, size), dtype=np.uint8) * 255
-
-        def carve(x0, y0, n):
-            if n < 1:
-                return
-            t = 3 ** (n - 1)
-            img[y0 + t:y0 + 2 * t, x0 + t:x0 + 2 * t] = 0
-            for dy in range(3):
-                for dx in range(3):
-                    if dx == 1 and dy == 1:
-                        continue
-                    carve(x0 + dx * t, y0 + dy * t, n - 1)
-        carve(0, 0, 6)
-        raw_image = img
-    else:
-        raw_image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
-
+    raw_image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
     bin_image = (raw_image < 64).astype(np.uint8)
     fd_bc = CFAImageFD(bin_image, max_scales=30).get_bc_fd(corp_type=-1)
     fd_dbc = CFAImageFD(raw_image, max_scales=30).get_dbc_fd(corp_type=-1)

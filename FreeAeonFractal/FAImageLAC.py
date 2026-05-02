@@ -585,14 +585,9 @@ def _batch_gliding_same_shape(images: Sequence[np.ndarray],
 def main():
     import cv2
     img_path = os.path.join(os.path.dirname(__file__), "../images/face.png")
-    if not os.path.exists(img_path):
-        # Fall back to a synthetic image for demos
-        rng = np.random.default_rng(0)
-        gray_image = rng.integers(0, 256, size=(256, 256)).astype(np.uint8)
-    else:
-        gray_image = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
-        if gray_image is None:
-            raise FileNotFoundError(f"Image not found: {img_path}")
+    gray_image = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)
+    if gray_image is None:
+        raise FileNotFoundError(f"Image not found: {img_path}")
 
     if CFAImage is not None:
         bin_image, threshold = CFAImage.otsu_binarize(gray_image)
