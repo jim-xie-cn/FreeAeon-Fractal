@@ -529,14 +529,16 @@ def main():
 
     raw_image = raw_image.astype(np.float32)
     bin_image = (raw_image < 64).astype(np.uint8)
+    
+    max_scales = 100
 
     # ---- single image ----
     t0 = time.time()
-    fd_bc = CFAImageFDGPU(bin_image, max_scales=30,
+    fd_bc = CFAImageFDGPU(bin_image, max_scales=max_scales,
                                  with_progress=False).get_bc_fd(corp_type=-1)
-    fd_dbc = CFAImageFDGPU(raw_image, max_scales=30,
+    fd_dbc = CFAImageFDGPU(raw_image, max_scales=max_scales,
                                   with_progress=False).get_dbc_fd(corp_type=-1)
-    fd_sdbc = CFAImageFDGPU(raw_image, max_scales=30,
+    fd_sdbc = CFAImageFDGPU(raw_image, max_scales=max_scales,
                                    with_progress=False).get_sdbc_fd(corp_type=-1)
     print(f"Single image: {time.time()-t0:.3f}s")
     print(f"  BC FD   = {fd_bc['fd']:.4f}")
@@ -544,15 +546,15 @@ def main():
     print(f"  SDBC FD = {fd_sdbc['fd']:.4f}")
 
     # ---- batch ----
-    bin_imgs = [bin_image] * 10
-    gray_imgs = [raw_image] * 10
+    bin_imgs = [bin_image] * 1000
+    gray_imgs = [raw_image] * 1000
 
     t0 = time.time()
-    bc_list = CFAImageFDGPU.get_batch_bc(bin_imgs, max_scales=30,
+    bc_list = CFAImageFDGPU.get_batch_bc(bin_imgs, max_scales=max_scales,
                                                 with_progress=False)
-    dbc_list = CFAImageFDGPU.get_batch_dbc(gray_imgs, max_scales=30,
+    dbc_list = CFAImageFDGPU.get_batch_dbc(gray_imgs, max_scales=max_scales,
                                                    with_progress=False)
-    sdbc_list = CFAImageFDGPU.get_batch_sdbc(gray_imgs, max_scales=30,
+    sdbc_list = CFAImageFDGPU.get_batch_sdbc(gray_imgs, max_scales=max_scales,
                                                      with_progress=False)
     print(f"Batch (10 imgs): {time.time()-t0:.3f}s")
     print(f"  batch BC FD[9]   = {bc_list[9]['fd']:.4f}")

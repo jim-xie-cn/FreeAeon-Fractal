@@ -1228,13 +1228,13 @@ def main():
     if image is None:
         raise FileNotFoundError(image_path)
 
-    imgs = [image for _ in range(200)]
+    imgs = [image for _ in range(250)]
 
-    q_list = np.linspace(-5, 5, 51)
+    q_list = np.linspace(-10, 10, 101)
     with_progress = False
 
     start = time.time()
-    for img in imgs:
+    for img in tqdm(imgs,desc="single calculation"):
         mfs = CFAImageMFSGPU(image=img, corp_type=-1, q_list=q_list,
                           with_progress=with_progress, bg_reverse=False,
                           bg_threshold=0.01, bg_otsu=False)
