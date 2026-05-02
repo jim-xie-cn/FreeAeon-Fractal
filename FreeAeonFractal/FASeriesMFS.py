@@ -36,7 +36,7 @@ def recommended_lag(x_len, order=2, num_scales=40, s_min=None, s_max_ratio=0.25)
     return lag
 
 
-class CFA1DMFS:
+class CFASeriesMFS:
     '''
     data: input data (time serie)
     q_list: range of q values
@@ -177,7 +177,7 @@ class CFA1DMFS:
 def main():
     x = np.cumsum(np.random.randn(5000))
     q = np.linspace(-5, 5, 21)
-    mfs = CFA1DMFS(x)
+    mfs = CFASeriesMFS(x)
     df_mfs = mfs.get_mfs()
     mfs.plot(df_mfs)
 

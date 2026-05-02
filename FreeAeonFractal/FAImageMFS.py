@@ -25,7 +25,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import matplotlib.ticker as mticker
 from skimage.util import view_as_blocks
-from FreeAeonFractal.FAImage import CFAImage as CFAImage
+from FAImage import CFAImage as CFAImage
 
 # ============================================================
 # Fixed ROI utilities (Scheme A: fixed square ROI, no LCM)
@@ -64,7 +64,7 @@ def crop_square_roi(img, L=None, mode="center"):
 # ============================================================
 # Box-counting multifractal spectrum (MFS)
 # ============================================================
-class CFA2DMFS:
+class CFAImageMFS:
     """
     Box-counting multifractal analysis on a grayscale image.
 
@@ -221,27 +221,38 @@ class CFA2DMFS:
                 log_mu_all = np.log(mu_pos_all)
                 eps = float(size) / fixed_L
 
+                # Always record N (for D0) and S (for D1) regardless of
+                # whether q=0 or q=1 is in q_list. D0 (capacity) and D1
+                # (information dimension) are the standard quantities a
+                # multifractal analysis is expected to produce, and the
+                # GPU class always emits these rows -- doing the same on
+                # CPU keeps the two implementations API-compatible.
+                S_val = float(-np.sum(mu_pos_all * log_mu_all))
+                if np.isfinite(S_val):
+                    records.append({"scale": size, "eps": eps, "q": 1.0,
+                                    "value": S_val, "kind": "S"})
+                records.append({"scale": size, "eps": eps, "q": 0.0,
+                                "value": float(mu_pos_all.size),
+                                "kind": "N"})
+
                 for q in self.m_q_list:
                     q = float(q)
 
-                    if np.isclose(q, 1.0):
-                        S = float(-np.sum(mu_pos_all * log_mu_all))
-                        if np.isfinite(S):
-                            records.append({"scale": size, "eps": eps, "q": 1.0, "value": S, "kind": "S"})
+                    # q=0, q=1 are handled above (kind="N"/"S"); skip
+                    # them in the logMq pass even if the user listed
+                    # them, to avoid duplicate rows.
+                    if np.isclose(q, 1.0) or np.isclose(q, 0.0):
                         continue
 
-                    if np.isclose(q, 0.0):
-                        records.append({"scale": size, "eps": eps, "q": 0.0, "value": float(mu_pos_all.size), "kind": "N"})
-                        continue
-                    #max_log_arg = np.log(np.finfo(np.float64).max)  # ~709.78
-                    #a = q * log_mu_all               
-                    #a = np.minimum(a, max_log_arg)  
-                    #logMq = float(logsumexp(a))
+                    # log M(q, eps) = log sum_i mu_i^q
+                    # log_mu_all is finite (mu_pos_all > 0), so q*log_mu_all
+                    # is finite for any finite q. logsumexp is numerically
+                    # stable here.
                     a = q * log_mu_all
-                    a = a[np.isfinite(a)]
                     logMq = float(logsumexp(a)) if a.size else np.nan
                     if np.isfinite(logMq):
-                        records.append({"scale": size, "eps": eps, "q": q, "value": logMq, "kind": "logMq"})
+                        records.append({"scale": size, "eps": eps, "q": q,
+                                        "value": logMq, "kind": "logMq"})
         finally:
             self.m_image = old_img
 
@@ -552,9 +563,82 @@ class CFA2DMFS:
         return df_mass, df_fit, df_spec
 
     # ------------------------------------------------------------
+    # Batch processing of multiple images
+    # ------------------------------------------------------------
+    @staticmethod
+    def get_batch_mfs(img_list,
+                      q_list=np.linspace(-5, 5, 51),
+                      corp_type=-1,
+                      max_size=None,
+                      max_scales=80,
+                      min_box=2,
+                      min_points=6,
+                      use_middle_scales=False,
+                      fit_scale_frac=(0.2, 0.8),
+                      if_auto_line_fit=False,
+                      auto_fit_min_len_ratio=0.5,
+                      spline_s=0,
+                      cap_d0_at_2=False,
+                      bg_threshold=0.01,
+                      bg_reverse=False,
+                      bg_otsu=False,
+                      mu_floor=1e-12,
+                      with_progress=True):
+        """
+        Batch CPU multifractal spectrum.
+
+        Returns
+        -------
+        list of (df_mass, df_fit, df_spec) tuples, one per input image.
+
+        Notes
+        -----
+        For CPU we run images independently on the same thread; the
+        per-image cost is dominated by per-scale view_as_blocks ops,
+        which are already vectorised inside `get_mass_table`. This
+        wrapper exists to give the CPU class an API parity with
+        CFAImageMFSGPU.get_batch_mfs.
+        """
+        if len(img_list) == 0:
+            return []
+        results = []
+        iterator = (tqdm(enumerate(img_list), total=len(img_list),
+                          desc="Batch MFS (CPU)")
+                     if with_progress else enumerate(img_list))
+        for i, img in iterator:
+            obj = CFAImageMFS(image=img,
+                            corp_type=corp_type,
+                            q_list=q_list,
+                            with_progress=False,
+                            bg_threshold=bg_threshold,
+                            bg_reverse=bg_reverse,
+                            bg_otsu=bg_otsu,
+                            mu_floor=mu_floor)
+            df_mass, df_fit, df_spec = obj.get_mfs(
+                max_size=max_size, max_scales=max_scales,
+                min_points=min_points, min_box=min_box,
+                use_middle_scales=use_middle_scales,
+                fit_scale_frac=fit_scale_frac,
+                if_auto_line_fit=if_auto_line_fit,
+                auto_fit_min_len_ratio=auto_fit_min_len_ratio,
+                spline_s=spline_s, cap_d0_at_2=cap_d0_at_2)
+            results.append((df_mass, df_fit, df_spec))
+        return results
+
+    def plot_alpha_map(self, alpha_map):
+        """
+        Visualize alpha(x,y)
+        """
+        plt.figure(figsize=(6, 6))
+        plt.imshow(alpha_map, cmap="jet")
+        plt.colorbar(label=r"$\alpha(x,y)$")
+        plt.title("Local Multifractal α-map")
+        plt.axis("off")
+        plt.show()
+    # ------------------------------------------------------------
     # Plotting
     # ------------------------------------------------------------
-    def plot(self, df_mass, df_fit, df_spec):
+    def plot_mfs(self, df_mass, df_fit, df_spec):
         fig, axs = plt.subplots(2, 3, figsize=(14,8))
 
         # Heatmap: logMq for q!=0,1
@@ -635,6 +719,344 @@ class CFA2DMFS:
         plt.tight_layout()
         plt.show()
 
+    # ============================================================
+    # Local (coarse-grained) singularity map alpha(x, y)
+    # ============================================================
+    #
+    # Definition
+    # ----------
+    # For a probability measure mu derived from the image, the local
+    # singularity (Holder) exponent at pixel x is
+    #
+    #     mu(B_eps(x)) ~ eps^alpha(x)   as eps -> 0
+    #
+    # so log mu(eps, x) is linear in log(eps) with slope alpha(x). We
+    # estimate alpha(x) per pixel by:
+    #
+    #   1. For each scale s in `scales`:
+    #        - tile the fixed L x L ROI into (L//s) x (L//s) boxes,
+    #        - compute box probabilities mu_i (sums to 1 over boxes),
+    #        - "broadcast" each box value to the s x s pixels it covers,
+    #          producing a per-pixel measure mu_s(x,y) of shape (L, L).
+    #   2. Stack mu_s across scales -> mu_stack of shape (n_scales, L, L).
+    #   3. At every pixel (x, y), regress log mu_s(x, y) on log eps_s and
+    #      take the slope. This is done analytically (cov / var) so the
+    #      whole map is one vectorized op, no per-pixel linregress call.
+    #
+    # Why this differs from the original snippet
+    # ------------------------------------------
+    # The original code:
+    #   - Used `i * scales[k] // size`, which mixes up the direction of
+    #     the scale-to-grid index map (correct map is
+    #     `(i*size) // scales[k]`).
+    #   - Looped the SAME `len(scales)`-point trajectory inside an outer
+    #     `for size in scales` loop, then *overwrote* alpha_map at each
+    #     pixel several times, so the final value depended on iteration
+    #     order, not on a real average.
+    #   - Took log(mu + 1e-12), pulling alpha down at empty boxes.
+    #   - Used scipy.stats.linregress per pixel, which is slow.
+    #
+    # The new implementation:
+    #   - Computes alpha analytically per pixel via cov/var (vectorized).
+    #   - Treats empty-box pixels (mu == 0 at any scale) as missing in
+    #     log space and drops them from the regression on a per-pixel
+    #     basis, so empty regions become NaN rather than -27.6 outliers.
+    # ============================================================
+    def _scale_mu_grid(self, img_fixed, size):
+        """
+        Compute the (nY, nX) box probabilities for a single scale on a
+        fixed L x L ROI, ignoring corp_type (we want exact tiling here).
+        """
+        L = img_fixed.shape[0]
+        new_L = (L // size) * size
+        if new_L == 0:
+            return None
+        sub = img_fixed[:new_L, :new_L]
+        n = new_L // size
+        # block-sum: (n, size, n, size) -> (n, n)
+        bm = sub.reshape(n, size, n, size).sum(axis=(1, 3))
+        bm = np.clip(bm, 0.0, None)
+        total = float(bm.sum())
+        if (not np.isfinite(total)) or total <= 0:
+            return None
+        mu = bm / total
+        return mu  # (n, n), aligned to the top-left (new_L x new_L) region
+
+    def compute_alpha_map(self, scales=None, roi_mode="center",
+                          empty_policy="nan"):
+        """
+        Compute the per-pixel local singularity exponent map alpha(x, y).
+
+        Parameters
+        ----------
+        scales : iterable of int or None
+            Box sizes (in pixels). Default: powers of two up to L/4.
+        roi_mode : {"center", "topleft"}
+            How to crop the image to a square L x L ROI.
+        empty_policy : {"nan", "fill"}
+            How to handle pixels where some scale gives mu == 0:
+              * "nan"  -> drop those (scale, pixel) entries; if a pixel
+                          has fewer than 2 valid scales, alpha = NaN.
+              * "fill" -> replace 0 with the smallest positive mu observed
+                          at that scale before taking log.
+
+        Returns
+        -------
+        alpha_map : (L, L) float64
+            NaN where alpha cannot be estimated.
+        info : dict
+            {"L": L, "scales": np.ndarray, "log_eps": np.ndarray}
+        """
+        # Reuse the batch path with B=1 (streaming OLS, low memory).
+        maps, info = CFAImageMFS.compute_alpha_map_batch(
+            [self.m_image], scales=scales, roi_mode=roi_mode,
+            bg_threshold=0.0,             # already preprocessed in __init__
+            bg_reverse=False, bg_otsu=False, empty_policy=empty_policy,
+            with_progress=False)
+        return maps[0], info
+
+    @staticmethod
+    def compute_alpha_map_batch(images, scales=None, roi_mode="center",
+                                bg_threshold=0.01, bg_reverse=False,
+                                bg_otsu=False, empty_policy="nan",
+                                with_progress=True, mu_floor=1e-12):
+        """
+        Batch version of compute_alpha_map for a list of grayscale images.
+
+        Implementation: grid-level streaming OLS. Two key optimisations:
+
+          1) Nested-grid trick. When every scale s_k is a multiple of the
+             smallest scale s_min, every s_min x s_min pixel patch has a
+             constant alpha (because the box trajectories at the two
+             pixels in that patch are identical at every scale). We
+             therefore run OLS on the (L/s_min, L/s_min) coarse grid and
+             upsample once at the end. This shrinks the OLS buffers by
+             a factor of s_min^2 (e.g. 4x for s_min=2, 256x for s_min=16).
+
+          2) Streaming OLS. We never materialise the (B, n_scales, L, L)
+             tensor; we accumulate the five ordinary-least-squares sums
+             [n_eff, sum_x, sum_y, sum_xx, sum_xy] over scales.
+
+          When the scales are NOT all integer multiples of s_min, we fall
+          back to pixel-level streaming OLS (still no full mu_stack).
+
+        Returns
+        -------
+        alpha_maps : list of (L, L) float64
+        info : dict with the common L, scales, log_eps.
+        """
+        if len(images) == 0:
+            return [], {"L": 0, "scales": np.array([], dtype=int),
+                        "log_eps": np.array([], dtype=np.float64)}
+
+        def _prep(img):
+            tmp = CFAImageMFS(image=img, corp_type=-1,
+                           q_list=np.array([0.0]),
+                           with_progress=False,
+                           bg_threshold=bg_threshold,
+                           bg_reverse=bg_reverse,
+                           bg_otsu=bg_otsu,
+                           mu_floor=mu_floor)
+            return tmp.m_image
+
+        prepped = [_prep(im) for im in images]
+        L_common = int(min(min(im.shape) for im in prepped))
+
+        rois = np.stack(
+            [crop_square_roi(im, L=L_common, mode=roi_mode)[0]
+             for im in prepped], axis=0
+        ).astype(np.float64, copy=False)
+        B = rois.shape[0]
+
+        if scales is None:
+            max_pow = max(2, int(np.floor(np.log2(max(2, L_common // 4)))))
+            scales = np.array([2 ** k for k in range(1, max_pow + 1)
+                               if 2 ** k <= L_common], dtype=int)
+        scales = np.array(sorted({int(s) for s in scales
+                                  if 1 <= s <= L_common}), dtype=int)
+        if scales.size < 2:
+            raise ValueError("Need at least 2 valid scales for alpha map.")
+        log_eps = np.log(scales.astype(np.float64) / float(L_common))
+
+        # Nested-grid optimisation: if every s is a multiple of s_min and
+        # L_common is a multiple of s_min, the alpha map is constant on
+        # every s_min x s_min patch, so we can do OLS on the coarse grid.
+        s_min = int(scales.min())
+        nested_ok = (L_common % s_min == 0) and \
+                    bool(np.all((scales % s_min) == 0))
+
+        if nested_ok:
+            grid_L = L_common // s_min                         # coarse side
+            n_eff  = np.zeros((B, grid_L, grid_L), dtype=np.float64)
+            sum_x  = np.zeros_like(n_eff)
+            sum_y  = np.zeros_like(n_eff)
+            sum_xx = np.zeros_like(n_eff)
+            sum_xy = np.zeros_like(n_eff)
+        else:
+            # Fall back to pixel grid (rare path).
+            grid_L = L_common
+            n_eff  = np.zeros((B, grid_L, grid_L), dtype=np.float64)
+            sum_x  = np.zeros_like(n_eff)
+            sum_y  = np.zeros_like(n_eff)
+            sum_xx = np.zeros_like(n_eff)
+            sum_xy = np.zeros_like(n_eff)
+
+        iter_scales = (tqdm(enumerate(scales), total=scales.size,
+                            desc="Batch alpha-map (CPU streaming)")
+                       if with_progress else enumerate(scales))
+
+        for k, s in iter_scales:
+            s = int(s)
+            x_k = float(log_eps[k])
+            new_L = (L_common // s) * s
+            if new_L == 0:
+                continue
+            n = new_L // s
+            sub = rois[:, :new_L, :new_L]
+            bm = sub.reshape(B, n, s, n, s).sum(axis=(2, 4))    # (B,n,n)
+            np.clip(bm, 0.0, None, out=bm)
+            total = bm.reshape(B, -1).sum(axis=1)               # (B,)
+            ok = np.isfinite(total) & (total > 0)
+            if not np.any(ok):
+                continue
+            safe = np.where(ok, total, 1.0)[:, None, None]
+            mu = bm / safe                                      # (B,n,n)
+            mu[~ok] = 0.0
+
+            if empty_policy == "fill":
+                mu_pos = np.where(mu > 0, mu, np.inf)
+                mins = mu_pos.reshape(B, -1).min(axis=1)
+                mins = np.where(np.isfinite(mins), mins, 1e-300)
+                mu_filled = np.where(mu > 0, mu, mins[:, None, None])
+                with np.errstate(divide="ignore"):
+                    log_mu_grid = np.log(mu_filled)
+                valid_grid = np.broadcast_to(
+                    ok[:, None, None], (B, n, n)).astype(np.float64)
+            else:
+                pos = (mu > 0)
+                with np.errstate(divide="ignore"):
+                    log_mu_grid = np.where(pos, np.log(np.where(pos, mu, 1.0)),
+                                           0.0)
+                valid_grid = (pos & ok[:, None, None]).astype(np.float64)
+
+            # Upsample (B, n, n) to (B, grid_L, grid_L) (or sub-region).
+            if nested_ok:
+                # On the coarse grid, n divides grid_L exactly:
+                # grid_L = L/s_min, n = L/s -> rep = grid_L / n = s/s_min
+                rep = s // s_min
+                log_mu_up = np.repeat(np.repeat(log_mu_grid, rep, axis=1),
+                                      rep, axis=2)
+                valid_up = np.repeat(np.repeat(valid_grid, rep, axis=1),
+                                     rep, axis=2)
+                # On the coarse grid the box covers all rows/cols, no
+                # sub-region needed because new_L / s_min = n * rep = grid_L
+                # only when (L_common - new_L) < s_min. If new_L < L_common,
+                # the un-tiled trailing strip on the pixel grid corresponds
+                # to floor((L_common - new_L) / s_min) coarse cells. We
+                # restrict the update to grid_L_new = (new_L // s_min):
+                gL = new_L // s_min
+                n_eff [:, :gL, :gL] += valid_up[:, :gL, :gL]
+                sum_x [:, :gL, :gL] += valid_up[:, :gL, :gL] * x_k
+                yt = np.where(valid_up[:, :gL, :gL] > 0,
+                              log_mu_up[:, :gL, :gL], 0.0)
+                sum_y [:, :gL, :gL] += yt
+                sum_xx[:, :gL, :gL] += valid_up[:, :gL, :gL] * (x_k * x_k)
+                sum_xy[:, :gL, :gL] += yt * x_k
+            else:
+                # Pixel-grid path (slower; only used when scales are not
+                # all multiples of s_min).
+                log_mu_pix = np.repeat(np.repeat(log_mu_grid, s, axis=1),
+                                       s, axis=2)
+                valid_pix = np.repeat(np.repeat(valid_grid, s, axis=1),
+                                       s, axis=2)
+                n_eff [:, :new_L, :new_L] += valid_pix
+                sum_x [:, :new_L, :new_L] += valid_pix * x_k
+                yt = np.where(valid_pix > 0, log_mu_pix, 0.0)
+                sum_y [:, :new_L, :new_L] += yt
+                sum_xx[:, :new_L, :new_L] += valid_pix * (x_k * x_k)
+                sum_xy[:, :new_L, :new_L] += yt * x_k
+
+        denom = n_eff * sum_xx - sum_x * sum_x
+        numer = n_eff * sum_xy - sum_x * sum_y
+        with np.errstate(divide="ignore", invalid="ignore"):
+            slope = np.where((n_eff >= 2) & (np.abs(denom) > 0),
+                             numer / denom, np.nan)
+
+        if nested_ok and s_min > 1:
+            # upsample (B, grid_L, grid_L) -> (B, L, L) by nearest repeat
+            slope_full = np.repeat(np.repeat(slope, s_min, axis=1),
+                                   s_min, axis=2)
+            # The trailing strip (if L_common is not exactly s_min * grid_L)
+            # can never happen because we required (L_common % s_min == 0).
+            return [slope_full[i].astype(np.float64) for i in range(B)], \
+                   {"L": L_common, "scales": scales, "log_eps": log_eps}
+        else:
+            return [slope[i].astype(np.float64) for i in range(B)], \
+                   {"L": L_common, "scales": scales, "log_eps": log_eps}
+
+
+# ============================================================
+# Vectorized per-pixel slope: log mu(eps) vs log eps
+# ============================================================
+def _alpha_map_from_mu_stack(mu_stack, log_eps, empty_policy="nan"):
+    """
+    Compute slope of log mu_stack[k, :, :] vs log_eps[k], independently
+    at every pixel, in a single vectorized pass.
+
+    NaN in mu_stack (e.g., outside the per-scale aligned region) is
+    treated as missing for that pixel's regression. Same for mu == 0:
+
+      * empty_policy="nan":  drop those (scale, pixel) entries; if a
+                              pixel has < 2 valid scales, alpha = NaN.
+      * empty_policy="fill": replace mu == 0 with min positive mu at
+                              that scale before taking log.
+
+    Returns
+    -------
+    alpha_map : (L, L) float64, NaN where undetermined.
+    """
+    K = mu_stack.shape[0]
+    L = mu_stack.shape[1]
+
+    if empty_policy == "fill":
+        ms = mu_stack.copy()
+        for k in range(K):
+            slab = ms[k]
+            pos = slab[(slab > 0) & np.isfinite(slab)]
+            floor = float(pos.min()) if pos.size else 1e-300
+            slab = np.where((slab > 0) & np.isfinite(slab), slab, floor)
+            ms[k] = slab
+        log_mu = np.log(ms)
+        valid = np.ones_like(log_mu, dtype=bool)  # everything valid
+    else:
+        # "nan": only positive, finite entries are valid
+        ms = mu_stack
+        with np.errstate(divide="ignore", invalid="ignore"):
+            log_mu = np.where(np.isfinite(ms) & (ms > 0),
+                              np.log(np.where(ms > 0, ms, 1.0)),
+                              np.nan)
+        valid = np.isfinite(log_mu)
+
+    # x[k]: log_eps[k]; per-pixel weighted least squares with weights
+    # being the 0/1 valid mask.
+    x = log_eps.astype(np.float64).reshape(K, 1, 1)                # (K,1,1)
+    y = log_mu                                                     # (K,L,L)
+    w = valid.astype(np.float64)                                   # (K,L,L)
+
+    n_eff   = w.sum(axis=0)                                        # (L,L)
+    sum_x   = (w * x).sum(axis=0)
+    sum_y   = np.where(valid, y, 0.0).sum(axis=0)
+    sum_xx  = (w * x * x).sum(axis=0)
+    sum_xy  = (np.where(valid, y, 0.0) * x).sum(axis=0)
+
+    denom = n_eff * sum_xx - sum_x * sum_x
+    numer = n_eff * sum_xy - sum_x * sum_y
+
+    with np.errstate(divide="ignore", invalid="ignore"):
+        slope = np.where((n_eff >= 2) & (np.abs(denom) > 0),
+                         numer / denom, np.nan)
+    return slope.astype(np.float64)
+
 
 # ============================================================
 # Demo
@@ -645,9 +1067,9 @@ def main():
     if image is None:
         raise FileNotFoundError(image_path)
     with_progress = True
-    q_list = np.linspace(0, 5, 51)
-    mfs = CFA2DMFS(image=image,
-                      corp_type=0,
+    q_list = np.linspace(-5, 5, 51)
+    mfs = CFAImageMFS(image=image,
+                      corp_type=-1,
                       q_list=q_list,
                       with_progress=with_progress,
                       bg_reverse=False,
@@ -683,8 +1105,12 @@ def main():
         print(row_d0[["q", "Dq", "n_points", "r_value", "std_err"]])
         print(f"  D0 should be ≤ 2.0; measured = {row_d0['Dq'].values[0]:.4f}")
 
-    mfs.plot(df_mass, df_fit, df_spec)
+    mfs.plot_mfs(df_mass, df_fit, df_spec)
 
+    alpha_map, info = mfs.compute_alpha_map(scales=[2, 4, 8, 16, 32])
+    print(alpha_map)
+    print(info)
+    mfs.plot_alpha_map(alpha_map)
 
 if __name__ == "__main__":
     main()
