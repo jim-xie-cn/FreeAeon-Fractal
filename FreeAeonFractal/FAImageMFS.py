@@ -708,7 +708,16 @@ class CFA2DMFS:
         
         plt.tight_layout()
         plt.show()
-
+    def plot_alpha_map(self, alpha_map):
+        """
+        Visualize alpha(x,y)
+        """
+        plt.figure(figsize=(6, 6))
+        plt.imshow(alpha_map, cmap="jet")
+        plt.colorbar(label=r"$\alpha(x,y)$")
+        plt.title("Local Multifractal α-map")
+        plt.axis("off")
+        plt.show()
     # ============================================================
     # Local (coarse-grained) singularity map alpha(x, y)
     # ============================================================

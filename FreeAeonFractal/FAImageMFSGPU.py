@@ -1221,12 +1221,12 @@ def main():
 
     imgs = [image for _ in range(200)]
 
-    q_list = np.linspace(0, 5, 51)
+    q_list = np.linspace(-5, 5, 51)
     with_progress = False
 
     start = time.time()
     for img in imgs:
-        mfs = CFA2DMFSGPU(image=img, corp_type=0, q_list=q_list,
+        mfs = CFA2DMFSGPU(image=img, corp_type=-1, q_list=q_list,
                           with_progress=with_progress, bg_reverse=False,
                           bg_threshold=0.01, bg_otsu=False)
         df_mass, df_fit, df_spec = mfs.get_mfs(
@@ -1238,7 +1238,7 @@ def main():
 
     start = time.time()
     batch_results = CFA2DMFSGPU.get_batch_mfs(
-        imgs, with_progress=with_progress, q_list=q_list, corp_type=0,
+        imgs, with_progress=with_progress, q_list=q_list, corp_type=-1,
         bg_reverse=False, bg_threshold=0.01, bg_otsu=False, max_scales=80,
         min_points=6, use_middle_scales=False, if_auto_line_fit=False,
         fit_scale_frac=(0.3, 0.7), auto_fit_min_len_ratio=0.6,
