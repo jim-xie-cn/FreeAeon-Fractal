@@ -804,16 +804,18 @@ class CFA2DMFSGPU:
                     S_b = torch.where(bad1d, nan_v, S_b)
 
                 # --- logMq for q in logmq_q_vals ---
-                # We need log_mu only on positive boxes; everywhere else
-                # the contribution is 0 -> -inf in log space, which logsumexp
-                # handles natively.
-                neg_inf = torch.tensor(float("-inf"), device=device,
-                                       dtype=torch.float64)
-                # safe log on positives
+                # Empty boxes (mu_i == 0) contribute 0 to sum mu_i^q, which
+                # is -inf in log space. The naive expression
+                #     a = q * log_mu  with log_mu = -inf on empty boxes
+                # is fine for q > 0 but produces +inf for q < 0, blowing up
+                # logsumexp. We therefore compute a on a safe placeholder
+                # and then force a = -inf on empty boxes regardless of q
+                # sign. This matches the single-image path which simply
+                # excludes empty boxes via mu_pos = mu[mu > 0] before the
+                # logsumexp.
                 mu_64_clamped = mu_64.clamp_min(1e-300)
-                log_mu_64 = torch.where(pos,
-                                        torch.log(mu_64_clamped),
-                                        neg_inf)                   # (b, n_blocks)
+                log_mu_safe = torch.log(mu_64_clamped)             # (b, n_blocks)
+                neg_inf_scalar = float("-inf")
 
                 logMq_buf = torch.empty((b, n_q_lm), device=device,
                                         dtype=torch.float64)
@@ -822,12 +824,17 @@ class CFA2DMFSGPU:
                 while lo_q < n_q_lm:
                     hi_q = min(lo_q + q_chunk, n_q_lm)
                     q_slice = q_lm_t[lo_q:hi_q]                    # (qc,)
-                    # a[b, i, q] = q * log_mu[b, i] ; lse over i
+                    # a[b, i, q] = q * log_mu_safe[b, i]
                     # (b, n_blocks, qc)
-                    a = log_mu_64.unsqueeze(2) * q_slice.view(1, 1, -1)
+                    a = log_mu_safe.unsqueeze(2) * q_slice.view(1, 1, -1)
+                    # Mask empty-box rows to -inf for ALL q (so they
+                    # contribute 0 to sum mu_i^q regardless of q's sign).
+                    pos_3d = pos.unsqueeze(2).expand_as(a)
+                    a = torch.where(pos_3d, a,
+                                    torch.full_like(a, neg_inf_scalar))
                     lse = torch.logsumexp(a, dim=1)                # (b, qc)
                     logMq_buf[:, lo_q:hi_q] = lse
-                    del a, lse
+                    del a, pos_3d, lse
                     lo_q = hi_q
 
                 if bad_total.any():
@@ -847,7 +854,7 @@ class CFA2DMFSGPU:
                     valid_scales[si] = True
 
                 del block_mass, total, safe_total, mu_lo, mu_64, mu_64_clamped, \
-                    log_mu_64, pos, N_b, S_b, logMq_buf, neg_inf
+                    log_mu_safe, pos, N_b, S_b, logMq_buf
 
             del sub_rois
             if device.type == "cuda":
@@ -1214,7 +1221,7 @@ def main():
 
     imgs = [image for _ in range(200)]
 
-    q_list = np.linspace(-5, 5, 51)
+    q_list = np.linspace(0, 5, 51)
     with_progress = False
 
     start = time.time()
@@ -1243,4 +1250,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

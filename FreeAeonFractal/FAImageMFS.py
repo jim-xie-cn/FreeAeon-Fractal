@@ -64,7 +64,7 @@ def crop_square_roi(img, L=None, mode="center"):
 # ============================================================
 # Box-counting multifractal spectrum (MFS)
 # ============================================================
-class CFAImageMFS:
+class CFA2DMFS:
     """
     Box-counting multifractal analysis on a grayscale image.
 
@@ -597,7 +597,7 @@ class CFAImageMFS:
         per-image cost is dominated by per-scale view_as_blocks ops,
         which are already vectorised inside `get_mass_table`. This
         wrapper exists to give the CPU class an API parity with
-        CFAImageMFSGPU.get_batch_mfs.
+        CFA2DMFSGPU.get_batch_mfs.
         """
         if len(img_list) == 0:
             return []
@@ -606,7 +606,7 @@ class CFAImageMFS:
                           desc="Batch MFS (CPU)")
                      if with_progress else enumerate(img_list))
         for i, img in iterator:
-            obj = CFAImageMFS(image=img,
+            obj = CFA2DMFS(image=img,
                             corp_type=corp_type,
                             q_list=q_list,
                             with_progress=False,
@@ -625,20 +625,10 @@ class CFAImageMFS:
             results.append((df_mass, df_fit, df_spec))
         return results
 
-    def plot_alpha_map(self, alpha_map):
-        """
-        Visualize alpha(x,y)
-        """
-        plt.figure(figsize=(6, 6))
-        plt.imshow(alpha_map, cmap="jet")
-        plt.colorbar(label=r"$\alpha(x,y)$")
-        plt.title("Local Multifractal α-map")
-        plt.axis("off")
-        plt.show()
     # ------------------------------------------------------------
     # Plotting
     # ------------------------------------------------------------
-    def plot_mfs(self, df_mass, df_fit, df_spec):
+    def plot(self, df_mass, df_fit, df_spec):
         fig, axs = plt.subplots(2, 3, figsize=(14,8))
 
         # Heatmap: logMq for q!=0,1
@@ -808,7 +798,7 @@ class CFAImageMFS:
             {"L": L, "scales": np.ndarray, "log_eps": np.ndarray}
         """
         # Reuse the batch path with B=1 (streaming OLS, low memory).
-        maps, info = CFAImageMFS.compute_alpha_map_batch(
+        maps, info = CFA2DMFS.compute_alpha_map_batch(
             [self.m_image], scales=scales, roi_mode=roi_mode,
             bg_threshold=0.0,             # already preprocessed in __init__
             bg_reverse=False, bg_otsu=False, empty_policy=empty_policy,
@@ -850,7 +840,7 @@ class CFAImageMFS:
                         "log_eps": np.array([], dtype=np.float64)}
 
         def _prep(img):
-            tmp = CFAImageMFS(image=img, corp_type=-1,
+            tmp = CFA2DMFS(image=img, corp_type=-1,
                            q_list=np.array([0.0]),
                            with_progress=False,
                            bg_threshold=bg_threshold,
@@ -1068,15 +1058,24 @@ def main():
         raise FileNotFoundError(image_path)
     with_progress = True
     q_list = np.linspace(-5, 5, 51)
-    mfs = CFAImageMFS(image=image,
+    mfs = CFA2DMFS(image=image,
                       corp_type=-1,
                       q_list=q_list,
-                      with_progress=with_progress)
+                      with_progress=with_progress,
+                      bg_reverse=False,
+                      bg_threshold=0.01,
+                      bg_otsu=False)
 
     print(mfs.m_image)
     print("Nonzero pixel ratio (adjust bg_threshold, typically < 0.5):", np.mean(mfs.m_image > 0))
 
-    df_mass, df_fit, df_spec = mfs.get_mfs(max_scales=80)
+    df_mass, df_fit, df_spec = mfs.get_mfs(max_scales=80,
+                                           min_points=6,
+                                           use_middle_scales=False,
+                                           if_auto_line_fit=False,
+                                           fit_scale_frac=(0.3, 0.7),
+                                           auto_fit_min_len_ratio=0.6,
+                                           cap_d0_at_2=False)
     print(df_fit.head())
 
     bad = df_fit[np.isfinite(df_fit["Dq"]) & (df_fit["Dq"] > 2.0)]
@@ -1096,7 +1095,7 @@ def main():
         print(row_d0[["q", "Dq", "n_points", "r_value", "std_err"]])
         print(f"  D0 should be ≤ 2.0; measured = {row_d0['Dq'].values[0]:.4f}")
 
-    mfs.plot_mfs(df_mass, df_fit, df_spec)
+    mfs.plot(df_mass, df_fit, df_spec)
 
     alpha_map, info = mfs.compute_alpha_map(scales=[2, 4, 8, 16, 32])
     print(alpha_map)
