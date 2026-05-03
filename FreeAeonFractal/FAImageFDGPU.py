@@ -322,7 +322,7 @@ class CFAImageFDGPU:
     # Plot helper
     # ============================================================
     @staticmethod
-    def plot(raw_img, gray_img, fd_bc, fd_dbc, fd_sdbc):
+    def plot(raw_img, gray_img,bin_img, fd_bc, fd_dbc, fd_sdbc):
         def show_image(text, image, cmap="viridis"):
             plt.imshow(image, cmap=cmap)
             plt.title(text, fontsize=8)
@@ -364,7 +364,8 @@ class CFAImageFDGPU:
 
         plt.figure(1, figsize=(10, 5))
         plt.subplot(2, 3, 1); show_image("Raw Image", raw_img)
-        plt.subplot(2, 3, 3); show_image("Binary Image", gray_img, "gray")
+        plt.subplot(2, 3, 2); show_image("Gray Image", gray_img,'gray')
+        plt.subplot(2, 3, 3); show_image("Binary Image", bin_img, "gray")
         plt.subplot(2, 3, 4); show_fit("BC", fd_bc)
         plt.subplot(2, 3, 5); show_fit("DBC", fd_dbc)
         plt.subplot(2, 3, 6); show_fit("SDBC", fd_sdbc)

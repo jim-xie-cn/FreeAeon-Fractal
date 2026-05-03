@@ -25,10 +25,8 @@ def demo_series_mfs():
     print(df_mfs)
 
 def demo_fd(image_path):
-    rgb_image = cv2.imread(image_path)
-    if rgb_image is None:
-        raise FileNotFoundError(f"Cannot load image")
-    gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
+    rgb_image = cv2.cvtColor(cv2.imread(image_path), cv2.COLOR_BGR2RGB)
+    gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_RGB2GRAY)
     bin_image,threshold = CFAImage.otsu_binarize(gray_image)
 
     max_scales = 32
@@ -41,8 +39,8 @@ def demo_fd(image_path):
     print("  BC:",fd_bc['fd'])
     print("  DBC:",fd_dbc['fd'])
     print("  SDBC:",fd_sdbc['fd'])
-
-    CFAImageFD.plot(gray_image, bin_image, fd_bc, fd_dbc, fd_sdbc)
+    CFAImageFD.plot(rgb_image, gray_image,bin_image, fd_bc, fd_dbc, fd_sdbc)
+    
     # ---- batch ----
     bin_imgs = [bin_image] * 100
     gray_imgs = [gray_image] * 100
@@ -54,14 +52,12 @@ def demo_fd(image_path):
     print(f"  batch BC FD[99]   = {bc_list[99]['fd']:.4f}")
     print(f"  batch DBC FD[99]  = {dbc_list[99]['fd']:.4f}")
     print(f"  batch SDBC FD[99] = {sdbc_list[99]['fd']:.4f}")
-    CFAImageFD.plot(gray_image, bin_image, bc_list[99], dbc_list[99], sdbc_list[99])
+    CFAImageFD.plot(rgb_image,gray_image, bin_image, bc_list[99], dbc_list[99], sdbc_list[99])
  
 def demo_mfs(image_path):
-    rgb_image = cv2.imread(image_path)
-    if rgb_image is None:
-        raise FileNotFoundError(f"Cannot load image")
-    gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
-    
+    rgb_image = cv2.cvtColor(cv2.imread(image_path), cv2.COLOR_BGR2RGB)
+    gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_RGB2GRAY)
+
     q_list = np.linspace(-5, 5, 51)
     # --- single ----
     t0 = time.time()
@@ -86,10 +82,8 @@ def demo_mfs(image_path):
     MFS.plot(df_mass1,df_fit1,df_spec1)
 
 def demo_alpha(image_path):
-    rgb_image = cv2.imread(image_path)
-    if rgb_image is None:
-        raise FileNotFoundError(f"Cannot load image")
-    gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
+    rgb_image = cv2.cvtColor(cv2.imread(image_path), cv2.COLOR_BGR2RGB)
+    gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_RGB2GRAY)
 
     q_list = np.linspace(-5, 5, 51)
     # --- single ----
@@ -114,10 +108,9 @@ def demo_alpha(image_path):
     CFAImageMFS.plot_alpha_map(alpha_maps[0])
 
 def demo_lacunarity(image_path):
-    rgb_image = cv2.imread(image_path)
-    if rgb_image is None:
-        raise FileNotFoundError(f"Cannot load image")
-    gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)   
+    rgb_image = cv2.cvtColor(cv2.imread(image_path), cv2.COLOR_BGR2RGB)
+    gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_RGB2GRAY)
+
     lacunarity = CFAImageLAC(gray_image,max_scales=256, with_progress=True) 
     # ---- Single ----
     t0 = time.time()
@@ -141,13 +134,10 @@ def demo_lacunarity(image_path):
     lacunarity.plot(batchs[99],fits[99])
 
 def demo_fourier(image_path):  
-    rgb_image = cv2.imread(image_path)
-    if rgb_image is None:
-        raise FileNotFoundError(f"Cannot load image")
-    gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
+    rgb_image = cv2.cvtColor(cv2.imread(image_path), cv2.COLOR_BGR2RGB)
+    gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_RGB2GRAY)
 
     #fourier for gray images
-    #gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
     #fourier = CFAImageFourier(gray_image)
 
     #fourier for RGB images
