@@ -138,6 +138,7 @@ def demo_lacunarity(image_path):
     print(f"Batch lacunarity (100) imgs:{time.time()-t0:.3f}s" )
     print("  Gray lacunarity:", batchs[99]["lacunarity"])
     print("  Fit slope:", fits[99]["slope"],"Fit intercept",fits[99]["intercept"],  "R:", fits[99]["r_value"],"P:",fits[99]["p_value"])
+    lacunarity.plot(batchs[99],fits[99])
 
 def demo_fourier(image_path):  
     rgb_image = cv2.imread(image_path)
