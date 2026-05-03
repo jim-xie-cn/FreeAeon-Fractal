@@ -1157,8 +1157,8 @@ class CFAImageMFSGPU:
 
         return alpha_maps, {"L": L_common, "scales": scales,
                             "log_eps": log_eps_np}
-
-    def plot_alpha_map(self, alpha_map):
+    @staticmethod
+    def plot_alpha_map(alpha_map):
         """
         Visualize alpha(x,y)
         """

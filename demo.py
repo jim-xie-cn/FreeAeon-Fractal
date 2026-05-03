@@ -205,7 +205,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Compute fractal dimension or multifractal spectrum from an image.")
     parser.add_argument("--image", type=str, help="Path to the input image",default='./images/fractal.png')
     parser.add_argument("--mode", choices=['fd','mfs','alpha','lacunarity', 'fourier','series'], default='mfs',
-                        help="Choose 'fd' to compute fractal dimension, 'mfs' for multifractal spectrum,'alpha' for local alpha map or 'fourier' for Fourier analysis. (default: mfs)")
+                        help="Choose 'fd' for fractal dimension, 'mfs' for multifractal spectrum, 'alpha' for local alpha map, 'lacunarity' for lacunarity analysis, 'fourier' for fourier analysis, 'series' for multifractal spectrum of series. (default: mfs)")
 
     args = parser.parse_args()
 
