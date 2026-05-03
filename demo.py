@@ -1,19 +1,20 @@
 import cv2
 import argparse
 import numpy as np
+import time
 from FreeAeonFractal.FAImageFourier import CFAImageFourier
 from FreeAeonFractal.FAImage import CFAImage
 from FreeAeonFractal.FASeriesMFS import CFASeriesMFS
 
 #CPU version
-#from FreeAeonFractal.FAImageLAC import CFAImageLAC
-#from FreeAeonFractal.FAImageFD import CFAImageFD
-#from FreeAeonFractal.FAImageMFS import CFAImageMFS
+from FreeAeonFractal.FAImageLAC import CFAImageLAC
+from FreeAeonFractal.FAImageFD import CFAImageFD
+from FreeAeonFractal.FAImageMFS import CFAImageMFS
 
 #GPU version
-from FreeAeonFractal.FAImageLACGPU import CFAImageLACGPU as CFAImageLAC
-from FreeAeonFractal.FAImageFDGPU import CFAImageFDGPU as CFAImageFD
-from FreeAeonFractal.FAImageMFSGPU import CFAImageMFSGPU as CFAImageMFS
+#from FreeAeonFractal.FAImageLACGPU import CFAImageLACGPU as CFAImageLAC
+#from FreeAeonFractal.FAImageFDGPU import CFAImageFDGPU as CFAImageFD
+#from FreeAeonFractal.FAImageMFSGPU import CFAImageMFSGPU as CFAImageMFS
 
 def demo_1d_mfs():
     x = np.cumsum(np.random.randn(5000))
@@ -29,30 +30,73 @@ def demo_2d_fd(image_path):
         raise FileNotFoundError(f"Cannot load image")
     gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
     bin_image,threshold = CFAImage.otsu_binarize(gray_image)
-    fd_bc = CFAImageFD(bin_image).get_bc_fd(corp_type=-1)
-    fd_dbc = CFAImageFD(gray_image).get_dbc_fd(corp_type=-1)
-    fd_sdbc = CFAImageFD(gray_image).get_sdbc_fd(corp_type=-1)
-    
-    print("bc:",fd_bc['fd'])
-    print("dbc:",fd_dbc['fd'])
-    print("sdbc:",fd_sdbc['fd'])
+
+    max_scales = 32
+
+    #  ---- single ----
+    t0 = time.time()
+    fd_bc = CFAImageFD(bin_image,max_scales=max_scales).get_bc_fd(corp_type=-1)
+    fd_dbc = CFAImageFD(gray_image,max_scales=max_scales).get_dbc_fd(corp_type=-1)
+    fd_sdbc = CFAImageFD(gray_image,max_scales=max_scales).get_sdbc_fd(corp_type=-1)
+    print(f"Single (1) img: {time.time()-t0:.3f}s")
+    print("  BC:",fd_bc['fd'])
+    print("  DBC:",fd_dbc['fd'])
+    print("  SDBC:",fd_sdbc['fd'])
 
     CFAImageFD.plot(gray_image, bin_image, fd_bc, fd_dbc, fd_sdbc)
-    
+
+    # ---- batch ----
+    bin_imgs = [bin_image] * 100
+    gray_imgs = [gray_image] * 100
+    t0 = time.time()
+    bc_list = CFAImageFD.get_batch_bc(bin_imgs, max_scales=max_scales,with_progress=False)
+    dbc_list = CFAImageFD.get_batch_dbc(gray_imgs, max_scales=max_scales,with_progress=False)
+    sdbc_list = CFAImageFD.get_batch_sdbc(gray_imgs, max_scales=max_scales,with_progress=False)
+    print(f"Batch (100 imgs): {time.time()-t0:.3f}s")
+    print(f"  batch BC FD[99]   = {bc_list[99]['fd']:.4f}")
+    print(f"  batch DBC FD[99]  = {dbc_list[99]['fd']:.4f}")
+    print(f"  batch SDBC FD[99] = {sdbc_list[99]['fd']:.4f}")
+
 def demo_2d_mfs(image_path):
     rgb_image = cv2.imread(image_path)
     if rgb_image is None:
         raise FileNotFoundError(f"Cannot load image")
     gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
-    MFS = CFAImageMFS(gray_image,q_list = np.linspace(-5, 5, 26) )
+    
+    q_list = np.linspace(-5, 5, 51)
+    # --- single ----
+    t0 = time.time()
+    MFS = CFAImageMFS(gray_image,q_list = q_list )
     df_mass, df_fit, df_spec = MFS.get_mfs()
+    print(f"Single MFS (1) imgs:{time.time()-t0:.3f}s")
     print(df_spec)
     MFS.plot(df_mass,df_fit,df_spec)
 
+    print(f"Single alpha_map (1) imgs:{time.time()-t0:.3f}s")
     alpha_map, info = MFS.compute_alpha_map(scales=[2, 4, 8, 16, 32])
-    print(alpha_map)
-    print(info)
+    print("alpha map:",alpha_map)
+    print("scale info",info)
     MFS.plot_alpha_map(alpha_map)
+
+    # ---- batch ----
+    t0 = time.time()
+    imgs = [gray_image] * 20
+    batch_results = CFAImageMFS.get_batch_mfs( imgs, 
+            with_progress=False, q_list=q_list, corp_type=-1,
+            bg_reverse=False, bg_threshold=0.01, bg_otsu=False, max_scales=80,
+            min_points=6, use_middle_scales=False, if_auto_line_fit=False,
+            fit_scale_frac=(0.3, 0.7), auto_fit_min_len_ratio=0.6,
+                                                    cap_d0_at_2=False)
+    df_mass1, df_fit1, df_spec1 = batch_results[0]
+    print(f"Batch MFS (20) imgs:{time.time()-t0:.3f}s" )
+    print(df_fit1.head())
+
+    t0 = time.time()
+    batch_alpha_map = CFAImageMFS.compute_alpha_map_batch(imgs,with_progress=False, scales=[2, 4, 8, 16, 32])
+    alpha_maps = batch_alpha_map[0]
+    infos = batch_alpha_map[1]
+    print(f"Batch alpha_map (20) imgs:{time.time()-t0:.3f}s" )
+    print("alpha map count",len(alpha_maps),"scale info",len(infos))
 
 def demo_2d_lacunarity(image_path):
     rgb_image = cv2.imread(image_path)
@@ -60,11 +104,26 @@ def demo_2d_lacunarity(image_path):
         raise FileNotFoundError(f"Cannot load image")
     gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)   
     lacunarity = CFAImageLAC(gray_image,max_scales=256, with_progress=True) 
+    
+    # ---- Single ----
+    t0 = time.time()
     lac_gray = lacunarity.get_lacunarity(corp_type=-1, use_binary_mass=False, include_zero=True)
     fit_gray = lacunarity.fit_lacunarity(lac_gray)
-    print("Gray lacunarity:", lac_gray["lacunarity"])
-    print("Fit slope:", fit_gray["slope"],"Fit intercept",fit_gray["intercept"],  "R:", fit_gray["r_value"],"P:",fit_gray["p_value"])
+    print(f"Single lacunarity (1) imgs:{time.time()-t0:.3f}s" )
+    print("  Gray lacunarity:", lac_gray["lacunarity"])
+    print("  Fit slope:", fit_gray["slope"],"Fit intercept",fit_gray["intercept"],  "R:", fit_gray["r_value"],"P:",fit_gray["p_value"])
     lacunarity.plot(lac_gray,fit_gray)
+
+    # ---- batch ----
+    t0 = time.time()
+    # Batch
+    imgs = [gray_image] * 100
+    batch = CFAImageLAC.get_batch_lacunarity(
+        imgs, scales_mode="powers", partition_mode="gliding",
+        use_binary_mass=False, with_progress=False)
+    fits = CFAImageLAC.fit_batch_lacunarity(batch)
+    print(f"Batch lacunarity (100) imgs:{time.time()-t0:.3f}s" )
+    print("    Batch slopes:", [f["slope"] for f in fits])
 
 def demo_fourier(image_path):  
     rgb_image = cv2.imread(image_path)

@@ -609,7 +609,7 @@ class CFAImageMFS:
                           desc="Batch MFS (CPU)")
                      if with_progress else enumerate(img_list))
         for i, img in iterator:
-            obj = CFA2DMFS(image=img,
+            obj = CFAImageMFS(image=img,
                             corp_type=corp_type,
                             q_list=q_list,
                             with_progress=False,
