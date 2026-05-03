@@ -71,7 +71,7 @@ Example:
 ### Calculate the **Fractal Dimensions** (Box-Counting, DBC, SDBC) of an image
 
 ```bash
-python demo.py --mode fd --image ./images/fractal.png
+python demo.py --mode fd --image ./images/face.png
 ```
 
 Example:
