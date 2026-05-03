@@ -16,7 +16,7 @@ from FreeAeonFractal.FAImageMFS import CFAImageMFS
 #from FreeAeonFractal.FAImageFDGPU import CFAImageFDGPU as CFAImageFD
 #from FreeAeonFractal.FAImageMFSGPU import CFAImageMFSGPU as CFAImageMFS
 
-def demo_1d_mfs():
+def demo_series_mfs():
     x = np.cumsum(np.random.randn(5000))
     q = np.linspace(-5, 5, 21)
     mfs = CFASeriesMFS(x)
@@ -24,7 +24,7 @@ def demo_1d_mfs():
     mfs.plot(df_mfs)
     print(df_mfs)
 
-def demo_2d_fd(image_path):
+def demo_fd(image_path):
     rgb_image = cv2.imread(image_path)
     if rgb_image is None:
         raise FileNotFoundError(f"Cannot load image")
@@ -32,7 +32,6 @@ def demo_2d_fd(image_path):
     bin_image,threshold = CFAImage.otsu_binarize(gray_image)
 
     max_scales = 32
-
     #  ---- single ----
     t0 = time.time()
     fd_bc = CFAImageFD(bin_image,max_scales=max_scales).get_bc_fd(corp_type=-1)
@@ -44,7 +43,6 @@ def demo_2d_fd(image_path):
     print("  SDBC:",fd_sdbc['fd'])
 
     CFAImageFD.plot(gray_image, bin_image, fd_bc, fd_dbc, fd_sdbc)
-
     # ---- batch ----
     bin_imgs = [bin_image] * 100
     gray_imgs = [gray_image] * 100
@@ -56,8 +54,9 @@ def demo_2d_fd(image_path):
     print(f"  batch BC FD[99]   = {bc_list[99]['fd']:.4f}")
     print(f"  batch DBC FD[99]  = {dbc_list[99]['fd']:.4f}")
     print(f"  batch SDBC FD[99] = {sdbc_list[99]['fd']:.4f}")
-
-def demo_2d_mfs(image_path):
+    CFAImageFD.plot(gray_image, bin_image, bc_list[99], dbc_list[99], sdbc_list[99])
+ 
+def demo_mfs(image_path):
     rgb_image = cv2.imread(image_path)
     if rgb_image is None:
         raise FileNotFoundError(f"Cannot load image")
@@ -69,15 +68,9 @@ def demo_2d_mfs(image_path):
     MFS = CFAImageMFS(gray_image,q_list = q_list )
     df_mass, df_fit, df_spec = MFS.get_mfs()
     print(f"Single MFS (1) imgs:{time.time()-t0:.3f}s")
-    print(df_spec)
+    print(df_fit.head())
     MFS.plot(df_mass,df_fit,df_spec)
-
-    print(f"Single alpha_map (1) imgs:{time.time()-t0:.3f}s")
-    alpha_map, info = MFS.compute_alpha_map(scales=[2, 4, 8, 16, 32])
-    print("alpha map:",alpha_map)
-    print("scale info",info)
-    MFS.plot_alpha_map(alpha_map)
-
+    
     # ---- batch ----
     t0 = time.time()
     imgs = [gray_image] * 20
@@ -90,21 +83,42 @@ def demo_2d_mfs(image_path):
     df_mass1, df_fit1, df_spec1 = batch_results[0]
     print(f"Batch MFS (20) imgs:{time.time()-t0:.3f}s" )
     print(df_fit1.head())
+    MFS.plot(df_mass1,df_fit1,df_spec1)
 
+def demo_alpha(image_path):
+    rgb_image = cv2.imread(image_path)
+    if rgb_image is None:
+        raise FileNotFoundError(f"Cannot load image")
+    gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
+
+    q_list = np.linspace(-5, 5, 51)
+    # --- single ----
+    t0 = time.time()
+    MFS = CFAImageMFS(gray_image,q_list = q_list )
+    alpha_map, info = MFS.compute_alpha_map(scales=[2, 4, 8, 16, 32])
+    print(f"Single alpha_map (1) imgs:{time.time()-t0:.3f}s")
+    print("  alpha map:",alpha_map)
+    print("  scale info",info)
+    CFAImageMFS.plot_alpha_map(alpha_map)
+
+    # ---- batch ----
+    t0 = time.time()
+    imgs = [gray_image] * 20
     t0 = time.time()
     batch_alpha_map = CFAImageMFS.compute_alpha_map_batch(imgs,with_progress=False, scales=[2, 4, 8, 16, 32])
     alpha_maps = batch_alpha_map[0]
     infos = batch_alpha_map[1]
     print(f"Batch alpha_map (20) imgs:{time.time()-t0:.3f}s" )
-    print("alpha map count",len(alpha_maps),"scale info",len(infos))
+    print("  alpha map:",alpha_maps[0])
+    print("  scale info",infos)
+    CFAImageMFS.plot_alpha_map(alpha_maps[0])
 
-def demo_2d_lacunarity(image_path):
+def demo_lacunarity(image_path):
     rgb_image = cv2.imread(image_path)
     if rgb_image is None:
         raise FileNotFoundError(f"Cannot load image")
     gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)   
     lacunarity = CFAImageLAC(gray_image,max_scales=256, with_progress=True) 
-    
     # ---- Single ----
     t0 = time.time()
     lac_gray = lacunarity.get_lacunarity(corp_type=-1, use_binary_mass=False, include_zero=True)
@@ -116,14 +130,14 @@ def demo_2d_lacunarity(image_path):
 
     # ---- batch ----
     t0 = time.time()
-    # Batch
     imgs = [gray_image] * 100
-    batch = CFAImageLAC.get_batch_lacunarity(
+    batchs = CFAImageLAC.get_batch_lacunarity(
         imgs, scales_mode="powers", partition_mode="gliding",
         use_binary_mass=False, with_progress=False)
-    fits = CFAImageLAC.fit_batch_lacunarity(batch)
+    fits = CFAImageLAC.fit_batch_lacunarity(batchs)
     print(f"Batch lacunarity (100) imgs:{time.time()-t0:.3f}s" )
-    print("    Batch slopes:", [f["slope"] for f in fits])
+    print("  Gray lacunarity:", batchs[99]["lacunarity"])
+    print("  Fit slope:", fits[99]["slope"],"Fit intercept",fits[99]["intercept"],  "R:", fits[99]["r_value"],"P:",fits[99]["p_value"])
 
 def demo_fourier(image_path):  
     rgb_image = cv2.imread(image_path)
@@ -172,23 +186,25 @@ def demo_fourier(image_path):
 
 def main(image_path, mode):
     if mode == 'fd':
-        demo_2d_fd(image_path)
+        demo_fd(image_path)
     elif mode == 'mfs':
-        demo_2d_mfs(image_path)
+        demo_mfs(image_path)
+    elif mode == 'alpha':
+        demo_alpha(image_path)
     elif mode == 'fourier':
         demo_fourier(image_path)
     elif mode == 'lacunarity':
-        demo_2d_lacunarity(image_path)
+        demo_lacunarity(image_path)
     elif mode == 'series':
-        demo_1d_mfs()
+        demo_series_mfs()
     else:
         raise ValueError("Invalid mode. Use 'fd' or 'mfs' or 'lacunarity' or 'fourier'.")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Compute fractal dimension or multifractal spectrum from an image.")
     parser.add_argument("--image", type=str, help="Path to the input image",default='./images/fractal.png')
-    parser.add_argument("--mode", choices=['fd', 'mfs', 'lacunarity', 'fourier','series'], default='mfs',
-                        help="Choose 'fd' to compute fractal dimension, 'mfs' for multifractal spectrum or 'fourier' for Fourier analysis. (default: mfs)")
+    parser.add_argument("--mode", choices=['fd','mfs','alpha','lacunarity', 'fourier','series'], default='mfs',
+                        help="Choose 'fd' to compute fractal dimension, 'mfs' for multifractal spectrum,'alpha' for local alpha map or 'fourier' for Fourier analysis. (default: mfs)")
 
     args = parser.parse_args()
 

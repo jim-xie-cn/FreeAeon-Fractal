@@ -711,7 +711,9 @@ class CFAImageMFS:
         
         plt.tight_layout()
         plt.show()
-    def plot_alpha_map(self, alpha_map):
+
+    @staticmethod
+    def plot_alpha_map(alpha_map):
         """
         Visualize alpha(x,y)
         """
