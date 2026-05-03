@@ -1,6 +1,6 @@
 # FreeAeon-Fractal
 
-**FreeAeon-Fractal: First GPU-accelerated version of the image-based multifractal analysis package**
+**-First GPU-accelerated version of the image-based multifractal analysis package**
 
 **FreeAeon-Fractal** is a Python toolkit for computing **Multifractal Spectra**, **Fractal Dimensions**, **Fractal Lacunarity** and **Fourier Spectra** of images or series.  🔗 [More](https://github.com/jim-xie-cn/FreeAeon-Fractal/wiki)
 
