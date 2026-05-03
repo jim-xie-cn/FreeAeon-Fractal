@@ -57,14 +57,14 @@ pip install FreeAeon-Fractal
 ```python
 import cv2
 import numpy as np
-from FreeAeonFractal.FA2DMFS import CFA2DMFS
+from FreeAeonFractal.FAImageMFS import CFAImageMFS
 
 # 读取并转换为灰度图像
 rgb_image = cv2.imread('./images/face.png')
 gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
 
 # 多重分形谱分析
-MFS = CFA2DMFS(gray_image, q_list=np.linspace(-5, 5, 26))
+MFS = CFAImageMFS(gray_image, q_list=np.linspace(-5, 5, 26))
 df_mass, df_fit, df_spec = MFS.get_mfs()
 
 # 可视化结果
@@ -74,31 +74,31 @@ MFS.plot(df_mass, df_fit, df_spec)
 ### 计算图像的分形维度
 
 ```python
-from FreeAeonFractal.FAImageDimension import CFAImageDimension
+from FreeAeonFractal.FAImageFD import CFAImageFD
 from FreeAeonFractal.FAImage import CFAImage
 
 # 图像二值化
 bin_image, threshold = CFAImage.otsu_binarize(gray_image)
 
 # 计算分形维度
-fd_bc = CFAImageDimension(bin_image).get_bc_fd()
-fd_dbc = CFAImageDimension(gray_image).get_dbc_fd()
-fd_sdbc = CFAImageDimension(gray_image).get_sdbc_fd()
+fd_bc = CFAImageFD(bin_image).get_bc_fd()
+fd_dbc = CFAImageFD(gray_image).get_dbc_fd()
+fd_sdbc = CFAImageFD(gray_image).get_sdbc_fd()
 
 # 可视化
-CFAImageDimension.plot(rgb_image, bin_image, fd_bc, fd_dbc, fd_sdbc)
+CFAImageFD.plot(rgb_image, gray_image, bin_image, fd_bc, fd_dbc, fd_sdbc)
 ```
 
 ### 计算时间序列的多重分形谱
 
 ```python
-from FreeAeonFractal.FA1DMFS import CFA1DMFS
+from FreeAeonFractal.FASeriesMFS import CFASeriesMFS
 
 # 生成随机游走序列
 x = np.cumsum(np.random.randn(5000))
 
 # 多重分形谱分析
-mfs = CFA1DMFS(x, q_list=np.linspace(-5, 5, 21))
+mfs = CFASeriesMFS(x, q_list=np.linspace(-5, 5, 21))
 df_mfs = mfs.get_mfs()
 
 # 可视化
@@ -113,8 +113,8 @@ mfs.plot(df_mfs)
 
 | 类名 | 描述 | 应用场景 | 文档链接 |
 |------|------|---------|----------|
-| **CFA2DMFS** | 2D图像多重分形谱 | 纹理分析、医学图像、材料科学 | [查看详情](多重分形谱分析-CFA2DMFS.md) |
-| **CFA1DMFS** | 1D序列多重分形谱 | 金融时序、生理信号、气候数据 | [查看详情](序列多重分形谱-CFA1DMFS.md) |
+| **CFAImageMFS** | 2D图像多重分形谱 | 纹理分析、医学图像、材料科学 | [查看详情](多重分形谱分析-CFAImageMFS.md) |
+| **CFASeriesMFS** | 1D序列多重分形谱 | 金融时序、生理信号、气候数据 | [查看详情](序列多重分形谱-CFASeriesMFS.md) |
 
 **核心概念**：
 - **τ(q)** 质量指数：描述不同q阶下的标度行为
@@ -125,7 +125,7 @@ mfs.plot(df_mfs)
 **GPU加速**：
 ```python
 # 使用GPU版本
-from FreeAeonFractal.FA2DMFSGPU import CFA2DMFSGPU as CFA2DMFS
+from FreeAeonFractal.FAImageMFSGPU import CFAImageMFSGPU as CFAImageMFS
 ```
 
 ### 2. 分形维度分析 (Fractal Dimension Analysis)
@@ -134,12 +134,12 @@ from FreeAeonFractal.FA2DMFSGPU import CFA2DMFSGPU as CFA2DMFS
 
 | 类名 | 描述 | 方法 | 文档链接 |
 |------|------|------|----------|
-| **CFAImageDimension** | 图像分形维度计算 | BC, DBC, SDBC | [查看详情](分形维度分析-CFAImageDimension.md) |
+| **CFAImageFD** | 图像分形维度计算 | BC, DBC, SDBC | [查看详情](分形维度分析-CFAImageFD.md) |
 
 **三种方法**：
 - **BC** (Box-Counting)：适用于二值图像
 - **DBC** (Differential Box-Counting)：适用于灰度图像
-- **SDBC** (Simplified DBC)：DBC的简化版本，更快
+- **SDBC** (Shifted DBC)：改进版DBC，精度更高
 
 **维度范围**：
 - 1D线条：D ≈ 1
@@ -152,10 +152,10 @@ from FreeAeonFractal.FA2DMFSGPU import CFA2DMFSGPU as CFA2DMFS
 
 | 类名 | 描述 | 分区模式 | 文档链接 |
 |------|------|---------|----------|
-| **CFAImageLacunarity** | 图像空隙度分析 | Gliding, Non-overlapping | [查看详情](空隙度分析-CFAImageLacunarity.md) |
+| **CFAImageLAC** | 图像空隙度分析 | Gliding, Non-overlapping | [查看详情](空隙度分析-CFAImageLAC.md) |
 
 **分区模式**：
-- **Gliding Box**：滑动窗口（重叠），结果更平滑
+- **Gliding Box**：滑动窗口（重叠），使用积分图像高效计算
 - **Non-overlapping Box**：非重叠块，计算更快
 
 **空隙度意义**：
@@ -236,14 +236,14 @@ from FreeAeonFractal.FA2DMFSGPU import CFA2DMFSGPU as CFA2DMFS
 
 | 功能 | CPU模块 | GPU模块 | 加速比 | 文档链接 |
 |------|---------|---------|--------|----------|
-| 2D多重分形谱 | CFA2DMFS | CFA2DMFSGPU | 5-20x | [查看详情](GPU加速版本.md) |
-| 图像分形维度 | CFAImageDimension | CFAImageDimensionGPU | 3-10x | [查看详情](GPU加速版本.md) |
-| 图像空隙度 | CFAImageLacunarity | CFAImageLacunarityGPU | 5-15x | [查看详情](GPU加速版本.md) |
+| 2D多重分形谱 | CFAImageMFS | CFAImageMFSGPU | 5-20x | [查看详情](GPU加速版本.md) |
+| 图像分形维度 | CFAImageFD | CFAImageFDGPU | 3-10x | [查看详情](GPU加速版本.md) |
+| 图像空隙度 | CFAImageLAC | CFAImageLACGPU | 5-15x | [查看详情](GPU加速版本.md) |
 
 **使用方式**：
 ```python
 # 简单导入替换即可
-from FreeAeonFractal.FA2DMFSGPU import CFA2DMFSGPU as CFA2DMFS
+from FreeAeonFractal.FAImageMFSGPU import CFAImageMFSGPU as CFAImageMFS
 # 其余代码完全相同！
 ```
 
@@ -296,19 +296,19 @@ python demo.py --mode series
 
 | 模块 | CPU版本 | GPU版本 |
 |------|---------|---------|
-| 2D多重分形谱 | `FA2DMFS.CFA2DMFS` | `FA2DMFSGPU.CFA2DMFSGPU` |
-| 图像分形维度 | `FAImageDimension.CFAImageDimension` | `FAImageDimensionGPU.CFAImageDimensionGPU` |
-| 图像空隙度 | `FAImageLacunarity.CFAImageLacunarity` | `FAImageLacunarityGPU.CFAImageLacunarityGPU` |
+| 2D多重分形谱 | `FAImageMFS.CFAImageMFS` | `FAImageMFSGPU.CFAImageMFSGPU` |
+| 图像分形维度 | `FAImageFD.CFAImageFD` | `FAImageFDGPU.CFAImageFDGPU` |
+| 图像空隙度 | `FAImageLAC.CFAImageLAC` | `FAImageLACGPU.CFAImageLACGPU` |
 
 **使用方法**：
 
 ```python
 # 导入GPU版本
-from FreeAeonFractal.FA2DMFSGPU import CFA2DMFSGPU as CFA2DMFS
-from FreeAeonFractal.FAImageDimensionGPU import CFAImageDimensionGPU as CFAImageDimension
+from FreeAeonFractal.FAImageMFSGPU import CFAImageMFSGPU as CFAImageMFS
+from FreeAeonFractal.FAImageFDGPU import CFAImageFDGPU as CFAImageFD
 
 # 使用方式与CPU版本相同
-MFS = CFA2DMFS(image, q_list=np.linspace(-5, 5, 26))
+MFS = CFAImageMFS(image, q_list=np.linspace(-5, 5, 26))
 df_mass, df_fit, df_spec = MFS.get_mfs()
 ```
 
@@ -336,36 +336,24 @@ A: (1) D(q) 随q单调变化 (2) f(α) 为凸函数且有一定宽度 (3) Δh > 
 
 ## 进阶用法
 
-### 自定义尺度
-
-```python
-# 自定义尺度参数
-scales = np.logspace(1, np.log2(256), 50, base=2).astype(int)
-df_mass = mfs.get_mass_table(max_scales=50)
-```
-
 ### 批量处理
 
 ```python
-import glob
+import glob, cv2
+from FreeAeonFractal.FAImageMFS import CFAImageMFS
 
-# 批量分析多个图像
-image_files = glob.glob('./images/*.png')
-results = []
+images = [cv2.imread(f, cv2.IMREAD_GRAYSCALE) for f in glob.glob('./images/*.png')]
+results = CFAImageMFS.get_batch_mfs(images, q_list=np.linspace(-5, 5, 26))
+```
 
-for img_file in image_files:
-    image = cv2.imread(img_file, cv2.IMREAD_GRAYSCALE)
-    mfs = CFA2DMFS(image)
-    _, df_fit, _ = mfs.get_mfs()
-    results.append({
-        'file': img_file,
-        'D0': df_fit.loc[df_fit['q'] == 0, 'Dq'].values[0],
-        'D1': df_fit.loc[df_fit['q'] == 1, 'D1'].values[0]
-    })
+### 局部奇异度图
 
-import pandas as pd
-df_results = pd.DataFrame(results)
-print(df_results)
+```python
+from FreeAeonFractal.FAImageMFS import CFAImageMFS
+
+MFS = CFAImageMFS(gray_image)
+alpha_map = MFS.compute_alpha_map()
+CFAImageMFS.plot_alpha_map(alpha_map)
 ```
 
 ### 特征提取
@@ -373,7 +361,7 @@ print(df_results)
 ```python
 # 提取多重分形特征用于机器学习
 def extract_mf_features(image):
-    mfs = CFA2DMFS(image, q_list=np.linspace(-5, 5, 11))
+    mfs = CFAImageMFS(image, q_list=np.linspace(-5, 5, 11))
     _, df_fit, df_spec = mfs.get_mfs()
 
     features = {
@@ -386,10 +374,6 @@ def extract_mf_features(image):
         'f_alpha_max': df_spec['f_alpha'].max()
     }
     return features
-
-# 提取特征
-features = extract_mf_features(gray_image)
-print(features)
 ```
 
 ## 项目结构
@@ -397,15 +381,17 @@ print(features)
 ```
 FreeAeon-Fractal/
 ├── FreeAeonFractal/          # 核心模块
-│   ├── FA2DMFS.py            # 2D多重分形谱
-│   ├── FA2DMFSGPU.py         # 2D多重分形谱(GPU)
-│   ├── FA1DMFS.py            # 1D多重分形谱
-│   ├── FAImageDimension.py   # 分形维度
-│   ├── FAImageDimensionGPU.py# 分形维度(GPU)
-│   ├── FAImageLacunarity.py  # 空隙度
-│   ├── FAImageLacunarityGPU.py # 空隙度(GPU)
+│   ├── FAImageMFS.py         # 2D多重分形谱
+│   ├── FAImageMFSGPU.py      # 2D多重分形谱(GPU)
+│   ├── FASeriesMFS.py        # 1D多重分形谱
+│   ├── FAImageFD.py          # 分形维度
+│   ├── FAImageFDGPU.py       # 分形维度(GPU)
+│   ├── FAImageLAC.py         # 空隙度
+│   ├── FAImageLACGPU.py      # 空隙度(GPU)
 │   ├── FAImageFourier.py     # 傅里叶分析
 │   ├── FAImage.py            # 图像工具
+│   ├── FASample.py           # 分形样本生成
+│   ├── FAVisual.py           # 可视化工具
 │   └── __init__.py
 ├── demo.py                   # 命令行接口
 ├── images/                   # 示例图像

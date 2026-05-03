@@ -232,7 +232,7 @@
 
         <main>
             <section id="applications" class="section">
-                <h2>💡 应用领域</h2>
+                <h2>应用领域</h2>
                 <table>
                     <thead>
                         <tr>
@@ -272,7 +272,7 @@
             </section>
 
             <section id="install" class="section">
-                <h2>📦 安装</h2>
+                <h2>安装</h2>
                 <div class="install-box">
                     <code>pip install FreeAeon-Fractal</code>
                 </div>
@@ -284,7 +284,7 @@
             </section>
 
             <section id="features" class="section">
-                <h2>🎯 功能模块</h2>
+                <h2>功能模块</h2>
                 <table>
                     <thead>
                         <tr>
@@ -297,27 +297,27 @@
                     <tbody>
                         <tr>
                             <td><strong>多重分形谱</strong></td>
-                            <td>CFA2DMFS</td>
+                            <td>CFAImageMFS</td>
                             <td>2D图像多重分形谱分析</td>
-                            <td><a href="多重分形谱分析-CFA2DMFS.html">查看</a></td>
+                            <td><a href="多重分形谱分析-CFAImageMFS.html">查看</a></td>
                         </tr>
                         <tr>
                             <td></td>
-                            <td>CFA1DMFS</td>
+                            <td>CFASeriesMFS</td>
                             <td>1D序列多重分形谱分析</td>
-                            <td><a href="序列多重分形谱-CFA1DMFS.html">查看</a></td>
+                            <td><a href="序列多重分形谱-CFASeriesMFS.html">查看</a></td>
                         </tr>
                         <tr>
                             <td><strong>分形维度</strong></td>
-                            <td>CFAImageDimension</td>
+                            <td>CFAImageFD</td>
                             <td>BC/DBC/SDBC三种方法</td>
-                            <td><a href="分形维度分析-CFAImageDimension.html">查看</a></td>
+                            <td><a href="分形维度分析-CFAImageFD.html">查看</a></td>
                         </tr>
                         <tr>
                             <td><strong>空隙度分析</strong></td>
-                            <td>CFAImageLacunarity</td>
+                            <td>CFAImageLAC</td>
                             <td>Gliding/Non-overlapping模式</td>
-                            <td><a href="空隙度分析-CFAImageLacunarity.html">查看</a></td>
+                            <td><a href="空隙度分析-CFAImageLAC.html">查看</a></td>
                         </tr>
                         <tr>
                             <td><strong>傅里叶分析</strong></td>
@@ -345,7 +345,7 @@
                         </tr>
                         <tr>
                             <td><strong>GPU加速</strong></td>
-                            <td>CFA2DMFSGPU等</td>
+                            <td>CFAImageMFSGPU等</td>
                             <td>5-20倍性能提升</td>
                             <td><a href="GPU加速版本.html">查看</a></td>
                         </tr>
@@ -354,20 +354,20 @@
             </section>
 
             <section id="quickstart" class="section">
-                <h2>🚀 快速开始</h2>
+                <h2>快速开始</h2>
 
                 <h3>计算图像多重分形谱</h3>
                 <div class="code-block">
                     <pre>import cv2
 import numpy as np
-from FreeAeonFractal.FA2DMFS import CFA2DMFS
+from FreeAeonFractal.FAImageMFS import CFAImageMFS
 
 # 读取图像
 rgb_image = cv2.imread('./images/face.png')
 gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
 
 # 多重分形谱分析
-MFS = CFA2DMFS(gray_image, q_list=np.linspace(-5, 5, 26))
+MFS = CFAImageMFS(gray_image, q_list=np.linspace(-5, 5, 26))
 df_mass, df_fit, df_spec = MFS.get_mfs()
 
 # 可视化
@@ -376,30 +376,30 @@ MFS.plot(df_mass, df_fit, df_spec)</pre>
 
                 <h3>计算图像分形维度</h3>
                 <div class="code-block">
-                    <pre>from FreeAeonFractal.FAImageDimension import CFAImageDimension
+                    <pre>from FreeAeonFractal.FAImageFD import CFAImageFD
 from FreeAeonFractal.FAImage import CFAImage
 
 # 二值化
 bin_image, threshold = CFAImage.otsu_binarize(gray_image)
 
 # 计算分形维度
-fd_bc = CFAImageDimension(bin_image).get_bc_fd()
-fd_dbc = CFAImageDimension(gray_image).get_dbc_fd()
-fd_sdbc = CFAImageDimension(gray_image).get_sdbc_fd()
+fd_bc = CFAImageFD(bin_image).get_bc_fd()
+fd_dbc = CFAImageFD(gray_image).get_dbc_fd()
+fd_sdbc = CFAImageFD(gray_image).get_sdbc_fd()
 
-# 可视化
-CFAImageDimension.plot(rgb_image, bin_image, fd_bc, fd_dbc, fd_sdbc)</pre>
+# 可视化（新版本包含gray_img参数）
+CFAImageFD.plot(rgb_image, gray_image, bin_image, fd_bc, fd_dbc, fd_sdbc)</pre>
                 </div>
             </section>
 
             <section class="section">
-                <h2>📚 文档导航</h2>
+                <h2>文档导航</h2>
                 <p>点击下方链接查看各模块的详细文档：</p>
                 <ul style="line-height: 2;">
-                    <li><a href="多重分形谱分析-CFA2DMFS.html">多重分形谱分析 - CFA2DMFS</a></li>
-                    <li><a href="序列多重分形谱-CFA1DMFS.html">序列多重分形谱 - CFA1DMFS</a></li>
-                    <li><a href="分形维度分析-CFAImageDimension.html">分形维度分析 - CFAImageDimension</a></li>
-                    <li><a href="空隙度分析-CFAImageLacunarity.html">空隙度分析 - CFAImageLacunarity</a></li>
+                    <li><a href="多重分形谱分析-CFAImageMFS.html">多重分形谱分析 - CFAImageMFS</a></li>
+                    <li><a href="序列多重分形谱-CFASeriesMFS.html">序列多重分形谱 - CFASeriesMFS</a></li>
+                    <li><a href="分形维度分析-CFAImageFD.html">分形维度分析 - CFAImageFD</a></li>
+                    <li><a href="空隙度分析-CFAImageLAC.html">空隙度分析 - CFAImageLAC</a></li>
                     <li><a href="傅里叶分析-CFAImageFourier.html">傅里叶分析 - CFAImageFourier</a></li>
                     <li><a href="图像工具-CFAImage.html">图像工具 - CFAImage</a></li>
                     <li><a href="可视化工具-CFAVisual.html">可视化工具 - CFAVisual</a></li>

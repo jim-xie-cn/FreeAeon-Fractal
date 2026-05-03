@@ -232,7 +232,7 @@
 
         <main>
             <section id="applications" class="section">
-                <h2>💡 Application Domains</h2>
+                <h2>Application Domains</h2>
                 <table>
                     <thead>
                         <tr>
@@ -272,7 +272,7 @@
             </section>
 
             <section id="install" class="section">
-                <h2>📦 Installation</h2>
+                <h2>Installation</h2>
                 <div class="install-box">
                     <code>pip install FreeAeon-Fractal</code>
                 </div>
@@ -284,7 +284,7 @@
             </section>
 
             <section id="features" class="section">
-                <h2>🎯 Feature Modules</h2>
+                <h2>Feature Modules</h2>
                 <table>
                     <thead>
                         <tr>
@@ -297,27 +297,27 @@
                     <tbody>
                         <tr>
                             <td><strong>Multifractal</strong></td>
-                            <td>CFA2DMFS</td>
+                            <td>CFAImageMFS</td>
                             <td>2D image multifractal spectrum</td>
-                            <td><a href="Multifractal-Spectrum-CFA2DMFS.html">View</a></td>
+                            <td><a href="Multifractal-Spectrum-CFAImageMFS.html">View</a></td>
                         </tr>
                         <tr>
                             <td></td>
-                            <td>CFA1DMFS</td>
+                            <td>CFASeriesMFS</td>
                             <td>1D series multifractal spectrum</td>
-                            <td><a href="Series-Multifractal-CFA1DMFS.html">View</a></td>
+                            <td><a href="Series-Multifractal-CFASeriesMFS.html">View</a></td>
                         </tr>
                         <tr>
                             <td><strong>Fractal Dimension</strong></td>
-                            <td>CFAImageDimension</td>
+                            <td>CFAImageFD</td>
                             <td>BC/DBC/SDBC methods</td>
-                            <td><a href="Fractal-Dimension-CFAImageDimension.html">View</a></td>
+                            <td><a href="Fractal-Dimension-CFAImageFD.html">View</a></td>
                         </tr>
                         <tr>
                             <td><strong>Lacunarity</strong></td>
-                            <td>CFAImageLacunarity</td>
+                            <td>CFAImageLAC</td>
                             <td>Gliding/Non-overlapping modes</td>
-                            <td><a href="Lacunarity-Analysis-CFAImageLacunarity.html">View</a></td>
+                            <td><a href="Lacunarity-Analysis-CFAImageLAC.html">View</a></td>
                         </tr>
                         <tr>
                             <td><strong>Fourier Analysis</strong></td>
@@ -334,7 +334,7 @@
                         <tr>
                             <td><strong>Visualization</strong></td>
                             <td>CFAVisual</td>
-                            <td>1D/2D/3D point & image display</td>
+                            <td>1D/2D/3D point &amp; image display</td>
                             <td><a href="Visualization-Tools-CFAVisual.html">View</a></td>
                         </tr>
                         <tr>
@@ -354,20 +354,20 @@
             </section>
 
             <section id="quickstart" class="section">
-                <h2>🚀 Quick Start</h2>
+                <h2>Quick Start</h2>
 
                 <h3>Multifractal Spectrum of an Image</h3>
                 <div class="code-block">
                     <pre>import cv2
 import numpy as np
-from FreeAeonFractal.FA2DMFS import CFA2DMFS
+from FreeAeonFractal.FAImageMFS import CFAImageMFS
 
 # Load image
 rgb_image = cv2.imread('./images/face.png')
 gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
 
 # Multifractal analysis
-MFS = CFA2DMFS(gray_image, q_list=np.linspace(-5, 5, 26))
+MFS = CFAImageMFS(gray_image, q_list=np.linspace(-5, 5, 26))
 df_mass, df_fit, df_spec = MFS.get_mfs()
 
 # Visualize
@@ -376,30 +376,45 @@ MFS.plot(df_mass, df_fit, df_spec)</pre>
 
                 <h3>Fractal Dimensions of an Image</h3>
                 <div class="code-block">
-                    <pre>from FreeAeonFractal.FAImageDimension import CFAImageDimension
+                    <pre>from FreeAeonFractal.FAImageFD import CFAImageFD
 from FreeAeonFractal.FAImage import CFAImage
 
 # Binarize
 bin_image, threshold = CFAImage.otsu_binarize(gray_image)
 
 # Calculate fractal dimensions
-fd_bc = CFAImageDimension(bin_image).get_bc_fd()
-fd_dbc = CFAImageDimension(gray_image).get_dbc_fd()
-fd_sdbc = CFAImageDimension(gray_image).get_sdbc_fd()
+fd_bc = CFAImageFD(bin_image).get_bc_fd()
+fd_dbc = CFAImageFD(gray_image).get_dbc_fd()
+fd_sdbc = CFAImageFD(gray_image).get_sdbc_fd()
+
+# Visualize (note: new API includes gray_image parameter)
+CFAImageFD.plot(rgb_image, gray_image, bin_image, fd_bc, fd_dbc, fd_sdbc)</pre>
+                </div>
+
+                <h3>Multifractal Spectrum of a Time Series</h3>
+                <div class="code-block">
+                    <pre>from FreeAeonFractal.FASeriesMFS import CFASeriesMFS
+
+# Generate random walk
+x = np.cumsum(np.random.randn(5000))
+
+# Multifractal analysis
+mfs = CFASeriesMFS(x, q_list=np.linspace(-5, 5, 21))
+df_mfs = mfs.get_mfs()
 
 # Visualize
-CFAImageDimension.plot(rgb_image, bin_image, fd_bc, fd_dbc, fd_sdbc)</pre>
+mfs.plot(df_mfs)</pre>
                 </div>
             </section>
 
             <section class="section">
-                <h2>📚 Documentation Navigation</h2>
+                <h2>Documentation Navigation</h2>
                 <p>Access detailed documentation for each module:</p>
                 <ul style="line-height: 2;">
-                    <li><a href="Multifractal-Spectrum-CFA2DMFS.html">Multifractal Spectrum Analysis - CFA2DMFS</a></li>
-                    <li><a href="Series-Multifractal-CFA1DMFS.html">Series Multifractal Spectrum - CFA1DMFS</a></li>
-                    <li><a href="Fractal-Dimension-CFAImageDimension.html">Fractal Dimension Analysis - CFAImageDimension</a></li>
-                    <li><a href="Lacunarity-Analysis-CFAImageLacunarity.html">Lacunarity Analysis - CFAImageLacunarity</a></li>
+                    <li><a href="Multifractal-Spectrum-CFAImageMFS.html">Multifractal Spectrum Analysis - CFAImageMFS</a></li>
+                    <li><a href="Series-Multifractal-CFASeriesMFS.html">Series Multifractal Spectrum - CFASeriesMFS</a></li>
+                    <li><a href="Fractal-Dimension-CFAImageFD.html">Fractal Dimension Analysis - CFAImageFD</a></li>
+                    <li><a href="Lacunarity-Analysis-CFAImageLAC.html">Lacunarity Analysis - CFAImageLAC</a></li>
                     <li><a href="Fourier-Analysis-CFAImageFourier.html">Fourier Analysis - CFAImageFourier</a></li>
                     <li><a href="Image-Utils-CFAImage.html">Image Utilities - CFAImage</a></li>
                     <li><a href="Visualization-Tools-CFAVisual.html">Visualization Tools - CFAVisual</a></li>
@@ -410,7 +425,7 @@ CFAImageDimension.plot(rgb_image, bin_image, fd_bc, fd_dbc, fd_sdbc)</pre>
         </main>
 
         <footer>
-            <p>© 2025 FreeAeon-Fractal. All rights reserved.</p>
+            <p>&copy; 2025 FreeAeon-Fractal. All rights reserved.</p>
             <p>
                 <a href="https://github.com/jim-xie-cn/FreeAeon-Fractal" target="_blank">GitHub</a> |
                 <a href="https://pypi.org/project/FreeAeon-Fractal/" target="_blank">PyPI</a>

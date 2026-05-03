@@ -15,12 +15,12 @@ The `CFAVisual` class provides visualization tools for fractal point sets and im
 
 ```python
 import numpy as np
-from FreeAeonFractal.CFAVisual import CFAVisual
+from FreeAeonFractal.FAVisual import CFAVisual
 from FreeAeonFractal.FASample import CFASample
 import matplotlib.pyplot as plt
 
 # Generate Cantor Set
-points_1d = CFASample.get_Cantor_Set(iterations=1000)
+points_1d = CFASample.get_Cantor_Set(iterations=256)
 
 # Visualize 1D point set
 plt.figure(figsize=(10, 2))
@@ -33,7 +33,7 @@ plt.show()
 
 ```python
 # Generate Sierpinski Triangle
-points_2d = CFASample.get_Sierpinski_Triangle(iterations=10000)
+points_2d = CFASample.get_Sierpinski_Triangle(iterations=256)
 
 # Visualize 2D point set
 plt.figure(figsize=(8, 8))
@@ -49,13 +49,35 @@ plt.show()
 from mpl_toolkits.mplot3d import Axes3D
 
 # Generate Menger Sponge
-points_3d = CFASample.get_Menger_Sponge(iterations=50000)
+points_3d = CFASample.get_Menger_Sponge(iterations=10240)
 
 # Visualize 3D point set
 fig = plt.figure(figsize=(10, 10))
 ax = fig.add_subplot(111, projection='3d')
 CFAVisual.plot_3d_points(points_3d, ax)
 ax.set_title('Menger Sponge (3D)')
+plt.show()
+```
+
+### Image Visualization
+
+```python
+import cv2
+
+# Load image
+gray_image = cv2.imread('./images/fractal.png', cv2.IMREAD_GRAYSCALE)
+
+# 2D image display
+plt.figure(figsize=(8, 8))
+CFAVisual.plot_2d_image(gray_image, cmap='gray')
+plt.title('Fractal Image')
+plt.show()
+
+# 3D surface display
+fig = plt.figure(figsize=(10, 8))
+ax = fig.add_subplot(111, projection='3d')
+CFAVisual.plot_3d_image(gray_image, ax=ax)
+plt.title('Image as 3D Surface')
 plt.show()
 ```
 
@@ -80,7 +102,7 @@ All methods are static, called using `CFAVisual.method_name()`.
 **Description**: Display 1D point set (e.g., Cantor Set).
 
 **Parameters**:
-- `points` (numpy.ndarray): 1D point array, shape (N,)
+- `points` (numpy.ndarray): 1D point array, shape (N,) or (N, 1)
 - `ax` (matplotlib axis): Matplotlib axis object, default is plt
 
 **Display Features**:
@@ -117,6 +139,14 @@ All methods are static, called using `CFAVisual.method_name()`.
 - `image` (numpy.ndarray): 2D image array
 - `cmap` (str): Colormap, default 'gray'
 - `ax` (matplotlib axis): Matplotlib axis object
+
+##### 5. plot_3d_image(img, ax=plt)
+
+**Description**: Display image as 3D surface plot.
+
+**Parameters**:
+- `img` (numpy.ndarray): 2D image array
+- `ax` (matplotlib 3D axis): 3D axis object
 
 ## References
 

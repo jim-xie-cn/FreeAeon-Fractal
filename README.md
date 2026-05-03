@@ -81,12 +81,12 @@ Example:
 ### Lacunarity analysis of an image
 
 ```bash
-python python demo.py --mode=lacunarity --image=./images/fractal.png
+python demo.py --mode=lacunarity --image=./images/fractal.png
 ```
 
 Example:
 
-![Fractal Dimension Input](https://github.com/jim-xie-cn/FreeAeon-Fractal/raw/main/images/lacunarity.png)
+![Lacunarity Input](https://github.com/jim-xie-cn/FreeAeon-Fractal/raw/main/images/lacunarity.png)
 
 ### Fourier analysis of an image
 
@@ -96,7 +96,7 @@ python demo.py --mode fourier --image ./images/face.png
 
 Example:
 
-![Fractal Dimension Input](https://github.com/jim-xie-cn/FreeAeon-Fractal/raw/main/images/fourier.png)
+![Fourier Input](https://github.com/jim-xie-cn/FreeAeon-Fractal/raw/main/images/fourier.png)
 
 ### Calculate the **Multifractal Spectrum** of a Series
 
@@ -106,7 +106,7 @@ python demo.py --mode series
 
 Example:
 
-![Fractal Dimension Input](https://github.com/jim-xie-cn/FreeAeon-Fractal/raw/main/images/series.png)
+![Series Input](https://github.com/jim-xie-cn/FreeAeon-Fractal/raw/main/images/series.png)
 
 ### Parameters
 
@@ -120,10 +120,12 @@ Example:
 
 ## Use GPU to speed up
 
-```bash
-from FreeAeonFractal.FAImageDimensionGPU import CFAImageDimensionGPU as CFAImageDimension
-from FreeAeonFractal.FA2DMFSGPU import CFA2DMFSGPU as CFA2DMFS
+```python
+from FreeAeonFractal.FAImageFDGPU import CFAImageFDGPU as CFAImageFD
+from FreeAeonFractal.FAImageMFSGPU import CFAImageMFSGPU as CFAImageMFS
+from FreeAeonFractal.FAImageLACGPU import CFAImageLACGPU as CFAImageLAC
 ```
+
 ## 📚 User Guide
 See the following for complete usage, parameter details, and advanced examples:
 
@@ -144,6 +146,17 @@ See the following for complete usage, parameter details, and advanced examples:
 ```
 FreeAeon-Fractal/
 ├── FreeAeonFractal/      # Core module
+│   ├── FAImageMFS.py     # 2D multifractal spectrum
+│   ├── FAImageMFSGPU.py  # 2D multifractal spectrum (GPU)
+│   ├── FASeriesMFS.py    # 1D multifractal spectrum
+│   ├── FAImageFD.py      # Fractal dimension
+│   ├── FAImageFDGPU.py   # Fractal dimension (GPU)
+│   ├── FAImageLAC.py     # Lacunarity
+│   ├── FAImageLACGPU.py  # Lacunarity (GPU)
+│   ├── FAImageFourier.py # Fourier analysis
+│   ├── FAImage.py        # Image utilities
+│   ├── FASample.py       # Fractal sample generator
+│   └── FAVisual.py       # Visualization tools
 ├── demo.py               # CLI interface
 ├── images/               # Example images
 ├── requirements.txt
@@ -162,22 +175,6 @@ Jim Xie
 📧 E-Mail: jim.xie.cn@outlook.com, xiewenwei@sina.com
 
 🔗 GitHub: https://github.com/jim-xie-cn/FreeAeon-Fractal
-
-Yin Jie
-
-📧 E-Mail: yinjiejspi@163.com
-
-Cindy Ma
-
-📧 E-Mail: 453303661@qq.com
-
-Wenjing Zhang
-
-📧 E-Mail: 634676988@qq.com
-
-Danny Zhang
-
-📧 E-Mail: zhyzxsw@126.com
 
 ---
 

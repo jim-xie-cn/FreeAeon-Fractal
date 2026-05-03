@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lacunarity Analysis - CFAImageLacunarity</title>
+    <title>Lacunarity Analysis - CFAImageLAC</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -70,6 +70,7 @@
             margin: 15px 0;
             font-family: 'Courier New', monospace;
             font-size: 0.9em;
+            white-space: pre;
         }
         .code-inline {
             background: #f0f0f0;
@@ -129,19 +130,18 @@
 <body>
     <div class="container">
         <header>
-            <h1>Lacunarity Analysis - CFAImageLacunarity</h1>
-            <p></p>
+            <h1>Lacunarity Analysis - CFAImageLAC</h1>
+            <p>Image Lacunarity Analysis</p>
         </header>
 
         <nav>
             <a href="index.html">← Back to Home</a>
-            
         </nav>
 
         <main>
 
 <h2>Application Scenarios</h2>
-<p>The <code class="code-inline">CFAImageLacunarity</code> class is used to calculate the lacunarity of 2D images, serving as an important tool for quantifying spatial distribution heterogeneity. Main application scenarios include:</p>
+<p>The <code class="code-inline">CFAImageLAC</code> class is used to calculate the lacunarity of 2D images, serving as an important tool for quantifying spatial distribution heterogeneity. Main application scenarios include:</p>
 
 <ul>
 <li><strong>Texture Analysis</strong>: Quantify gaps and void characteristics in textures</li>
@@ -156,42 +156,64 @@
 <h3>Basic Usage</h3>
 
 <div class="code-block">import cv2
-from FreeAeonFractal.FAImageLacunarity import CFAImageLacunarity
+from FreeAeonFractal.FAImageLAC import CFAImageLAC
 from FreeAeonFractal.FAImage import CFAImage
-<p># Read image</p>
+
+# Read image
 rgb_image = cv2.imread('./images/fractal.png')
 gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
-<p># Create lacunarity analysis object</p>
-lacunarity = CFAImageLacunarity(
+
+# Create lacunarity analysis object
+lacunarity = CFAImageLAC(
     gray_image,
-    max_scales=256,
+    max_scales=100,
     with_progress=True,
     partition_mode="gliding"  # or "non-overlapping"
 )
-<p># Calculate lacunarity</p>
+
+# Calculate lacunarity
 lac_result = lacunarity.get_lacunarity(
     corp_type=-1,
     use_binary_mass=False,
     include_zero=True
 )
-<p># Fit lacunarity</p>
+
+# Fit lacunarity
 fit_result = lacunarity.fit_lacunarity(lac_result)
-<p># Output results</p>
+
+# Output results
 print("Lacunarity values:", lac_result["lacunarity"])
 print("Fit slope:", fit_result["slope"])
-print("Fit R²:", fit_result["r_value"]<strong>2)
-<p># Visualize</p>
+print("Fit R²:", fit_result["r_value"]**2)
+
+# Visualize
 lacunarity.plot(lac_result, fit_result)</div>
 
 <h3>Binary Image Analysis</h3>
 
 <div class="code-block"># Use Otsu auto-binarization
 bin_image, threshold = CFAImage.otsu_binarize(gray_image)
-<p># Lacunarity of binary image</p>
-lacunarity_bin = CFAImageLacunarity(bin_image, partition_mode="gliding")
+
+# Lacunarity of binary image
+lacunarity_bin = CFAImageLAC(bin_image, partition_mode="gliding")
 lac_bin = lacunarity_bin.get_lacunarity(use_binary_mass=True)
 fit_bin = lacunarity_bin.fit_lacunarity(lac_bin)
-<p>print("Binary image lacunarity:", lac_bin["lacunarity"])</div></p>
+
+print("Binary image lacunarity:", lac_bin["lacunarity"])</div>
+
+<h3>Batch Processing</h3>
+
+<div class="code-block">import glob, cv2
+from FreeAeonFractal.FAImageLAC import CFAImageLAC
+
+images = [cv2.imread(f, cv2.IMREAD_GRAYSCALE) for f in glob.glob('./images/*.png')]
+
+# Batch lacunarity (supports heterogeneous image shapes on CPU)
+lac_results = CFAImageLAC.get_batch_lacunarity(images, max_scales=100)
+fit_results = CFAImageLAC.fit_batch_lacunarity(lac_results)
+
+for fit in fit_results:
+    print("Slope:", fit["slope"], "R²:", fit["r_value"]**2)</div>
 
 <h3>Installation</h3>
 
@@ -199,61 +221,67 @@ fit_bin = lacunarity_bin.fit_lacunarity(lac_bin)
 
 <h2>Class Description</h2>
 
-<h3>CFAImageLacunarity</h3>
+<h3>CFAImageLAC</h3>
 
-</strong>Description<strong>: Class for calculating 2D image lacunarity, supporting two box partition strategies.
+<p><strong>Description</strong>: Class for calculating 2D image lacunarity, supporting two box partition strategies. Uses integral image (summed-area table) for efficient gliding-box computation.</p>
 
 <h4>Initialization Parameters</h4>
-<p><tr><td>Parameter</td><td>Type</td><td>Default</td><td>Description</td></tr></p>
 <table>
-<tr><td>-----------</td><td>------</td><td>---------</td><td>-------------</td></tr>
+<tr>
+    <th>Parameter</th><th>Type</th><th>Default</th><th>Description</th>
+</tr>
 <tr><td><code class="code-inline">image</code></td><td>numpy.ndarray</td><td>Required</td><td>Input image (grayscale or binary)</td></tr>
 <tr><td><code class="code-inline">max_size</code></td><td>int</td><td>None</td><td>Maximum box size (default: minimum image dimension)</td></tr>
 <tr><td><code class="code-inline">max_scales</code></td><td>int</td><td>100</td><td>Maximum number of scales</td></tr>
 <tr><td><code class="code-inline">with_progress</code></td><td>bool</td><td>True</td><td>Whether to show progress bar</td></tr>
 <tr><td><code class="code-inline">scales_mode</code></td><td>str</td><td>"powers"</td><td>Scale generation mode ("powers" or "logspace")</td></tr>
 <tr><td><code class="code-inline">partition_mode</code></td><td>str</td><td>"gliding"</td><td>Partition mode ("gliding" or "non-overlapping")</td></tr>
+<tr><td><code class="code-inline">min_size</code></td><td>int</td><td>2</td><td>Minimum box size</td></tr>
 </table>
 
-</strong>scales_mode<strong> Options:
+<p><strong>scales_mode</strong> Options:</p>
 <ul>
 <li><code class="code-inline">"powers"</code>: Powers of 2 scales (2, 4, 8, 16, ...)</li>
 <li><code class="code-inline">"logspace"</code>: Logarithmically uniform distributed scales</li>
 </ul>
 
-</strong>partition_mode<strong> Options:
+<p><strong>partition_mode</strong> Options:</p>
 <ul>
 <li><code class="code-inline">"gliding"</code>: Sliding window (overlapping), efficient computation using integral images</li>
 <li><code class="code-inline">"non-overlapping"</code>: Non-overlapping fixed blocks</li>
 </ul>
 
 <h4>Main Methods</h4>
-<p>##### 1. get_lacunarity(corp_type=-1, use_binary_mass=False, include_zero=True)</p>
 
-</strong>Description<strong>: Calculate lacunarity at each scale.
+<h4>1. get_lacunarity(corp_type=-1, use_binary_mass=False, include_zero=True)</h4>
 
-</strong>Parameters<strong>:
+<p><strong>Description</strong>: Calculate lacunarity at each scale.</p>
+
+<p><strong>Parameters</strong>:</p>
 <ul>
-<li><code class="code-inline">corp_type</code> (int): Image cropping method (non-overlapping mode only)</li>
-</ul>
-  - <code class="code-inline">-1</code>: Auto crop
-  - <code class="code-inline">0</code>: No processing
-  - <code class="code-inline">1</code>: Padding
-<ul>
-<li><code class="code-inline">use_binary_mass</code> (bool): Whether to use binary mass</li>
-</ul>
-  - <code class="code-inline">True</code>: Only count non-zero pixels
-  - <code class="code-inline">False</code>: Use actual pixel values
-<ul>
+<li><code class="code-inline">corp_type</code> (int): Image cropping method (non-overlapping mode only)
+    <ul>
+        <li><code class="code-inline">-1</code>: Auto crop</li>
+        <li><code class="code-inline">0</code>: No processing</li>
+        <li><code class="code-inline">1</code>: Padding</li>
+    </ul>
+</li>
+<li><code class="code-inline">use_binary_mass</code> (bool): Whether to use binary mass
+    <ul>
+        <li><code class="code-inline">True</code>: Only count non-zero pixels</li>
+        <li><code class="code-inline">False</code>: Use actual pixel values</li>
+    </ul>
+</li>
 <li><code class="code-inline">include_zero</code> (bool): Whether to include zero-mass boxes</li>
 </ul>
 
-</strong>Return Value<strong> (dict):
+<p><strong>Return Value</strong> (dict):</p>
 <div class="code-block">{
     'scales': list,        # Scale list
     'lacunarity': list,    # Lacunarity values at each scale
     'mass_stats': list     # Mass statistics info list
 }</div>
+
 <p>Each element in <code class="code-inline">mass_stats</code> contains:</p>
 <div class="code-block">{
     'scale': int,          # Scale
@@ -262,31 +290,47 @@ fit_bin = lacunarity_bin.fit_lacunarity(lac_bin)
     'var_mass': float,     # Mass variance
     'lambda': float        # Lacunarity value
 }</div>
-<p>##### 2. fit_lacunarity(lac_result, min_valid_lambda=1.0+1e-12)</p>
 
-</strong>Description<strong>: Perform power-law fitting on lacunarity: log(Λ-1) vs log(r)
+<h4>2. fit_lacunarity(lac_result, transform="log", fit_range=None)</h4>
 
-</strong>Parameters<strong>:
+<p><strong>Description</strong>: Perform power-law fitting on lacunarity.</p>
+
+<p><strong>Parameters</strong>:</p>
 <ul>
 <li><code class="code-inline">lac_result</code> (dict): Return result from <code class="code-inline">get_lacunarity()</code></li>
-<li><code class="code-inline">min_valid_lambda</code> (float): Minimum valid lacunarity value</li>
+<li><code class="code-inline">transform</code> (str): Transform mode
+    <ul>
+        <li><code class="code-inline">"log"</code>: Standard log-log fit, slope = -β (Allain &amp; Cloitre)</li>
+        <li><code class="code-inline">"log_minus_1"</code>: Fit log(Λ-1) vs log(r)</li>
+    </ul>
+</li>
+<li><code class="code-inline">fit_range</code> (tuple or None): Optional <code class="code-inline">(min_scale, max_scale)</code> to restrict fit</li>
 </ul>
 
-</strong>Return Value<strong> (dict):
+<p><strong>Return Value</strong> (dict):</p>
 <div class="code-block">{
-    'slope': float,                    # Fit slope
-    'intercept': float,                # Fit intercept
-    'r_value': float,                  # Correlation coefficient
-    'p_value': float,                  # p-value
-    'std_err': float,                  # Standard error
-    'log_scales': list,                # Logarithmic scales
-    'log_lambda_minus_1': list         # log(Λ-1)
+    'slope': float,          # Fit slope
+    'intercept': float,      # Fit intercept
+    'r_value': float,        # Correlation coefficient
+    'p_value': float,        # p-value
+    'std_err': float,        # Standard error
+    'log_scales': list,      # Logarithmic scales used
+    'log_lac': list          # Logarithmic lacunarity values used
 }</div>
-<p>##### 3. plot(lac_result, fit_result=None, ax=None, show=True, title="Lacunarity", label=None)</p>
 
-</strong>Description<strong>: Visualize lacunarity curves and fitting results.
+<h4>3. get_batch_lacunarity(images, ...) [static]</h4>
 
-</strong>Parameters<strong>:
+<p><strong>Description</strong>: Batch lacunarity computation across multiple images. Supports heterogeneous image shapes on CPU.</p>
+
+<h4>4. fit_batch_lacunarity(lac_results, ...) [static]</h4>
+
+<p><strong>Description</strong>: Batch fitting of lacunarity results.</p>
+
+<h4>5. plot(lac_result, fit_result=None, ax=None, show=True, title="Lacunarity", label=None)</h4>
+
+<p><strong>Description</strong>: Visualize lacunarity curves and fitting results.</p>
+
+<p><strong>Parameters</strong>:</p>
 <ul>
 <li><code class="code-inline">lac_result</code> (dict): Lacunarity results</li>
 <li><code class="code-inline">fit_result</code> (dict): Fitting results (optional)</li>
@@ -296,10 +340,10 @@ fit_bin = lacunarity_bin.fit_lacunarity(lac_bin)
 <li><code class="code-inline">label</code> (str): Curve label</li>
 </ul>
 
-</strong>Plots<strong>:
+<p><strong>Plots</strong>:</p>
 <ul>
 <li>Left plot: Λ(r) vs r</li>
-<li>Right plot (if fit_result provided): log(Λ-1) vs log(r) with fit line</li>
+<li>Right plot (if fit_result provided): log-log fit with fit line</li>
 </ul>
 
 <h2>Theoretical Background</h2>
@@ -317,44 +361,65 @@ fit_bin = lacunarity_bin.fit_lacunarity(lac_bin)
 <h3>Physical Meaning</h3>
 
 <ul>
-<li></strong>Λ = 1<strong>: Completely uniform distribution</li>
-<li></strong>Λ > 1<strong>: Presence of gaps, non-uniform distribution</li>
-<li></strong>Larger Λ<strong>: More gaps, stronger clustering</li>
+<li><strong>Λ = 1</strong>: Completely uniform distribution</li>
+<li><strong>Λ &gt; 1</strong>: Presence of gaps, non-uniform distribution</li>
+<li><strong>Larger Λ</strong>: More gaps, stronger clustering</li>
 </ul>
 
 <h3>Scaling Law</h3>
 <p>Lacunarity typically follows a power law:</p>
 
-<div class="code-block">Λ(r) - 1 ∝ r^β</div>
+<div class="code-block">Λ(r) ∝ r^(-β)     (log transform, Allain & Cloitre)</div>
 <p>Where β is the lacunarity exponent.</p>
 
 <h2>Important Notes</h2>
-<p>1. </strong>Partition Mode Selection<strong>:</p>
-   - <code class="code-inline">"gliding"</code>: Recommended for general analysis, smoother results
-   - <code class="code-inline">"non-overlapping"</code>: Faster, suitable for large images
-<p>2. </strong>Mass Mode<strong>:</p>
-   - <code class="code-inline">use_binary_mass=True</code>: Binary images or only concerned with occupancy
-   - <code class="code-inline">use_binary_mass=False</code>: Grayscale images, considering intensity information
-<p>3. </strong>Scale Mode<strong>:</p>
-   - <code class="code-inline">"powers"</code>: Fewer scale points, faster computation
-   - <code class="code-inline">"logspace"</code>: More scale points, finer results
-<p>4. </strong>Zero Value Processing<strong>:</p>
-   - <code class="code-inline">include_zero=True</code>: Include all boxes
-   - <code class="code-inline">include_zero=False</code>: Only consider non-zero boxes
-<p>5. </strong>Result Interpretation<strong>:</p>
-   - Lacunarity value range: [1, +∞)
-   - Slope β: Quantifies scale dependency
-   - R² close to 1: Good power-law fit
-<p>6. </strong>Performance Optimization**:</p>
-   - Use <code class="code-inline">partition_mode="non-overlapping"</code> for speedup
-   - Reduce <code class="code-inline">max_scales</code> value
-   - Use <code class="code-inline">scales_mode="powers"</code>
+<ol>
+<li><strong>Partition Mode Selection</strong>:
+    <ul>
+        <li><code class="code-inline">"gliding"</code>: Recommended for general analysis, smoother results, uses integral image for O(1) per-pixel computation</li>
+        <li><code class="code-inline">"non-overlapping"</code>: Faster, suitable for large images</li>
+    </ul>
+</li>
+<li><strong>Mass Mode</strong>:
+    <ul>
+        <li><code class="code-inline">use_binary_mass=True</code>: Binary images or only concerned with occupancy</li>
+        <li><code class="code-inline">use_binary_mass=False</code>: Grayscale images, considering intensity information</li>
+    </ul>
+</li>
+<li><strong>Scale Mode</strong>:
+    <ul>
+        <li><code class="code-inline">"powers"</code>: Fewer scale points, faster computation</li>
+        <li><code class="code-inline">"logspace"</code>: More scale points, finer results</li>
+    </ul>
+</li>
+<li><strong>Zero Value Processing</strong>:
+    <ul>
+        <li><code class="code-inline">include_zero=True</code>: Include all boxes</li>
+        <li><code class="code-inline">include_zero=False</code>: Only consider non-zero boxes</li>
+    </ul>
+</li>
+<li><strong>Result Interpretation</strong>:
+    <ul>
+        <li>Lacunarity value range: [1, +∞)</li>
+        <li>Slope β: Quantifies scale dependency</li>
+        <li>R² close to 1: Good power-law fit</li>
+    </ul>
+</li>
+<li><strong>Performance Optimization</strong>:
+    <ul>
+        <li>Use <code class="code-inline">partition_mode="non-overlapping"</code> for speedup</li>
+        <li>Reduce <code class="code-inline">max_scales</code> value</li>
+        <li>Use <code class="code-inline">scales_mode="powers"</code></li>
+        <li>Use GPU version (<code class="code-inline">CFAImageLACGPU</code>) for large batches (requires same-shape images)</li>
+    </ul>
+</li>
+</ol>
 
 <h2>References</h2>
 
 <ul>
-<li>Plotnick, R. E., et al. (1996). Lacunarity analysis: A general technique for the analysis of spatial patterns. Physical Review E.</li>
-<li>Allain, C., & Cloitre, M. (1991). Characterizing the lacunarity of random and deterministic fractal sets. Physical Review A.</li>
+<li>Plotnick, R. E., et al. (1996). Lacunarity analysis: A general technique for the analysis of spatial patterns. <em>Physical Review E</em>.</li>
+<li>Allain, C., &amp; Cloitre, M. (1991). Characterizing the lacunarity of random and deterministic fractal sets. <em>Physical Review A</em>.</li>
 </ul>
 
         </main>

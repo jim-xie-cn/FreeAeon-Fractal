@@ -1,8 +1,8 @@
-# Series Multifractal Spectrum Analysis - CFA1DMFS
+# Series Multifractal Spectrum Analysis - CFASeriesMFS
 
 ## Application Scenarios
 
-The `CFA1DMFS` class is used to calculate the multifractal spectrum of 1D time series, serving as an important tool for analyzing sequence complexity and long-range correlations. Main application scenarios include:
+The `CFASeriesMFS` class is used to calculate the multifractal spectrum of 1D time series, serving as an important tool for analyzing sequence complexity and long-range correlations. Main application scenarios include:
 
 - **Financial Time Series**: Analyze multifractal properties of stock prices and returns
 - **Physiological Signal Analysis**: Complexity analysis of ECG and EEG
@@ -16,14 +16,14 @@ The `CFA1DMFS` class is used to calculate the multifractal spectrum of 1D time s
 
 ```python
 import numpy as np
-from FreeAeonFractal.FA1DMFS import CFA1DMFS
+from FreeAeonFractal.FASeriesMFS import CFASeriesMFS
 
 # Generate random walk sequence
 x = np.cumsum(np.random.randn(5000))
 
 # Create multifractal spectrum analysis object
 q_list = np.linspace(-5, 5, 21)
-mfs = CFA1DMFS(x, q_list=q_list)
+mfs = CFASeriesMFS(x, q_list=q_list)
 
 # Calculate multifractal spectrum
 df_mfs = mfs.get_mfs()
@@ -38,8 +38,10 @@ mfs.plot(df_mfs)
 ### Custom Scale Parameters
 
 ```python
-# Custom scale windows
-lag_list = np.unique(np.logspace(np.log10(16), np.log10(1000), 40).astype(int))
+from FreeAeonFractal.FASeriesMFS import CFASeriesMFS, recommended_lag
+
+# Use recommended scale function
+lag_list = recommended_lag(len(x), order=2, num_scales=40)
 
 # Calculate multifractal spectrum
 df_mfs = mfs.get_mfs(lag_list=lag_list, order=2)
@@ -53,7 +55,7 @@ pip install FreeAeon-Fractal
 
 ## Class Description
 
-### CFA1DMFS
+### CFASeriesMFS
 
 **Description**: Class for calculating 1D time series multifractal spectrum based on MFDFA (Multifractal Detrended Fluctuation Analysis) method.
 
@@ -65,6 +67,21 @@ pip install FreeAeon-Fractal
 | `q_list` | array-like | linspace(-5,5,51) | q value list |
 | `with_progress` | bool | True | Whether to show progress bar |
 
+#### Module-level Helper
+
+##### recommended_lag(x_len, order=2, num_scales=40, s_min=None, s_max_ratio=0.25)
+
+**Description**: Generate a recommended scale (lag) list for MFDFA.
+
+**Parameters**:
+- `x_len` (int): Length of the input series
+- `order` (int): DFA polynomial order
+- `num_scales` (int): Number of scale points
+- `s_min` (int or None): Minimum scale (auto if None)
+- `s_max_ratio` (float): Maximum scale as fraction of series length (default 0.25)
+
+**Return Value**: numpy array of integer lag values
+
 #### Main Methods
 
 ##### 1. get_mfs(lag_list=None, order=2)
@@ -72,7 +89,7 @@ pip install FreeAeon-Fractal
 **Description**: Calculate multifractal spectrum, including generalized Hurst exponent, mass exponent, singularity strength, and multifractal spectrum.
 
 **Parameters**:
-- `lag_list` (array-like): Custom scale window list. If None, automatically generates recommended scales
+- `lag_list` (array-like): Custom scale window list. If None, automatically generates recommended scales using `recommended_lag`
 - `order` (int): DFA polynomial fitting order, default is 2
 
 **Return Value** (pandas.DataFrame):
@@ -181,7 +198,7 @@ D(q) = τ(q) / (q - 1), q ≠ 1
    - `order=1`: Suitable for trendless sequences
    - `order=2`: Suitable for linear trends (recommended)
    - `order=3`: Suitable for quadratic trends
-   - Number of scales: 30-50
+   - Use `recommended_lag()` for optimal scale selection
 
 4. **Result Interpretation**:
    - h(q) monotonically decreasing: Multifractal
@@ -192,9 +209,9 @@ D(q) = τ(q) / (q - 1), q ≠ 1
 5. **Performance Considerations**:
    - Long sequences compute slowly
    - Reduce number of q values to speed up
-   - Use recommended scale function for optimization
+   - Use `recommended_lag` function for optimized scale selection
 
 ## References
 
-- Kantelhardt, J. W., et al. (2002). Multifractal detrended fluctuation analysis of nonstationary time series. Physica A.
-- Peng, C. K., et al. (1994). Mosaic organization of DNA nucleotides. Physical Review E.
+- Kantelhardt, J. W., et al. (2002). Multifractal detrended fluctuation analysis of nonstationary time series. *Physica A*.
+- Peng, C. K., et al. (1994). Mosaic organization of DNA nucleotides. *Physical Review E*.

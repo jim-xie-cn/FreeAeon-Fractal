@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fractal Dimension Analysis - CFAImageFD</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.8;
+            color: #333;
+            background: #f5f7fa;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+        }
+        header h1 { font-size: 2em; margin-bottom: 10px; }
+        header p { opacity: 0.9; }
+        nav {
+            background: #f8f9fa;
+            padding: 15px 30px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        nav a {
+            color: #667eea;
+            text-decoration: none;
+            margin-right: 20px;
+            font-weight: 500;
+        }
+        nav a:hover { color: #764ba2; }
+        main { padding: 40px; }
+        h2 {
+            color: #667eea;
+            font-size: 1.8em;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        h3 {
+            color: #764ba2;
+            font-size: 1.4em;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        h4 {
+            color: #555;
+            font-size: 1.1em;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            white-space: pre;
+        }
+        .code-inline {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #c7254e;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+        th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+        tr:hover { background: #f8f9fa; }
+        .note {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            background: #667eea;
+            color: white;
+            border-radius: 12px;
+            font-size: 0.85em;
+            margin-right: 5px;
+        }
+        ul, ol { margin-left: 30px; margin-bottom: 15px; }
+        li { margin-bottom: 8px; }
+        a { color: #667eea; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .section { margin-bottom: 30px; }
+        footer {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Fractal Dimension Analysis - CFAImageFD</h1>
+            <p>Image Fractal Dimension Calculation</p>
+        </header>
+
+        <nav>
+            <a href="index.html">← Back to Home</a>
+        </nav>
+
+        <main>
+
+<h2>Application Scenarios</h2>
+<p>The <code class="code-inline">CFAImageFD</code> class is used to calculate the fractal dimension of 2D images, serving as an important tool for image complexity analysis and texture feature extraction. Main application scenarios include:</p>
+
+<ul>
+<li><strong>Image Texture Analysis</strong>: Quantify image roughness and complexity</li>
+<li><strong>Medical Image Analysis</strong>: Analyze tissue structure complexity</li>
+<li><strong>Materials Science</strong>: Study fractal features of material surfaces</li>
+<li><strong>Computer Vision</strong>: Image feature extraction and classification</li>
+<li><strong>Geology</strong>: Terrain and landform complexity analysis</li>
+</ul>
+
+<h2>Usage Examples</h2>
+
+<h3>Basic Usage</h3>
+
+<div class="code-block">import cv2
+from FreeAeonFractal.FAImageFD import CFAImageFD
+from FreeAeonFractal.FAImage import CFAImage
+
+# Read image
+rgb_image = cv2.imread('./images/fractal.png')
+gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
+
+# For BC method, need binary image
+bin_image, threshold = CFAImage.otsu_binarize(gray_image)
+
+# Calculate three fractal dimensions
+fd_bc = CFAImageFD(bin_image).get_bc_fd(corp_type=-1)
+fd_dbc = CFAImageFD(gray_image).get_dbc_fd(corp_type=-1)
+fd_sdbc = CFAImageFD(gray_image).get_sdbc_fd(corp_type=-1)
+
+# Output results
+print("BC Fractal Dimension:", fd_bc['fd'])
+print("DBC Fractal Dimension:", fd_dbc['fd'])
+print("SDBC Fractal Dimension:", fd_sdbc['fd'])
+
+# Visualize results
+CFAImageFD.plot(rgb_image, gray_image, bin_image, fd_bc, fd_dbc, fd_sdbc)</div>
+
+<h3>GPU Accelerated Version</h3>
+
+<div class="code-block">from FreeAeonFractal.FAImageFDGPU import CFAImageFDGPU
+
+fd_bc = CFAImageFDGPU(bin_image, device='cuda').get_bc_fd()
+fd_dbc = CFAImageFDGPU(gray_image, device='cuda').get_dbc_fd()
+fd_sdbc = CFAImageFDGPU(gray_image, device='cuda').get_sdbc_fd()
+# Note: p_value is None in GPU version (not computed)</div>
+
+<h3>Batch Processing</h3>
+
+<div class="code-block">import cv2, glob
+import numpy as np
+from FreeAeonFractal.FAImageFD import CFAImageFD
+
+images = [cv2.imread(f, cv2.IMREAD_GRAYSCALE) for f in glob.glob('./images/*.png')]
+
+# Batch box-counting
+results = CFAImageFD.get_batch_bc(images)
+for r in results:
+    print("BC FD:", r['fd'])</div>
+
+<h3>Installation</h3>
+
+<div class="code-block">pip install FreeAeon-Fractal</div>
+
+<h2>Class Description</h2>
+
+<h3>CFAImageFD</h3>
+
+<p><strong>Description</strong>: Class for calculating 2D image fractal dimensions, supporting three different calculation methods: Box-Counting (BC), Differential Box-Counting (DBC), and Shifted DBC (SDBC).</p>
+
+<h4>Initialization Parameters</h4>
+<table>
+<tr>
+    <th>Parameter</th><th>Type</th><th>Default</th><th>Description</th>
+</tr>
+<tr><td><code class="code-inline">image</code></td><td>numpy.ndarray</td><td>Required</td><td>Input image (single channel)</td></tr>
+<tr><td><code class="code-inline">max_size</code></td><td>int</td><td>None</td><td>Maximum box size (default: minimum image dimension)</td></tr>
+<tr><td><code class="code-inline">max_scales</code></td><td>int</td><td>30</td><td>Maximum number of scales</td></tr>
+<tr><td><code class="code-inline">with_progress</code></td><td>bool</td><td>True</td><td>Whether to show progress bar</td></tr>
+<tr><td><code class="code-inline">min_size</code></td><td>int</td><td>2</td><td>Minimum box size</td></tr>
+</table>
+
+<h4>Main Methods</h4>
+
+<h4>1. get_bc_fd(corp_type=-1, fit_range=None)</h4>
+
+<p><strong>Description</strong>: Calculate fractal dimension using Box-Counting (BC) method.</p>
+
+<p><strong>Parameters</strong>:</p>
+<ul>
+<li><code class="code-inline">corp_type</code> (int): Image cropping method
+    <ul>
+        <li><code class="code-inline">-1</code>: Auto crop to multiples of box size</li>
+        <li><code class="code-inline">0</code>: No processing (requires image dimensions to be multiples of box size)</li>
+        <li><code class="code-inline">1</code>: Padding</li>
+    </ul>
+</li>
+<li><code class="code-inline">fit_range</code> (tuple or None): Optional <code class="code-inline">(min_scale, max_scale)</code> to restrict log-log fit range</li>
+</ul>
+
+<p><strong>Return Value</strong> (dict):</p>
+<div class="code-block">{
+    'fd': float,              # Fractal dimension value
+    'scales': list,           # Scale list
+    'counts': list,           # Box count list
+    'log_scales': list,       # Logarithmic scales
+    'log_counts': list,       # Logarithmic counts
+    'intercept': float,       # Fit intercept
+    'r_value': float,         # Correlation coefficient
+    'p_value': float,         # p-value
+    'std_err': float          # Standard error
+}</div>
+
+<p><strong>Use Case</strong>: Suitable for binary images, calculating the dimension of occupied space.</p>
+
+<h4>2. get_dbc_fd(corp_type=-1, fit_range=None)</h4>
+
+<p><strong>Description</strong>: Calculate fractal dimension using Differential Box-Counting (DBC) method (Sarkar &amp; Chaudhuri 1994). Uses <code class="code-inline">n_r = ceil(I_max/h) - ceil(I_min/h) + 1</code>.</p>
+
+<p><strong>Parameters</strong>: Same as <code class="code-inline">get_bc_fd</code></p>
+<p><strong>Return Value</strong>: Same as <code class="code-inline">get_bc_fd</code></p>
+<p><strong>Use Case</strong>: Suitable for grayscale images, considering grayscale information in fractal dimension calculation.</p>
+
+<h4>3. get_sdbc_fd(corp_type=-1, fit_range=None)</h4>
+
+<p><strong>Description</strong>: Calculate fractal dimension using Shifted DBC (SDBC) method (Chen 1995). Uses <code class="code-inline">n_r = floor((I_max - I_min)/h) + 1</code>.</p>
+
+<p><strong>Parameters</strong>: Same as <code class="code-inline">get_bc_fd</code></p>
+<p><strong>Return Value</strong>: Same as <code class="code-inline">get_bc_fd</code></p>
+<p><strong>Use Case</strong>: SDBC is a simplified version of DBC, faster computation, suitable for grayscale images.</p>
+
+<h4>4. get_fd(scale_list, box_count_list)</h4>
+
+<p><strong>Description</strong>: Utility method to perform log-log fit on custom scale and count data.</p>
+
+<p><strong>Parameters</strong>:</p>
+<ul>
+<li><code class="code-inline">scale_list</code>: List of scale values</li>
+<li><code class="code-inline">box_count_list</code>: Corresponding box counts</li>
+</ul>
+<p><strong>Return Value</strong>: Same dict structure as <code class="code-inline">get_bc_fd</code></p>
+
+<h4>5. plot(raw_img, gray_img, bin_img, fd_bc, fd_dbc, fd_sdbc)</h4>
+
+<p><strong>Description</strong>: Static method to visualize original image, grayscale image, binary image, and fitting results of three fractal dimensions.</p>
+
+<p><strong>Parameters</strong>:</p>
+<ul>
+<li><code class="code-inline">raw_img</code>: Original RGB image</li>
+<li><code class="code-inline">gray_img</code>: Grayscale image</li>
+<li><code class="code-inline">bin_img</code>: Binary image</li>
+<li><code class="code-inline">fd_bc</code>: BC method result dictionary</li>
+<li><code class="code-inline">fd_dbc</code>: DBC method result dictionary</li>
+<li><code class="code-inline">fd_sdbc</code>: SDBC method result dictionary</li>
+</ul>
+
+<h4>6. get_batch_bc / get_batch_dbc / get_batch_sdbc(images, ...)</h4>
+
+<p><strong>Description</strong>: Static methods for batch processing of multiple images.</p>
+
+<p><strong>Parameters</strong>:</p>
+<ul>
+<li><code class="code-inline">images</code> (list): List of input images</li>
+<li>Additional keyword arguments passed to the corresponding single-image method</li>
+</ul>
+<p><strong>Return Value</strong>: List of result dictionaries</p>
+
+<h2>Algorithm Description</h2>
+
+<h3>BC (Box-Counting) Method</h3>
+<p>The box-counting method calculates fractal dimension by counting the number of non-empty boxes needed to cover the image at different scales. Formula:</p>
+
+<div class="code-block">D = lim(ε→0) log(N(ε)) / log(1/ε)</div>
+<p>Where N(ε) is the number of boxes at scale ε.</p>
+
+<h3>DBC (Differential Box-Counting) Method</h3>
+<p>DBC considers grayscale height information, treating the image as a 3D surface. The height of each box is:</p>
+
+<div class="code-block">n_r = ceil(I_max / h) - ceil(I_min / h) + 1</div>
+<p>Where <code class="code-inline">h = max_val / (image_size / r)</code> is the height of a grayscale unit.</p>
+
+<h3>SDBC (Simplified DBC) Method</h3>
+<p>Shifted DBC uses a simplified height calculation:</p>
+
+<div class="code-block">n_r = floor((I_max - I_min) / h) + 1</div>
+<p>This avoids the rounding artefact in the original DBC formula.</p>
+
+<h2>Important Notes</h2>
+<ol>
+<li><strong>Image Preprocessing</strong>:
+    <ul>
+        <li>BC method requires binary images, recommend using Otsu auto-thresholding</li>
+        <li>DBC and SDBC methods are suitable for grayscale images</li>
+    </ul>
+</li>
+<li><strong>Scale Selection</strong>:
+    <ul>
+        <li><code class="code-inline">max_size</code> affects the scale range of analysis</li>
+        <li><code class="code-inline">max_scales</code> affects sampling density, recommend default value 30</li>
+        <li>Use <code class="code-inline">fit_range</code> to exclude unreliable small/large scales</li>
+    </ul>
+</li>
+<li><strong>Result Interpretation</strong>:
+    <ul>
+        <li>Fractal dimension range typically 1-2 (for 2D images)</li>
+        <li>Larger values indicate more complex images</li>
+        <li><code class="code-inline">r_value</code> close to 1 indicates good power-law fit</li>
+    </ul>
+</li>
+<li><strong>Performance Optimization</strong>:
+    <ul>
+        <li>For large images, can downsample first</li>
+        <li>Set <code class="code-inline">with_progress=False</code> to improve computation speed</li>
+        <li>Use GPU version (<code class="code-inline">CFAImageFDGPU</code>) for batch processing</li>
+        <li>Note: GPU version sets <code class="code-inline">p_value=None</code> (not computed)</li>
+    </ul>
+</li>
+</ol>
+
+<h2>References</h2>
+
+<ul>
+<li>Mandelbrot, B. B. (1982). <em>The Fractal Geometry of Nature</em>.</li>
+<li>Sarkar, N., &amp; Chaudhuri, B. B. (1994). An efficient differential box-counting approach to compute fractal dimension of image. <em>IEEE Transactions on Systems, Man, and Cybernetics</em>.</li>
+<li>Chen, W. S., et al. (1995). Efficient fractal coding of images based on differential box counting. <em>Pattern Recognition</em>.</li>
+</ul>
+
+        </main>
+
+        <footer>
+            <p>© 2025 FreeAeon-Fractal. All rights reserved</p>
+            <p><a href="https://github.com/jim-xie-cn/FreeAeon-Fractal" target="_blank" style="color: #667eea;">GitHub</a></p>
+        </footer>
+    </div>
+</body>
+</html>

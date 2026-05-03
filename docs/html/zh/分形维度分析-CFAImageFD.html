@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>分形维度分析 - CFAImageDimension</title>
+    <title>分形维度分析 - CFAImageFD</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -129,27 +129,27 @@
 <body>
     <div class="container">
         <header>
-            <h1>分形维度分析 - CFAImageDimension</h1>
+            <h1>分形维度分析 - CFAImageFD</h1>
             <p>图像分形维度计算 (BC, DBC, SDBC)</p>
         </header>
 
         <nav>
             <a href="index.html">← 返回首页</a>
-            
+
         </nav>
 
         <main>
 
 <h2>应用场景</h2>
 
-<code class="code-inline">CFAImageDimension</code> 类用于计算2D图像的分形维度，是图像复杂度分析和纹理特征提取的重要工具。主要应用场景包括：
+<code class="code-inline">CFAImageFD</code> 类用于计算2D图像的分形维度，是图像复杂度分析和纹理特征提取的重要工具。主要应用场景包括：
 
 <ul>
 <li><strong>图像纹理分析</strong>：量化图像的粗糙度和复杂度</li>
 <li><strong>医学图像分析</strong>：分析组织结构的复杂性</li>
 <li><strong>材料科学</strong>：研究材料表面的分形特征</li>
 <li><strong>计算机视觉</strong>：图像特征提取和分类</li>
-<li><strong>地质学</strong>：地形地貌的复杂度分析</li>
+<li><strong>地质学</strong>：地形和地貌复杂度分析</li>
 </ul>
 
 <h2>调用示例</h2>
@@ -157,7 +157,7 @@
 <h3>基础用法</h3>
 
 <div class="code-block">import cv2
-from FreeAeonFractal.FAImageDimension import CFAImageDimension
+from FreeAeonFractal.FAImageFD import CFAImageFD
 from FreeAeonFractal.FAImage import CFAImage
 <p># 读取图像</p>
 rgb_image = cv2.imread('./images/fractal.png')
@@ -165,15 +165,35 @@ gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
 <p># 对于BC方法，需要二值化图像</p>
 bin_image, threshold = CFAImage.otsu_binarize(gray_image)
 <p># 计算三种分形维度</p>
-fd_bc = CFAImageDimension(bin_image).get_bc_fd(corp_type=-1)
-fd_dbc = CFAImageDimension(gray_image).get_dbc_fd(corp_type=-1)
-fd_sdbc = CFAImageDimension(gray_image).get_sdbc_fd(corp_type=-1)
+fd_bc = CFAImageFD(bin_image).get_bc_fd(corp_type=-1)
+fd_dbc = CFAImageFD(gray_image).get_dbc_fd(corp_type=-1)
+fd_sdbc = CFAImageFD(gray_image).get_sdbc_fd(corp_type=-1)
 <p># 输出结果</p>
 print("BC分形维度:", fd_bc['fd'])
 print("DBC分形维度:", fd_dbc['fd'])
 print("SDBC分形维度:", fd_sdbc['fd'])
 <p># 可视化结果</p>
-CFAImageDimension.plot(rgb_image, bin_image, fd_bc, fd_dbc, fd_sdbc)</div>
+CFAImageFD.plot(rgb_image, gray_image, bin_image, fd_bc, fd_dbc, fd_sdbc)</div>
+
+<h3>GPU加速版本</h3>
+
+<div class="code-block">from FreeAeonFractal.FAImageFDGPU import CFAImageFDGPU
+<p># GPU加速计算</p>
+fd_bc = CFAImageFDGPU(bin_image, device='cuda').get_bc_fd()
+fd_dbc = CFAImageFDGPU(gray_image, device='cuda').get_dbc_fd()
+fd_sdbc = CFAImageFDGPU(gray_image, device='cuda').get_sdbc_fd()
+<p># 注意：GPU版本的p_value为None（不计算）</p>
+print(f"BC (GPU): {fd_bc['fd']:.4f}")
+print(f"DBC (GPU): {fd_dbc['fd']:.4f}")</div>
+
+<h3>批量处理</h3>
+
+<div class="code-block">import glob, cv2
+from FreeAeonFractal.FAImageFD import CFAImageFD
+<p>images = [cv2.imread(f, cv2.IMREAD_GRAYSCALE) for f in glob.glob('./images/*.png')]</p>
+results = CFAImageFD.get_batch_bc(images)
+for r in results:
+    print("BC FD:", r['fd'])</div>
 
 <h3>安装</h3>
 
@@ -181,22 +201,22 @@ CFAImageDimension.plot(rgb_image, bin_image, fd_bc, fd_dbc, fd_sdbc)</div>
 
 <h2>类说明</h2>
 
-<h3>CFAImageDimension</h3>
+<h3>CFAImageFD</h3>
 
-<strong>描述</strong>：用于计算2D图像分形维度的类，支持三种不同的计算方法。
+<strong>描述</strong>：用于计算2D图像分形维度的类，支持Box-Counting（BC）、差分Box-Counting（DBC）和移位DBC（SDBC）三种计算方法。
 
 <h4>初始化参数</h4>
-<p><tr><td>参数</td><td>类型</td><td>默认值</td><td>说明</td></tr></p>
 <table>
-<tr><td>------</td><td>------</td><td>--------</td><td>------</td></tr>
+<tr><th>参数</th><th>类型</th><th>默认值</th><th>说明</th></tr>
 <tr><td><code class="code-inline">image</code></td><td>numpy.ndarray</td><td>必需</td><td>输入图像（单通道）</td></tr>
 <tr><td><code class="code-inline">max_size</code></td><td>int</td><td>None</td><td>最大盒子尺寸（默认为图像最小边长）</td></tr>
-<tr><td><code class="code-inline">max_scales</code></td><td>int</td><td>100</td><td>最大尺度数量</td></tr>
+<tr><td><code class="code-inline">max_scales</code></td><td>int</td><td>30</td><td>最大尺度数量</td></tr>
 <tr><td><code class="code-inline">with_progress</code></td><td>bool</td><td>True</td><td>是否显示进度条</td></tr>
+<tr><td><code class="code-inline">min_size</code></td><td>int</td><td>2</td><td>最小盒子尺寸</td></tr>
 </table>
 
 <h4>主要方法</h4>
-<p>##### 1. get_bc_fd(corp_type=-1)</p>
+<p>##### 1. get_bc_fd(corp_type=-1, fit_range=None)</p>
 
 <strong>描述</strong>：使用盒计数（Box-Counting, BC）方法计算分形维度。
 
@@ -207,6 +227,9 @@ CFAImageDimension.plot(rgb_image, bin_image, fd_bc, fd_dbc, fd_sdbc)</div>
   - <code class="code-inline">-1</code>: 自动裁剪到盒子尺寸的倍数
   - <code class="code-inline">0</code>: 不处理（需要图像尺寸已是盒子尺寸的倍数）
   - <code class="code-inline">1</code>: 填充
+<ul>
+<li><code class="code-inline">fit_range</code> (tuple或None): 可选的 (min_scale, max_scale) 限制拟合范围</li>
+</ul>
 
 <strong>返回值</strong> (dict):
 <div class="code-block">{
@@ -222,36 +245,48 @@ CFAImageDimension.plot(rgb_image, bin_image, fd_bc, fd_dbc, fd_sdbc)</div>
 }</div>
 
 <strong>适用场景</strong>：适用于二值图像，计算其占据空间的维度。
-<p>##### 2. get_dbc_fd(corp_type=-1)</p>
+<p>##### 2. get_dbc_fd(corp_type=-1, fit_range=None)</p>
 
-<strong>描述</strong>：使用差分盒计数（Differential Box-Counting, DBC）方法计算分形维度。
+<strong>描述</strong>：使用差分盒计数（Differential Box-Counting, DBC）方法（Sarkar &amp; Chaudhuri 1994）计算分形维度。使用 <code class="code-inline">n_r = ceil(I_max/h) - ceil(I_min/h) + 1</code>。
 
 <strong>参数</strong>：同 <code class="code-inline">get_bc_fd</code>
 
 <strong>返回值</strong>：同 <code class="code-inline">get_bc_fd</code>
 
 <strong>适用场景</strong>：适用于灰度图像，考虑灰度信息的分形维度计算。
-<p>##### 3. get_sdbc_fd(corp_type=-1)</p>
+<p>##### 3. get_sdbc_fd(corp_type=-1, fit_range=None)</p>
 
-<strong>描述</strong>：使用改进的差分盒计数（Simplified DBC, SDBC）方法计算分形维度。
+<strong>描述</strong>：使用移位差分盒计数（Shifted DBC, SDBC）方法（Chen 1995）计算分形维度。使用 <code class="code-inline">n_r = floor((I_max - I_min)/h) + 1</code>，避免了原始DBC公式中的舍入误差。
 
 <strong>参数</strong>：同 <code class="code-inline">get_bc_fd</code>
 
 <strong>返回值</strong>：同 <code class="code-inline">get_bc_fd</code>
 
-<strong>适用场景</strong>：SDBC是DBC的简化版本，计算更快，适用于灰度图像。
-<p>##### 4. plot(raw_img, gray_img, fd_bc, fd_dbc, fd_sdbc)</p>
+<strong>适用场景</strong>：SDBC是DBC的改进版本，使用更简化的计算方式。
+<p>##### 4. get_fd(scale_list, box_count_list)</p>
 
-<strong>描述</strong>：静态方法，可视化原始图像、二值图像和三种分形维度的拟合结果。
+<strong>描述</strong>：对自定义尺度和计数数据执行对数-对数拟合的工具方法。
+
+<strong>返回值</strong>：与 <code class="code-inline">get_bc_fd</code> 相同的字典结构。
+<p>##### 5. plot(raw_img, gray_img, bin_img, fd_bc, fd_dbc, fd_sdbc)</p>
+
+<strong>描述</strong>：静态方法，可视化原始图像、灰度图像、二值图像和三种分形维度的拟合结果。
 
 <strong>参数</strong>：
 <ul>
 <li><code class="code-inline">raw_img</code>: 原始RGB图像</li>
-<li><code class="code-inline">gray_img</code>: 二值化或灰度图像</li>
+<li><code class="code-inline">gray_img</code>: 灰度图像</li>
+<li><code class="code-inline">bin_img</code>: 二值图像</li>
 <li><code class="code-inline">fd_bc</code>: BC方法的结果字典</li>
 <li><code class="code-inline">fd_dbc</code>: DBC方法的结果字典</li>
 <li><code class="code-inline">fd_sdbc</code>: SDBC方法的结果字典</li>
 </ul>
+
+<p>##### 6. get_batch_bc / get_batch_dbc / get_batch_sdbc(images, ...)</p>
+
+<strong>描述</strong>：用于批量处理多个图像的静态方法。
+
+<strong>返回值</strong>：结果字典列表。
 
 <h2>算法说明</h2>
 
@@ -262,10 +297,15 @@ CFAImageDimension.plot(rgb_image, bin_image, fd_bc, fd_dbc, fd_sdbc)</div>
 <p>其中 N(ε) 是尺度为 ε 时的盒子数量。</p>
 
 <h3>DBC (Differential Box-Counting) 方法</h3>
-差分盒计数法考虑灰度值的高度信息，将图像视为三维表面。每个盒子的高度由该区域的灰度范围决定。
+差分盒计数法考虑灰度值的高度信息，将图像视为三维表面。每个盒子的高度为：
 
-<h3>SDBC (Simplified DBC) 方法</h3>
-简化差分盒计数法是DBC的改进版本，使用更简化的计算方式，在保持精度的同时提高计算效率。
+<div class="code-block">n_r = ceil(I_max / h) - ceil(I_min / h) + 1</div>
+<p>其中 <code class="code-inline">h = max_val / (image_size / r)</code> 是灰度单元的高度。</p>
+
+<h3>SDBC (Shifted DBC) 方法</h3>
+移位差分盒计数法使用简化的高度计算，避免了原始DBC公式中的舍入误差：
+
+<div class="code-block">n_r = floor((I_max - I_min) / h) + 1</div>
 
 <h2>重要提示</h2>
 <p>1. <strong>图像预处理</strong>：</p>
@@ -273,7 +313,8 @@ CFAImageDimension.plot(rgb_image, bin_image, fd_bc, fd_dbc, fd_sdbc)</div>
    - DBC和SDBC方法适用于灰度图像
 <p>2. <strong>尺度选择</strong>：</p>
    - <code class="code-inline">max_size</code> 影响分析的尺度范围
-   - <code class="code-inline">max_scales</code> 影响采样密度，建议使用默认值100
+   - <code class="code-inline">max_scales</code> 影响采样密度，默认值为30
+   - 使用 <code class="code-inline">fit_range</code> 排除不可靠的小/大尺度
 <p>3. <strong>结果解释</strong>：</p>
    - 分形维度范围通常在1-2之间（2D图像）
    - 值越大表示图像越复杂
@@ -281,12 +322,15 @@ CFAImageDimension.plot(rgb_image, bin_image, fd_bc, fd_dbc, fd_sdbc)</div>
 <p>4. <strong>性能优化</strong>：</p>
    - 对于大图像，可以先降采样
    - 设置 <code class="code-inline">with_progress=False</code> 可以提高计算速度
+   - 批量处理使用GPU版本（<code class="code-inline">CFAImageFDGPU</code>）
+   - 注意：GPU版本的 <code class="code-inline">p_value</code> 为 <code class="code-inline">None</code>（不计算）
 
 <h2>参考文献</h2>
 
 <ul>
 <li>Mandelbrot, B. B. (1982). The Fractal Geometry of Nature.</li>
-<li>Sarkar, N., & Chaudhuri, B. B. (1994). An efficient differential box-counting approach to compute fractal dimension of image.</li>
+<li>Sarkar, N., &amp; Chaudhuri, B. B. (1994). An efficient differential box-counting approach to compute fractal dimension of image. IEEE Transactions on Systems, Man, and Cybernetics.</li>
+<li>Chen, W. S., et al. (1995). Efficient fractal coding of images based on differential box counting. Pattern Recognition.</li>
 </ul>
 
         </main>

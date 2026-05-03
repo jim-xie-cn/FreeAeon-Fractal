@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>序列多重分形谱分析 - CFA1DMFS</title>
+    <title>序列多重分形谱分析 - CFASeriesMFS</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -129,20 +129,20 @@
 <body>
     <div class="container">
         <header>
-            <h1>序列多重分形谱分析 - CFA1DMFS</h1>
+            <h1>序列多重分形谱分析 - CFASeriesMFS</h1>
             <p>1D序列多重分形谱分析</p>
         </header>
 
         <nav>
             <a href="index.html">← 返回首页</a>
-            
+
         </nav>
 
         <main>
 
 <h2>应用场景</h2>
 
-<code class="code-inline">CFA1DMFS</code> 类用于计算1D时间序列的多重分形谱，是分析序列复杂度和长程相关性的重要工具。主要应用场景包括：
+<code class="code-inline">CFASeriesMFS</code> 类用于计算1D时间序列的多重分形谱，是分析序列复杂度和长程相关性的重要工具。主要应用场景包括：
 
 <ul>
 <li><strong>金融时间序列</strong>：分析股票价格、收益率的多重分形特性</li>
@@ -157,12 +157,12 @@
 <h3>基础用法</h3>
 
 <div class="code-block">import numpy as np
-from FreeAeonFractal.FA1DMFS import CFA1DMFS
+from FreeAeonFractal.FASeriesMFS import CFASeriesMFS
 <p># 生成随机游走序列</p>
 x = np.cumsum(np.random.randn(5000))
 <p># 创建多重分形谱分析对象</p>
 q_list = np.linspace(-5, 5, 21)
-mfs = CFA1DMFS(x, q_list=q_list)
+mfs = CFASeriesMFS(x, q_list=q_list)
 <p># 计算多重分形谱</p>
 df_mfs = mfs.get_mfs()
 <p># 查看结果</p>
@@ -170,10 +170,11 @@ print(df_mfs)
 <p># 可视化结果</p>
 mfs.plot(df_mfs)</div>
 
-<h3>自定义尺度参数</h3>
+<h3>使用推荐尺度函数</h3>
 
-<div class="code-block"># 自定义尺度窗口
-lag_list = np.unique(np.logspace(np.log10(16), np.log10(1000), 40).astype(int))
+<div class="code-block">from FreeAeonFractal.FASeriesMFS import CFASeriesMFS, recommended_lag
+<p># 使用推荐尺度函数</p>
+lag_list = recommended_lag(len(x), order=2, num_scales=40)
 <p># 计算多重分形谱</p>
 df_mfs = mfs.get_mfs(lag_list=lag_list, order=2)</div>
 
@@ -183,18 +184,39 @@ df_mfs = mfs.get_mfs(lag_list=lag_list, order=2)</div>
 
 <h2>类说明</h2>
 
-<h3>CFA1DMFS</h3>
+<h3>CFASeriesMFS</h3>
 
-<strong>描述</strong>：用于计算1D时间序列多重分形谱的类，基于MFDFA（Multifractal Detrended Fluctuation Analysis）方法。
+<strong>描述</strong>：基于MFDFA（多重分形去趋势波动分析）方法计算1D时间序列多重分形谱的类。
 
 <h4>初始化参数</h4>
-<p><tr><td>参数</td><td>类型</td><td>默认值</td><td>说明</td></tr></p>
 <table>
-<tr><td>------</td><td>------</td><td>--------</td><td>------</td></tr>
+<tr><th>参数</th><th>类型</th><th>默认值</th><th>说明</th></tr>
 <tr><td><code class="code-inline">data</code></td><td>numpy.ndarray</td><td>必需</td><td>输入时间序列（1D数组）</td></tr>
 <tr><td><code class="code-inline">q_list</code></td><td>array-like</td><td>linspace(-5,5,51)</td><td>q值列表</td></tr>
 <tr><td><code class="code-inline">with_progress</code></td><td>bool</td><td>True</td><td>是否显示进度条</td></tr>
 </table>
+
+<h4>模块级辅助函数</h4>
+
+<h3>recommended_lag(x_len, order=2, num_scales=40, s_min=None, s_max_ratio=0.25)</h3>
+
+<strong>描述</strong>：为MFDFA生成推荐的尺度（lag）列表。
+
+<strong>参数</strong>：
+<ul>
+<li><code class="code-inline">x_len</code> (int): 输入序列长度</li>
+<li><code class="code-inline">order</code> (int): DFA多项式阶数</li>
+<li><code class="code-inline">num_scales</code> (int): 尺度点数量</li>
+<li><code class="code-inline">s_min</code> (int或None): 最小尺度（None时自动设置为 max(16, order+4)）</li>
+<li><code class="code-inline">s_max_ratio</code> (float): 最大尺度占序列长度的比例（默认0.25）</li>
+</ul>
+
+<strong>返回值</strong>：整数lag值的numpy数组
+
+<strong>示例</strong>：
+<div class="code-block">from FreeAeonFractal.FASeriesMFS import recommended_lag
+<p>lag = recommended_lag(5000, order=2, num_scales=40)</p>
+print(f"推荐尺度范围：{lag[0]} 到 {lag[-1]}")</div>
 
 <h4>主要方法</h4>
 <p>##### 1. get_mfs(lag_list=None, order=2)</p>
@@ -203,7 +225,7 @@ df_mfs = mfs.get_mfs(lag_list=lag_list, order=2)</div>
 
 <strong>参数</strong>：
 <ul>
-<li><code class="code-inline">lag_list</code> (array-like): 自定义尺度窗口列表。如果为None，自动生成推荐尺度</li>
+<li><code class="code-inline">lag_list</code> (array-like): 自定义尺度窗口列表。如果为None，使用 <code class="code-inline">recommended_lag</code> 自动生成推荐尺度</li>
 <li><code class="code-inline">order</code> (int): DFA多项式拟合阶数，默认为2</li>
 </ul>
 
@@ -211,8 +233,7 @@ df_mfs = mfs.get_mfs(lag_list=lag_list, order=2)</div>
 <p>包含以下列的DataFrame：</p>
 
 <table>
-<tr><td>列名</td><td>说明</td></tr>
-<tr><td>------</td><td>------</td></tr>
+<tr><th>列名</th><th>说明</th></tr>
 <tr><td><code class="code-inline">q</code></td><td>q值</td></tr>
 <tr><td><code class="code-inline">h(q)</code></td><td>广义Hurst指数</td></tr>
 <tr><td><code class="code-inline">t(q)</code></td><td>τ(q) 质量指数</td></tr>
@@ -236,7 +257,7 @@ print(df_mfs.head())
 3. <strong>D(q) vs q</strong>：广义维度
 4. <strong>α(q) vs q</strong>：奇异性强度
 5. <strong>f(α) vs α</strong>：多重分形谱
-6. <strong>综合对比图</strong>：归一化后的各指标对比
+6. <strong>概览</strong>：所有指标的归一化比较
 
 <strong>参数</strong>：
 <ul>
@@ -252,7 +273,7 @@ print(df_mfs.head())
 <div class="code-block">Y(i) = Σ[x(k) - x̄]  (i = 1, 2, ..., N)</div>
 
 <h4>2. 分段去趋势</h4>
-将Y(i)分为不重叠的Ns = int(N/s)个窗口，在每个窗口内拟合多项式并计算方差。
+将Y(i)分为不重叠的大小为s的窗口，在每个窗口内拟合多项式并计算方差。
 
 <h4>3. 波动函数</h4>
 <div class="code-block">F²(s,v) = (1/s) Σ{Y[(v-1)s+i] - yᵥ(i)}²</div>
@@ -298,28 +319,6 @@ print(df_mfs.head())
   - 谱宽 Δα = α_max - α_min
   - 谱宽越大，多重分形性越强
 
-<h2>辅助函数</h2>
-
-<h3>recommended_lag(x_len, order=2, num_scales=40, s_min=None, s_max_ratio=0.25)</h3>
-
-<strong>描述</strong>：为中短序列生成推荐的尺度窗口集合。
-
-<strong>参数</strong>：
-<ul>
-<li><code class="code-inline">x_len</code> (int): 序列长度</li>
-<li><code class="code-inline">order</code> (int): DFA多项式阶数</li>
-<li><code class="code-inline">num_scales</code> (int): 尺度数量</li>
-<li><code class="code-inline">s_min</code> (int): 最小尺度（默认：max(16, order+4)）</li>
-<li><code class="code-inline">s_max_ratio</code> (float): 最大尺度比例</li>
-</ul>
-
-<strong>返回值</strong>：推荐的尺度窗口数组
-
-<strong>示例</strong>：
-<div class="code-block">from FreeAeonFractal.FA1DMFS import recommended_lag
-<p>lag = recommended_lag(5000, order=2, num_scales=40)</p>
-print(f"推荐尺度范围：{lag[0]} 到 {lag[-1]}")</div>
-
 <h2>重要提示</h2>
 <p>1. <strong>序列长度</strong>：</p>
    - 最小长度建议 ≥ 1000
@@ -334,7 +333,7 @@ print(f"推荐尺度范围：{lag[0]} 到 {lag[-1]}")</div>
    - <code class="code-inline">order=1</code>：适用于无趋势序列
    - <code class="code-inline">order=2</code>：适用于线性趋势（推荐）
    - <code class="code-inline">order=3</code>：适用于二次趋势
-   - 尺度数量：30-50个
+   - 使用 <code class="code-inline">recommended_lag()</code> 获取最优尺度
 <p>4. <strong>结果解释</strong>：</p>
    - h(q) 单调递减：多重分形
    - h(q) 恒定：单分形
@@ -343,7 +342,7 @@ print(f"推荐尺度范围：{lag[0]} 到 {lag[-1]}")</div>
 <p>5. <strong>性能考虑</strong>：</p>
    - 长序列计算较慢
    - 减少q值数量可提速
-   - 使用推荐尺度函数优化
+   - 使用 <code class="code-inline">recommended_lag</code> 函数优化尺度选择
 
 <h2>应用示例</h2>
 
@@ -351,11 +350,11 @@ print(f"推荐尺度范围：{lag[0]} 到 {lag[-1]}")</div>
 
 <div class="code-block">import numpy as np
 import pandas as pd
-from FreeAeonFractal.FA1DMFS import CFA1DMFS
+from FreeAeonFractal.FASeriesMFS import CFASeriesMFS
 <p># 假设有股票收益率数据</p>
 returns = pd.read_csv('stock_returns.csv')['return'].values
 <p># 多重分形分析</p>
-mfs = CFA1DMFS(returns, q_list=np.linspace(-5, 5, 21))
+mfs = CFASeriesMFS(returns, q_list=np.linspace(-5, 5, 21))
 df_mfs = mfs.get_mfs()
 <p># 检查多重分形性</p>
 delta_h = df_mfs.loc[df_mfs['q'] == -5, 'h(q)'].values[0] - \
@@ -372,7 +371,7 @@ mfs.plot(df_mfs)</div>
 <div class="code-block"># 心率变异性(HRV)数据
 hrv_data = load_hrv_data()  # 假设函数
 <p># 多重分形分析</p>
-mfs = CFA1DMFS(hrv_data)
+mfs = CFASeriesMFS(hrv_data)
 df_mfs = mfs.get_mfs(order=2)
 <p># 提取特征</p>
 h2 = df_mfs.loc[df_mfs['q'] == 2, 'h(q)'].values[0]  # Hurst指数

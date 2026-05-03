@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multifractal Spectrum Analysis - CFAImageMFS</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.8;
+            color: #333;
+            background: #f5f7fa;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+        }
+        header h1 { font-size: 2em; margin-bottom: 10px; }
+        header p { opacity: 0.9; }
+        nav {
+            background: #f8f9fa;
+            padding: 15px 30px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        nav a {
+            color: #667eea;
+            text-decoration: none;
+            margin-right: 20px;
+            font-weight: 500;
+        }
+        nav a:hover { color: #764ba2; }
+        main { padding: 40px; }
+        h2 {
+            color: #667eea;
+            font-size: 1.8em;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
+        }
+        h3 {
+            color: #764ba2;
+            font-size: 1.4em;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        h4 {
+            color: #555;
+            font-size: 1.1em;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        .code-block {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 5px;
+            overflow-x: auto;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            white-space: pre;
+        }
+        .code-inline {
+            background: #f0f0f0;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+            color: #c7254e;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+        th {
+            background: #667eea;
+            color: white;
+            font-weight: 600;
+        }
+        tr:hover { background: #f8f9fa; }
+        .note {
+            background: #e7f3ff;
+            border-left: 4px solid #2196F3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            background: #667eea;
+            color: white;
+            border-radius: 12px;
+            font-size: 0.85em;
+            margin-right: 5px;
+        }
+        ul, ol { margin-left: 30px; margin-bottom: 15px; }
+        li { margin-bottom: 8px; }
+        a { color: #667eea; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .section { margin-bottom: 30px; }
+        footer {
+            background: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Multifractal Spectrum Analysis - CFAImageMFS</h1>
+            <p>2D Image Multifractal Spectrum Analysis</p>
+        </header>
+
+        <nav>
+            <a href="index.html">← Back to Home</a>
+        </nav>
+
+        <main>
+
+<h2>Application Scenarios</h2>
+<p>The <code class="code-inline">CFAImageMFS</code> class is used to calculate the Multifractal Spectrum of 2D grayscale images, serving as an advanced tool for analyzing image complexity and heterogeneity. Main application scenarios include:</p>
+
+<ul>
+<li><strong>Texture Analysis</strong>: Quantify multi-scale properties of image textures</li>
+<li><strong>Medical Imaging</strong>: Analyze tissue structure heterogeneity</li>
+<li><strong>Materials Science</strong>: Study multifractal features of material surfaces</li>
+<li><strong>Financial Analysis</strong>: Analyze multifractal properties of price fluctuations</li>
+<li><strong>Earth Sciences</strong>: Study multi-scale features of terrain and landforms</li>
+</ul>
+
+<h2>Usage Examples</h2>
+
+<h3>Basic Usage</h3>
+
+<div class="code-block">import cv2
+import numpy as np
+from FreeAeonFractal.FAImageMFS import CFAImageMFS
+
+# Load and convert to grayscale
+rgb_image = cv2.imread('./images/face.png')
+gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
+
+# Create multifractal spectrum analysis object
+q_list = np.linspace(-5, 5, 26)
+MFS = CFAImageMFS(gray_image, q_list=q_list)
+
+# Calculate multifractal spectrum
+df_mass, df_fit, df_spec = MFS.get_mfs()
+
+# View results
+print(df_spec)
+
+# Visualize results
+MFS.plot(df_mass, df_fit, df_spec)</div>
+
+<h3>GPU Accelerated Version</h3>
+
+<div class="code-block"># Use GPU accelerated version
+from FreeAeonFractal.FAImageMFSGPU import CFAImageMFSGPU as CFAImageMFS
+
+# Rest of code remains the same
+MFS = CFAImageMFS(gray_image, q_list=np.linspace(-5, 5, 26))
+df_mass, df_fit, df_spec = MFS.get_mfs()</div>
+
+<h3>Local Alpha Map (per-pixel Hölder exponent)</h3>
+
+<div class="code-block">from FreeAeonFractal.FAImageMFS import CFAImageMFS
+
+MFS = CFAImageMFS(gray_image)
+alpha_map = MFS.compute_alpha_map(scales=None, roi_mode="center", empty_policy="nan")
+
+CFAImageMFS.plot_alpha_map(alpha_map)</div>
+
+<h3>Batch Processing</h3>
+
+<div class="code-block">import glob, cv2
+from FreeAeonFractal.FAImageMFS import CFAImageMFS
+
+images = [cv2.imread(f, cv2.IMREAD_GRAYSCALE) for f in glob.glob('./images/*.png')]
+results = CFAImageMFS.get_batch_mfs(images, q_list=np.linspace(-5, 5, 26))
+for df_mass, df_fit, df_spec in results:
+    print(df_fit[['q','tau','Dq']].head())</div>
+
+<h3>Installation</h3>
+
+<div class="code-block">pip install FreeAeon-Fractal</div>
+
+<h2>Class Description</h2>
+
+<h3>CFAImageMFS</h3>
+
+<p><strong>Description</strong>: Class for calculating 2D grayscale image multifractal spectrum based on box-counting method.</p>
+
+<h4>Initialization Parameters</h4>
+<table>
+<tr>
+    <th>Parameter</th><th>Type</th><th>Default</th><th>Description</th>
+</tr>
+<tr><td><code class="code-inline">image</code></td><td>numpy.ndarray</td><td>Required</td><td>Input grayscale image (2D array)</td></tr>
+<tr><td><code class="code-inline">corp_type</code></td><td>int</td><td>-1</td><td>Image crop type (-1:crop, 0:strict match, 1:pad)</td></tr>
+<tr><td><code class="code-inline">q_list</code></td><td>array-like</td><td>linspace(-5,5,51)</td><td>q value list</td></tr>
+<tr><td><code class="code-inline">with_progress</code></td><td>bool</td><td>True</td><td>Whether to show progress bar</td></tr>
+<tr><td><code class="code-inline">bg_threshold</code></td><td>float</td><td>0.01</td><td>Background threshold (pixels below this are masked)</td></tr>
+<tr><td><code class="code-inline">bg_reverse</code></td><td>bool</td><td>False</td><td>Whether to reverse background threshold</td></tr>
+<tr><td><code class="code-inline">bg_otsu</code></td><td>bool</td><td>False</td><td>Whether to use Otsu thresholding for background</td></tr>
+<tr><td><code class="code-inline">mu_floor</code></td><td>float</td><td>1e-12</td><td>Minimum probability floor (kept for compatibility)</td></tr>
+</table>
+
+<h4>Main Methods</h4>
+
+<h4>1. get_mass_table(max_size=None, max_scales=80, min_box=2, roi_mode="center")</h4>
+
+<p><strong>Description</strong>: Compute the partition function table across all scales and q values.</p>
+
+<p><strong>Parameters</strong>:</p>
+<ul>
+<li><code class="code-inline">max_size</code> (int): Maximum box size</li>
+<li><code class="code-inline">max_scales</code> (int): Maximum number of scales</li>
+<li><code class="code-inline">min_box</code> (int): Minimum box size</li>
+<li><code class="code-inline">roi_mode</code> (str): ROI crop mode, <code class="code-inline">"center"</code> uses fixed square ROI (Scheme A)</li>
+</ul>
+
+<p><strong>Return Value</strong> (DataFrame): Columns <code class="code-inline">scale, eps, q, value, kind</code></p>
+<ul>
+<li><code class="code-inline">kind</code> &isin; <code class="code-inline">{'logMq', 'N', 'S'}</code> — log partition function, box count, Shannon entropy</li>
+</ul>
+
+<h4>2. fit_tau_and_D1(df_mass, min_points=6, require_common_scales=True, use_middle_scales=False, fit_scale_frac=(0.2, 0.8), if_auto_line_fit=False, auto_fit_min_len_ratio=0.5, cap_d0_at_2=True)</h4>
+
+<p><strong>Description</strong>: Fit τ(q) and D(q) from the mass table.</p>
+
+<p><strong>Return Value</strong> (DataFrame): Columns <code class="code-inline">q, tau, Dq, D1, intercept, r_value, p_value, std_err, n_points</code></p>
+
+<p><strong>Notes</strong>:</p>
+<ul>
+<li>q=0 row uses log(N) fit; q=1 row uses Shannon entropy (S) fit; other q use logMq fit</li>
+<li>Forced q=0 and q=1 rows are always included in <code class="code-inline">df_fit</code></li>
+</ul>
+
+<h4>3. alpha_falpha_from_tau(df_fit, spline_k=3, exclude_q1=True, spline_s=0)</h4>
+
+<p><strong>Description</strong>: Compute α(q) and f(α) via spline derivative of τ(q).</p>
+
+<p><strong>Parameters</strong>:</p>
+<ul>
+<li><code class="code-inline">df_fit</code>: Output from <code class="code-inline">fit_tau_and_D1</code></li>
+<li><code class="code-inline">spline_k</code> (int): Spline order (default 3)</li>
+<li><code class="code-inline">exclude_q1</code> (bool): Whether to exclude q=1 from spline (avoids discontinuity)</li>
+<li><code class="code-inline">spline_s</code> (float): Spline smoothing factor (0 = exact interpolation)</li>
+</ul>
+
+<p><strong>Return Value</strong> (DataFrame): Columns <code class="code-inline">q, tau, Dq, alpha, f_alpha</code></p>
+
+<h4>4. get_mfs(max_size=None, max_scales=80, min_points=6, min_box=2, use_middle_scales=False, fit_scale_frac=(0.2, 0.8), if_auto_line_fit=False, auto_fit_min_len_ratio=0.5, spline_s=0, cap_d0_at_2=True)</h4>
+
+<p><strong>Description</strong>: Complete multifractal spectrum analysis pipeline.</p>
+
+<p><strong>Return Value</strong> (tuple):</p>
+<div class="code-block">(df_mass, df_fit, df_spec)</div>
+
+<ul>
+<li><code class="code-inline">df_mass</code>: Mass table DataFrame with columns:
+    <ul>
+        <li><code class="code-inline">scale</code>: Box size</li>
+        <li><code class="code-inline">eps</code>: Normalized scale</li>
+        <li><code class="code-inline">q</code>: q value</li>
+        <li><code class="code-inline">value</code>: Different meanings based on kind</li>
+        <li><code class="code-inline">kind</code>: Value type ('logMq', 'N', 'S')</li>
+    </ul>
+</li>
+<li><code class="code-inline">df_fit</code>: Fit results DataFrame with columns:
+    <ul>
+        <li><code class="code-inline">q</code>: q value</li>
+        <li><code class="code-inline">tau</code>: τ(q) mass exponent</li>
+        <li><code class="code-inline">Dq</code>: D(q) generalized dimension</li>
+        <li><code class="code-inline">D1</code>: D1 information dimension (only for q=1)</li>
+        <li><code class="code-inline">intercept</code>: Fit intercept</li>
+        <li><code class="code-inline">r_value</code>: Correlation coefficient</li>
+        <li><code class="code-inline">p_value</code>: p-value</li>
+        <li><code class="code-inline">std_err</code>: Standard error</li>
+        <li><code class="code-inline">n_points</code>: Number of fit points</li>
+    </ul>
+</li>
+<li><code class="code-inline">df_spec</code>: Multifractal spectrum DataFrame with columns:
+    <ul>
+        <li><code class="code-inline">q</code>: q value</li>
+        <li><code class="code-inline">tau</code>: τ(q)</li>
+        <li><code class="code-inline">Dq</code>: D(q)</li>
+        <li><code class="code-inline">alpha</code>: α(q) singularity strength</li>
+        <li><code class="code-inline">f_alpha</code>: f(α) multifractal spectrum</li>
+    </ul>
+</li>
+</ul>
+
+<h4>5. compute_alpha_map(scales=None, roi_mode="center", empty_policy="nan")</h4>
+
+<p><strong>Description</strong>: Compute per-pixel local Hölder exponent α via streaming OLS with nested-grid optimization.</p>
+
+<p><strong>Parameters</strong>:</p>
+<ul>
+<li><code class="code-inline">scales</code>: Scale list (None = auto)</li>
+<li><code class="code-inline">roi_mode</code> (str): ROI mode</li>
+<li><code class="code-inline">empty_policy</code> (str): Policy for empty boxes — <code class="code-inline">"nan"</code> or <code class="code-inline">"zero"</code></li>
+</ul>
+<p><strong>Return Value</strong>: 2D numpy array of local α values</p>
+
+<h4>6. compute_alpha_map_batch(images, ...) [static]</h4>
+
+<p><strong>Description</strong>: Batch computation of alpha maps.</p>
+
+<h4>7. plot(df_mass, df_fit, df_spec)</h4>
+
+<p><strong>Description</strong>: Visualize multifractal spectrum analysis results with 6 subplots:</p>
+<ol>
+<li>log M(q, ε) heatmap</li>
+<li>f(α) vs α multifractal spectrum</li>
+<li>τ(q) vs q</li>
+<li>D(q) vs q generalized dimension</li>
+<li>α vs q</li>
+<li>f(α) vs q</li>
+</ol>
+
+<h2>Theoretical Background</h2>
+
+<h3>Multifractal Spectrum</h3>
+<p>The multifractal spectrum describes the statistical properties of an image at different scales. Core parameters include:</p>
+
+<h4>1. Partition Function</h4>
+<div class="code-block">M(q, ε) = Σ μᵢ^q</div>
+<p>Where μᵢ is the normalized mass of the i-th box.</p>
+
+<h4>2. Mass Exponent τ(q)</h4>
+<div class="code-block">τ(q) = lim(ε→0) log M(q, ε) / log ε</div>
+
+<h4>3. Generalized Dimension D(q)</h4>
+<div class="code-block">D(q) = τ(q) / (q - 1), q ≠ 1
+D(1) = lim(ε→0) Σ μᵢ log μᵢ / log ε  (information dimension)</div>
+<p>Special values:</p>
+<ul>
+<li>D(0): Capacity dimension</li>
+<li>D(1): Information dimension</li>
+<li>D(2): Correlation dimension</li>
+</ul>
+
+<h4>4. Multifractal Spectrum f(α)</h4>
+<div class="code-block">α(q) = dτ(q)/dq  (singularity strength)
+f(α) = qα - τ(q)  (multifractal spectrum)</div>
+
+<h2>Important Notes</h2>
+<ol>
+<li><strong>Image Preprocessing</strong>:
+    <ul>
+        <li>Input must be 2D grayscale image</li>
+        <li>Image is automatically normalized to [0, 1]</li>
+        <li>Use <code class="code-inline">bg_threshold</code> to mask background; use <code class="code-inline">bg_otsu=True</code> for automatic background detection</li>
+    </ul>
+</li>
+<li><strong>q Value Selection</strong>:
+    <ul>
+        <li>Negative q values are sensitive to sparse regions</li>
+        <li>Positive q values are sensitive to dense regions</li>
+        <li>Recommended range: -5 to 5</li>
+        <li>Recommended points: 20-50</li>
+    </ul>
+</li>
+<li><strong>Scale Parameters</strong>:
+    <ul>
+        <li><code class="code-inline">max_scales</code> affects sampling density, recommend 60-80</li>
+        <li><code class="code-inline">min_box</code> should not be less than 2</li>
+        <li><code class="code-inline">roi_mode="center"</code> uses a fixed square ROI to avoid edge effects</li>
+    </ul>
+</li>
+<li><strong>Result Interpretation</strong>:
+    <ul>
+        <li>Wider f(α) curve indicates stronger multifractality</li>
+        <li>Δα = α_max - α_min quantifies heterogeneity</li>
+        <li>D(q) monotonically decreasing indicates multifractality</li>
+        <li>r_value close to 1 indicates good fit</li>
+    </ul>
+</li>
+<li><strong>Performance Optimization</strong>:
+    <ul>
+        <li>Use GPU version (<code class="code-inline">CFAImageMFSGPU</code>) for significant speedup</li>
+        <li>GPU version uses <code class="code-inline">q_chunk</code> and <code class="code-inline">img_chunk</code> to control VRAM usage</li>
+        <li>Default dtype: float64 for single-image, float32 for batch</li>
+    </ul>
+</li>
+</ol>
+
+<h2>References</h2>
+
+<ul>
+<li>Chhabra, A., &amp; Jensen, R. V. (1989). Direct determination of the f(α) singularity spectrum. <em>Physical Review Letters</em>.</li>
+<li>Evertsz, C. J., &amp; Mandelbrot, B. B. (1992). Multifractal measures. <em>Chaos and Fractals</em>.</li>
+</ul>
+
+        </main>
+
+        <footer>
+            <p>© 2025 FreeAeon-Fractal. All rights reserved</p>
+            <p><a href="https://github.com/jim-xie-cn/FreeAeon-Fractal" target="_blank" style="color: #667eea;">GitHub</a></p>
+        </footer>
+    </div>
+</body>
+</html>

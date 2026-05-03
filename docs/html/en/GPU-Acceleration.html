@@ -70,6 +70,7 @@
             margin: 15px 0;
             font-family: 'Courier New', monospace;
             font-size: 0.9em;
+            white-space: pre;
         }
         .code-inline {
             background: #f0f0f0;
@@ -130,12 +131,11 @@
     <div class="container">
         <header>
             <h1>GPU Acceleration</h1>
-            <p></p>
+            <p>GPU-Accelerated Fractal Analysis</p>
         </header>
 
         <nav>
             <a href="index.html">← Back to Home</a>
-            
         </nav>
 
         <main>
@@ -144,12 +144,13 @@
 <p>FreeAeon-Fractal provides GPU-accelerated versions of core computational modules, significantly improving computation speed for large images and multi-scale analysis.</p>
 
 <h2>Supported GPU Modules</h2>
-<p><tr><td>CPU Module</td><td>GPU Module</td><td>Speedup</td></tr></p>
 <table>
-<tr><td>------------</td><td>------------</td><td>---------</td></tr>
-<tr><td><code class="code-inline">FA2DMFS.CFA2DMFS</code></td><td><code class="code-inline">FA2DMFSGPU.CFA2DMFSGPU</code></td><td>5-20x</td></tr>
-<tr><td><code class="code-inline">FAImageDimension.CFAImageDimension</code></td><td><code class="code-inline">FAImageDimensionGPU.CFAImageDimensionGPU</code></td><td>3-10x</td></tr>
-<tr><td><code class="code-inline">FAImageLacunarity.CFAImageLacunarity</code></td><td><code class="code-inline">FAImageLacunarityGPU.CFAImageLacunarityGPU</code></td><td>5-15x</td></tr>
+<tr>
+    <th>CPU Module</th><th>GPU Module</th><th>Speedup</th>
+</tr>
+<tr><td><code class="code-inline">FAImageMFS.CFAImageMFS</code></td><td><code class="code-inline">FAImageMFSGPU.CFAImageMFSGPU</code></td><td>5-20x</td></tr>
+<tr><td><code class="code-inline">FAImageFD.CFAImageFD</code></td><td><code class="code-inline">FAImageFDGPU.CFAImageFDGPU</code></td><td>3-10x</td></tr>
+<tr><td><code class="code-inline">FAImageLAC.CFAImageLAC</code></td><td><code class="code-inline">FAImageLACGPU.CFAImageLACGPU</code></td><td>5-15x</td></tr>
 </table>
 
 <h2>System Requirements</h2>
@@ -157,14 +158,15 @@
 <h3>Hardware</h3>
 <ul>
 <li>NVIDIA GPU (CUDA support)</li>
-<li>Recommended VRAM ≥ 4GB</li>
-<li>Preferred VRAM ≥ 8GB (for large images)</li>
+<li>Recommended VRAM &ge; 4GB</li>
+<li>Preferred VRAM &ge; 8GB (for large images)</li>
 </ul>
 
 <h3>Software</h3>
 <div class="code-block"># Install PyTorch (CUDA version)
 pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-<p># Install FreeAeon-Fractal</p>
+
+# Install FreeAeon-Fractal
 pip install FreeAeon-Fractal</div>
 
 <h2>Usage Examples</h2>
@@ -173,40 +175,69 @@ pip install FreeAeon-Fractal</div>
 
 <div class="code-block">import cv2
 import numpy as np
-from FreeAeonFractal.FA2DMFSGPU import CFA2DMFSGPU
-<p># Load image</p>
+from FreeAeonFractal.FAImageMFSGPU import CFAImageMFSGPU
+
+# Load image
 gray_image = cv2.imread('./images/face.png', cv2.IMREAD_GRAYSCALE)
-<p># Create GPU version</p>
-MFS = CFA2DMFSGPU(
+
+# Create GPU version (default dtype=torch.float64 for single image)
+MFS = CFAImageMFSGPU(
     gray_image,
     q_list=np.linspace(-5, 5, 26),
-    device='cuda'
+    device='cuda',
+    dtype=None  # auto: float64 for single, float32 for batch
 )
-<p># Compute (GPU accelerated)</p>
+
+# Compute (GPU accelerated)
 df_mass, df_fit, df_spec = MFS.get_mfs()
-<p># Visualize</p>
+
+# Visualize
 MFS.plot(df_mass, df_fit, df_spec)</div>
+
+<h3>GPU-Accelerated Fractal Dimension</h3>
+
+<div class="code-block">from FreeAeonFractal.FAImageFDGPU import CFAImageFDGPU
+from FreeAeonFractal.FAImage import CFAImage
+
+bin_image, _ = CFAImage.otsu_binarize(gray_image)
+
+fd_gpu = CFAImageFDGPU(bin_image, device='cuda')
+fd_bc = fd_gpu.get_bc_fd()
+fd_dbc = fd_gpu.get_dbc_fd()
+fd_sdbc = fd_gpu.get_sdbc_fd()
+
+# Note: p_value is None in GPU version (not computed)
+print("BC FD:", fd_bc['fd'])</div>
+
+<h3>GPU-Accelerated Lacunarity</h3>
+
+<div class="code-block">from FreeAeonFractal.FAImageLACGPU import CFAImageLACGPU
+
+lac_gpu = CFAImageLACGPU(gray_image, device='cuda', dtype=None)
+lac_result = lac_gpu.get_lacunarity()</div>
 
 <h3>Easy Migration from CPU to GPU</h3>
 
-<strong>CPU version</strong>:
-<div class="code-block">from FreeAeonFractal.FA2DMFS import CFA2DMFS</div>
+<p><strong>CPU version</strong>:</p>
+<div class="code-block">from FreeAeonFractal.FAImageMFS import CFAImageMFS</div>
 
-<strong>GPU version</strong> (just change import):
-<div class="code-block">from FreeAeonFractal.FA2DMFSGPU import CFA2DMFSGPU as CFA2DMFS
+<p><strong>GPU version</strong> (just change import):</p>
+<div class="code-block">from FreeAeonFractal.FAImageMFSGPU import CFAImageMFSGPU as CFAImageMFS
 # Rest of code remains identical!</div>
 
 <h3>Auto Device Selection</h3>
 
 <div class="code-block">import torch
-<p># Automatically choose based on GPU availability</p>
+
+# Automatically choose based on GPU availability
 if torch.cuda.is_available():
-    from FreeAeonFractal.FA2DMFSGPU import CFA2DMFSGPU as CFA2DMFS
+    from FreeAeonFractal.FAImageMFSGPU import CFAImageMFSGPU as CFAImageMFS
     print("Using GPU acceleration")
 else:
-    from FreeAeonFractal.FA2DMFS import CFA2DMFS
+    from FreeAeonFractal.FAImageMFS import CFAImageMFS
     print("Using CPU")
-<p>MFS = CFA2DMFS(image, q_list=np.linspace(-5, 5, 26))</div></p>
+
+MFS = CFAImageMFS(image, q_list=np.linspace(-5, 5, 26))</div>
 
 <h3>Installation</h3>
 
@@ -222,9 +253,10 @@ else:
 </ul>
 
 <h3>Performance Data</h3>
-<p><tr><td>Task</td><td>CPU Time</td><td>GPU Time</td><td>Speedup</td></tr></p>
 <table>
-<tr><td>------</td><td>----------</td><td>----------</td><td>---------</td></tr>
+<tr>
+    <th>Task</th><th>CPU Time</th><th>GPU Time</th><th>Speedup</th>
+</tr>
 <tr><td>2D Multifractal (q=51)</td><td>45s</td><td>4s</td><td>11.3x</td></tr>
 <tr><td>Fractal Dim BC</td><td>8s</td><td>2s</td><td>4.0x</td></tr>
 <tr><td>Fractal Dim DBC</td><td>25s</td><td>3s</td><td>8.3x</td></tr>
@@ -233,26 +265,50 @@ else:
 
 <h2>GPU-Specific Parameters</h2>
 
-<h3>CFA2DMFSGPU</h3>
+<h3>CFAImageMFSGPU</h3>
 <p>Additional parameters:</p>
 <ul>
 <li><code class="code-inline">device</code> (str): Device selection ('cuda', 'cpu', 'cuda:0', etc.)</li>
-<li><code class="code-inline">dtype</code> (torch.dtype): Data type (torch.float32 or torch.float64)</li>
+<li><code class="code-inline">dtype</code> (torch.dtype): Data type — <code class="code-inline">torch.float64</code> (default single-image) or <code class="code-inline">torch.float32</code> (default batch)</li>
+<li><code class="code-inline">q_chunk</code> (int): Number of q values processed per GPU pass (controls VRAM)</li>
+<li><code class="code-inline">img_chunk</code> (int): Number of images per GPU pass in batch mode</li>
 </ul>
 
-<strong>Example</strong>:
-<div class="code-block">MFS = CFA2DMFSGPU(
+<p><strong>Example</strong>:</p>
+<div class="code-block">MFS = CFAImageMFSGPU(
     image,
     device='cuda:0',           # Use first GPU
-    dtype=torch.float32        # Use single precision
+    dtype=torch.float32,       # Use single precision
+    q_chunk=10,                # Process 10 q values at a time
 )</div>
 
+<h3>CFAImageFDGPU</h3>
+<p>Additional parameters:</p>
+<ul>
+<li><code class="code-inline">device</code> (str): Device selection</li>
+<li><code class="code-inline">dtype</code> (torch.dtype): Data type</li>
+<li><code class="code-inline">img_chunk</code> (int): Batch chunk size</li>
+</ul>
+<p><strong>Note</strong>: <code class="code-inline">p_value</code> field is <code class="code-inline">None</code> in GPU results (not computed). Uses <code class="code-inline">torch.quantile</code> for 99th percentile normalization. Regression uses manual OLS (no SciPy).</p>
+
+<h3>CFAImageLACGPU</h3>
+<p>Additional parameters:</p>
+<ul>
+<li><code class="code-inline">device</code> (str): Device selection</li>
+<li><code class="code-inline">dtype</code> (torch.dtype): Default <code class="code-inline">torch.float64</code></li>
+<li><code class="code-inline">img_chunk</code> (int): Batch chunk size</li>
+</ul>
+<p><strong>Note</strong>: GPU batch mode requires all images to have the same shape.</p>
+
 <h2>Best Practices</h2>
-<p>1. <strong>Development</strong>: Use CPU version for quick testing</p>
-2. <strong>Production</strong>: Use GPU version for large-scale data
-3. <strong>Parameter Tuning</strong>: Test on CPU, run on GPU
-4. <strong>Memory Management</strong>: Monitor VRAM usage regularly
-5. <strong>Error Handling</strong>: Gracefully fallback to CPU on errors
+<ol>
+<li><strong>Development</strong>: Use CPU version for quick testing</li>
+<li><strong>Production</strong>: Use GPU version for large-scale data</li>
+<li><strong>Parameter Tuning</strong>: Test on CPU, run on GPU</li>
+<li><strong>Memory Management</strong>: Use <code class="code-inline">q_chunk</code> and <code class="code-inline">img_chunk</code> to control VRAM usage</li>
+<li><strong>Precision</strong>: Use float64 for single-image accuracy, float32 for batch throughput</li>
+<li><strong>Error Handling</strong>: Gracefully fallback to CPU on errors</li>
+</ol>
 
 <h2>Troubleshooting</h2>
 
@@ -260,8 +316,9 @@ else:
 <div class="code-block"># Solutions:
 # 1. Reduce image size
 # 2. Use float32
-# 3. Reduce parameters
+# 3. Reduce q_chunk or img_chunk
 # 4. Clear cache
+import torch
 torch.cuda.empty_cache()</div>
 
 <h2>References</h2>
