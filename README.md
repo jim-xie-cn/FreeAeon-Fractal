@@ -78,7 +78,7 @@ Example:
 
 ![Fractal Dimension Input](https://github.com/jim-xie-cn/FreeAeon-Fractal/raw/main/images/fd.png)
 
-### Calculate the **Local Multifractal $alpha$-map** of an image
+### Calculate the **Local Multifractal $\alpha$-map** of an image
 
 ```bash
 python demo.py --mode alpha --image ./images/face.png
@@ -86,7 +86,7 @@ python demo.py --mode alpha --image ./images/face.png
 
 Example:
 
-![Local Multifractal $alpha$-map Input](https://github.com/jim-xie-cn/FreeAeon-Fractal/raw/main/images/face.png)
+![Local Multifractal $\alpha$-map Input](https://github.com/jim-xie-cn/FreeAeon-Fractal/raw/main/images/alpha.png)
 
 
 ### Lacunarity analysis of an image
