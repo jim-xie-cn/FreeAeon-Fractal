@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>多重分形谱分析 - CFA2DMFS</title>
+    <title>多重分形谱分析 - CFAImageMFS</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -129,27 +129,27 @@
 <body>
     <div class="container">
         <header>
-            <h1>多重分形谱分析 - CFA2DMFS</h1>
+            <h1>多重分形谱分析 - CFAImageMFS</h1>
             <p>2D图像多重分形谱分析</p>
         </header>
 
         <nav>
             <a href="index.html">← 返回首页</a>
-            
+
         </nav>
 
         <main>
 
 <h2>应用场景</h2>
 
-<code class="code-inline">CFA2DMFS</code> 类用于计算2D灰度图像的多重分形谱（Multifractal Spectrum），是分析图像复杂度和异质性的高级工具。主要应用场景包括：
+<code class="code-inline">CFAImageMFS</code> 类用于计算2D灰度图像的多重分形谱（Multifractal Spectrum），是分析图像复杂度和异质性的高级工具。主要应用场景包括：
 
 <ul>
 <li><strong>纹理分析</strong>：量化图像纹理的多尺度特性</li>
 <li><strong>医学图像</strong>：分析组织结构的异质性</li>
 <li><strong>材料科学</strong>：研究材料表面的多重分形特征</li>
 <li><strong>金融分析</strong>：分析价格波动的多重分形特性</li>
-<li><strong>地球科学</strong>：研究地形地貌的多尺度特征</li>
+<li><strong>地球科学</strong>：研究地形和地貌的多尺度特征</li>
 </ul>
 
 <h2>调用示例</h2>
@@ -158,13 +158,13 @@
 
 <div class="code-block">import cv2
 import numpy as np
-from FreeAeonFractal.FA2DMFS import CFA2DMFS
+from FreeAeonFractal.FAImageMFS import CFAImageMFS
 <p># 读取并转换为灰度图像</p>
 rgb_image = cv2.imread('./images/face.png')
 gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
 <p># 创建多重分形谱分析对象</p>
 q_list = np.linspace(-5, 5, 26)
-MFS = CFA2DMFS(gray_image, q_list=q_list)
+MFS = CFAImageMFS(gray_image, q_list=q_list)
 <p># 计算多重分形谱</p>
 df_mass, df_fit, df_spec = MFS.get_mfs()
 <p># 查看结果</p>
@@ -175,10 +175,26 @@ MFS.plot(df_mass, df_fit, df_spec)</div>
 <h3>GPU加速版本</h3>
 
 <div class="code-block"># 使用GPU加速版本
-from FreeAeonFractal.FA2DMFSGPU import CFA2DMFSGPU as CFA2DMFS
+from FreeAeonFractal.FAImageMFSGPU import CFAImageMFSGPU as CFAImageMFS
 <p># 其余代码相同</p>
-MFS = CFA2DMFS(gray_image, q_list=np.linspace(-5, 5, 26))
+MFS = CFAImageMFS(gray_image, q_list=np.linspace(-5, 5, 26))
 df_mass, df_fit, df_spec = MFS.get_mfs()</div>
+
+<h3>局部Holder指数图（逐像素奇异度）</h3>
+
+<div class="code-block">from FreeAeonFractal.FAImageMFS import CFAImageMFS
+<p>MFS = CFAImageMFS(gray_image)</p>
+alpha_map = MFS.compute_alpha_map(scales=None, roi_mode="center", empty_policy="nan")
+<p>CFAImageMFS.plot_alpha_map(alpha_map)</div></p>
+
+<h3>批量处理</h3>
+
+<div class="code-block">import glob, cv2
+from FreeAeonFractal.FAImageMFS import CFAImageMFS
+<p>images = [cv2.imread(f, cv2.IMREAD_GRAYSCALE) for f in glob.glob('./images/*.png')]</p>
+results = CFAImageMFS.get_batch_mfs(images, q_list=np.linspace(-5, 5, 26))
+for df_mass, df_fit, df_spec in results:
+    print(df_fit[['q','tau','Dq']].head())</div>
 
 <h3>安装</h3>
 
@@ -186,42 +202,55 @@ df_mass, df_fit, df_spec = MFS.get_mfs()</div>
 
 <h2>类说明</h2>
 
-<h3>CFA2DMFS</h3>
+<h3>CFAImageMFS</h3>
 
-<strong>描述</strong>：用于计算2D灰度图像多重分形谱的类，基于盒计数方法。
+<strong>描述</strong>：基于盒计数方法计算2D灰度图像多重分形谱的类。
 
 <h4>初始化参数</h4>
-<p><tr><td>参数</td><td>类型</td><td>默认值</td><td>说明</td></tr></p>
 <table>
-<tr><td>------</td><td>------</td><td>--------</td><td>------</td></tr>
+<tr><th>参数</th><th>类型</th><th>默认值</th><th>说明</th></tr>
 <tr><td><code class="code-inline">image</code></td><td>numpy.ndarray</td><td>必需</td><td>输入灰度图像（2D数组）</td></tr>
-<tr><td><code class="code-inline">corp_type</code></td><td>int</td><td>0</td><td>图像裁剪类型（-1:裁剪, 0:严格匹配, 1:填充）</td></tr>
+<tr><td><code class="code-inline">corp_type</code></td><td>int</td><td>-1</td><td>图像裁剪类型（-1:裁剪, 0:严格匹配, 1:填充）</td></tr>
 <tr><td><code class="code-inline">q_list</code></td><td>array-like</td><td>linspace(-5,5,51)</td><td>q值列表</td></tr>
 <tr><td><code class="code-inline">with_progress</code></td><td>bool</td><td>True</td><td>是否显示进度条</td></tr>
-<tr><td><code class="code-inline">bg_threshold</code></td><td>float</td><td>0.01</td><td>背景阈值</td></tr>
+<tr><td><code class="code-inline">bg_threshold</code></td><td>float</td><td>0.01</td><td>背景阈值（低于此值的像素被屏蔽）</td></tr>
 <tr><td><code class="code-inline">bg_reverse</code></td><td>bool</td><td>False</td><td>是否反转背景阈值</td></tr>
-<tr><td><code class="code-inline">bg_otsu</code></td><td>bool</td><td>False</td><td>是否使用Otsu阈值化</td></tr>
-<tr><td><code class="code-inline">mu_floor</code></td><td>float</td><td>1e-12</td><td>最小概率值（保留用于兼容）</td></tr>
+<tr><td><code class="code-inline">bg_otsu</code></td><td>bool</td><td>False</td><td>是否使用Otsu阈值化检测背景</td></tr>
+<tr><td><code class="code-inline">mu_floor</code></td><td>float</td><td>1e-12</td><td>最小概率下限（向后兼容保留）</td></tr>
 </table>
 
 <h4>主要方法</h4>
-<p>##### 1. get_mfs(max_size=None, max_scales=80, min_points=6, min_box=2, ...)</p>
+<p>##### 1. get_mass_table(max_size=None, max_scales=80, min_box=2, roi_mode="center")</p>
 
-<strong>描述</strong>：完整的多重分形谱分析流程，返回质量表、拟合结果和谱参数。
+<strong>描述</strong>：计算所有尺度和q值下的配分函数表。
+
+<strong>返回值</strong>：DataFrame，列 <code class="code-inline">scale, eps, q, value, kind</code>
+<ul>
+<li><code class="code-inline">kind</code> ∈ <code class="code-inline">{'logMq', 'N', 'S'}</code> — 对数配分函数、盒子计数、Shannon熵</li>
+</ul>
+
+<p>##### 2. fit_tau_and_D1(df_mass, min_points=6, ...)</p>
+
+<strong>描述</strong>：从质量表拟合τ(q)和D(q)。
+
+<strong>返回值</strong>（DataFrame）：列 <code class="code-inline">q, tau, Dq, D1, intercept, r_value, p_value, std_err, n_points</code>
+
+<strong>注意</strong>：q=0行使用log(N)拟合；q=1行使用Shannon熵(S)拟合；其他q使用logMq拟合。df_fit中始终包含强制的q=0和q=1行。
+<p>##### 3. alpha_falpha_from_tau(df_fit, spline_k=3, exclude_q1=True, spline_s=0)</p>
+
+<strong>描述</strong>：通过对τ(q)的样条微分计算α(q)和f(α)。
 
 <strong>参数</strong>：
 <ul>
-<li><code class="code-inline">max_size</code> (int): 最大盒子尺寸</li>
-<li><code class="code-inline">max_scales</code> (int): 最大尺度数量</li>
-<li><code class="code-inline">min_points</code> (int): 拟合的最小点数</li>
-<li><code class="code-inline">min_box</code> (int): 最小盒子尺寸</li>
-<li><code class="code-inline">use_middle_scales</code> (bool): 是否只使用中间尺度</li>
-<li><code class="code-inline">fit_scale_frac</code> (tuple): 拟合尺度范围 (0.2, 0.8)</li>
-<li><code class="code-inline">if_auto_line_fit</code> (bool): 是否自动线性拟合</li>
-<li><code class="code-inline">auto_fit_min_len_ratio</code> (float): 自动拟合最小长度比例</li>
-<li><code class="code-inline">spline_s</code> (float): 样条平滑参数</li>
-<li><code class="code-inline">cap_d0_at_2</code> (bool): 是否限制D0≤2</li>
+<li><code class="code-inline">spline_k</code> (int): 样条阶数（默认3）</li>
+<li><code class="code-inline">exclude_q1</code> (bool): 是否从样条中排除q=1（避免不连续性）</li>
+<li><code class="code-inline">spline_s</code> (float): 样条平滑因子（0=精确插值）</li>
 </ul>
+
+<strong>返回值</strong>：多重分形谱DataFrame，列 <code class="code-inline">q, tau, Dq, alpha, f_alpha</code>
+<p>##### 4. get_mfs(max_size=None, max_scales=80, min_points=6, min_box=2, ...)</p>
+
+<strong>描述</strong>：完整的多重分形谱分析流程，返回质量表、拟合结果和谱参数。
 
 <strong>返回值</strong> (tuple):
 <div class="code-block">(df_mass, df_fit, df_spec)</div>
@@ -256,30 +285,15 @@ df_mass, df_fit, df_spec = MFS.get_mfs()</div>
   - <code class="code-inline">Dq</code>: D(q)
   - <code class="code-inline">alpha</code>: α(q) 奇异性强度
   - <code class="code-inline">f_alpha</code>: f(α) 多重分形谱
-<p>##### 2. get_mass_table(max_size=None, max_scales=80, min_box=2, roi_mode="center")</p>
+<p>##### 5. compute_alpha_map(scales=None, roi_mode="center", empty_policy="nan")</p>
 
-<strong>描述</strong>：计算每个尺度下的盒子质量表。
+<strong>描述</strong>：通过流式OLS结合嵌套网格优化，计算逐像素的局部Holder指数α。
 
-<strong>返回值</strong>：DataFrame，包含每个尺度和q值的质量信息。
-<p>##### 3. fit_tau_and_D1(df_mass, min_points=6, ...)</p>
+<strong>返回值</strong>：局部α值的2D numpy数组。
+<p>##### 6. compute_alpha_map_batch(images, ...) [静态方法]</p>
 
-<strong>描述</strong>：从质量表拟合τ(q)和D1。
-
-<strong>返回值</strong>：拟合结果DataFrame。
-<p>##### 4. alpha_falpha_from_tau(df_fit, spline_k=3, exclude_q1=True, spline_s=0)</p>
-
-<strong>描述</strong>：从τ(q)计算α(q)和f(α)。
-
-<strong>参数</strong>：
-<ul>
-<li><code class="code-inline">df_fit</code>: 拟合结果DataFrame</li>
-<li><code class="code-inline">spline_k</code> (int): 样条插值阶数</li>
-<li><code class="code-inline">exclude_q1</code> (bool): 是否排除q=1</li>
-<li><code class="code-inline">spline_s</code> (float): 样条平滑参数</li>
-</ul>
-
-<strong>返回值</strong>：多重分形谱DataFrame。
-<p>##### 5. plot(df_mass, df_fit, df_spec)</p>
+<strong>描述</strong>：批量计算alpha图。
+<p>##### 7. plot(df_mass, df_fit, df_spec)</p>
 
 <strong>描述</strong>：可视化多重分形谱分析结果，包含6个子图：
 1. log M(q, ε) 热图
@@ -315,46 +329,29 @@ D(1) = lim(ε→0) Σ μᵢ log μᵢ / log ε  (信息维度)</div>
 <div class="code-block">α(q) = dτ(q)/dq  (奇异性强度)
 f(α) = qα - τ(q)  (多重分形谱)</div>
 
-<h3>计算方法</h3>
-<p>本实现使用改进的盒计数方法：</p>
-
-1. <strong>对于 q ≠ 0, 1</strong>：
-   - 在对数空间计算 log M(q, ε)
-   - 使用 logsumexp 避免数值溢出
-<p>2. <strong>对于 q = 0</strong>：</p>
-   - 计算非零盒子数 N
-   - 拟合 log(N) vs log(1/ε)
-<p>3. <strong>对于 q = 1</strong>：</p>
-   - 计算 Shannon 熵 S = -Σ μᵢ log μᵢ
-   - 拟合 S vs log(1/ε)
-<p>4. <strong>固定ROI方案</strong>：</p>
-   - 裁剪为固定的正方形ROI
-   - 只使用ROI尺寸的约数作为盒子大小
-   - 确保跨尺度的一致性
-
 <h2>重要提示</h2>
 <p>1. <strong>图像预处理</strong>：</p>
    - 输入必须是2D灰度图像
    - 图像会自动归一化到 [0, 1]
-   - 可使用 <code class="code-inline">bg_threshold</code> 去除背景
+   - 可使用 <code class="code-inline">bg_threshold</code> 去除背景；<code class="code-inline">bg_otsu=True</code> 自动检测背景
 <p>2. <strong>q值选择</strong>：</p>
    - 负q值对稀疏区域敏感
    - 正q值对密集区域敏感
    - 建议范围：-5 到 5
    - 点数建议：20-50个
 <p>3. <strong>尺度参数</strong>：</p>
-   - <code class="code-inline">max_scales</code> 影响采样密度，建议60-100
+   - <code class="code-inline">max_scales</code> 影响采样密度，建议60-80
    - <code class="code-inline">min_box</code> 不要小于2
-   - 使用固定ROI避免边界效应
+   - 使用 <code class="code-inline">roi_mode="center"</code> 的固定ROI避免边界效应
 <p>4. <strong>结果解释</strong>：</p>
    - f(α) 曲线越宽，多重分形性越强
    - Δα = α_max - α_min 量化异质性
    - D(q) 单调递减表示多重分形
    - r_value 接近1表示良好拟合
 <p>5. <strong>性能优化</strong>：</p>
-   - 使用GPU版本可显著加速
-   - 大图像可先降采样
-   - 减少q值数量可提高速度
+   - 使用GPU版本（<code class="code-inline">CFAImageMFSGPU</code>）可显著加速
+   - GPU版本使用 <code class="code-inline">q_chunk</code> 和 <code class="code-inline">img_chunk</code> 控制显存用量
+   - 默认数据类型：单图像float64，批处理float32
 
 <h2>常见问题</h2>
 
@@ -370,8 +367,8 @@ A: 增加 <code class="code-inline">max_scales</code>，使用 <code class="code
 <h2>参考文献</h2>
 
 <ul>
-<li>Chhabra, A., & Jensen, R. V. (1989). Direct determination of the f(α) singularity spectrum. Physical Review Letters.</li>
-<li>Evertsz, C. J., & Mandelbrot, B. B. (1992). Multifractal measures. Chaos and Fractals.</li>
+<li>Chhabra, A., &amp; Jensen, R. V. (1989). Direct determination of the f(α) singularity spectrum. Physical Review Letters.</li>
+<li>Evertsz, C. J., &amp; Mandelbrot, B. B. (1992). Multifractal measures. Chaos and Fractals.</li>
 </ul>
 
         </main>

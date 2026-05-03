@@ -58,16 +58,13 @@ print(f"Raw blocks shape: {raw_blocks.shape}")
 
 # Merge back to image
 merged_image = CFAImage.get_image_from_boxes(raw_blocks)
-
-# Verify
-assert np.array_equal(merged_image, image[:256, :256])
 ```
 
 ### Create Mask
 
 ```python
-# Create mask (block specific blocks)
-mask_positions = [(0, 0), (1, 1), (2, 2)]  # Block diagonal blocks
+# Create mask (mark specific blocks)
+mask_positions = [(0, 0), (1, 1), (2, 2)]  # Block diagonal positions
 mask_image = CFAImage.get_mask_from_boxes(raw_blocks, mask_positions)
 
 # Apply mask
@@ -87,7 +84,8 @@ mask_union, masked_image = CFAImage.get_roi_by_q(
     box_size=16,
     target_mass=0.90,
     combine_mode="or",
-    use_grayscale_measure=True
+    use_grayscale_measure=True,
+    measure_mode=0
 )
 
 # Visualize
@@ -196,7 +194,17 @@ All methods are static, called using `CFAImage.method_name()`.
 - Grayscale: (nY, nX, bh, bw) → (H, W)
 - Color: (nY, nX, bh, bw, c) → (H, W, c)
 
-##### 6. get_random_patches(image, num_patches=100, ratio=0.25)
+##### 6. get_mask_from_boxes(raw_blocks, mask_block_pos)
+
+**Description**: Generate binary mask from selected block positions.
+
+**Parameters**:
+- `raw_blocks` (ndarray): Block array from `get_boxes_from_image`
+- `mask_block_pos` (list): List of (row, col) block positions to include in mask
+
+**Return Value**: Binary mask image (same spatial size as original)
+
+##### 7. get_random_patches(image, num_patches=100, ratio=0.25)
 
 **Description**: Randomly sample rectangular patches from image (possibly partially overlapping).
 
@@ -212,9 +220,19 @@ All methods are static, called using `CFAImage.method_name()`.
 - May have partial overlap
 - Suitable for data augmentation
 
-##### 7. get_roi_by_q(image, q_range=(-5,5), step=1.0, box_size=16, target_mass=0.95, combine_mode="and", use_grayscale_measure=True)
+##### 8. get_roi_by_q(image, q_range=(-5,5), step=1.0, box_size=16, target_mass=0.95, combine_mode="and", use_grayscale_measure=True, measure_mode=0)
 
-**Description**: Extract region of interest (ROI) based on multifractal properties.
+**Description**: Extract region of interest (ROI) based on multifractal q-weighting.
+
+**Parameters**:
+- `image` (ndarray): Input image (grayscale or RGB)
+- `q_range` (tuple): Range of q values
+- `step` (float): Step size for q values
+- `box_size` (int): Block size for mass computation
+- `target_mass` (float): Fraction of total mass to include (0-1)
+- `combine_mode` (str): How to combine masks across q values — `"and"` or `"or"`
+- `use_grayscale_measure` (bool): Use grayscale intensity for mass
+- `measure_mode` (int): Mass measure mode
 
 **Return Value** (tuple):
 ```python
@@ -265,5 +283,5 @@ t* = argmin σ²ω(t)
 
 ## References
 
-- Otsu, N. (1979). A threshold selection method from gray-level histograms. IEEE Transactions on Systems, Man, and Cybernetics.
+- Otsu, N. (1979). A threshold selection method from gray-level histograms. *IEEE Transactions on Systems, Man, and Cybernetics*.
 - Mandelbrot, B. B. (1982). The Fractal Geometry of Nature.

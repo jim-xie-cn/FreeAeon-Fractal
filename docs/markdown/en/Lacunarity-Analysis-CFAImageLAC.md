@@ -1,8 +1,8 @@
-# Lacunarity Analysis - CFAImageLacunarity
+# Lacunarity Analysis - CFAImageLAC
 
 ## Application Scenarios
 
-The `CFAImageLacunarity` class is used to calculate the lacunarity of 2D images, serving as an important tool for quantifying spatial distribution heterogeneity. Main application scenarios include:
+The `CFAImageLAC` class is used to calculate the lacunarity of 2D images, serving as an important tool for quantifying spatial distribution heterogeneity. Main application scenarios include:
 
 - **Texture Analysis**: Quantify gaps and void characteristics in textures
 - **Landscape Ecology**: Analyze spatial distribution of vegetation coverage
@@ -16,7 +16,7 @@ The `CFAImageLacunarity` class is used to calculate the lacunarity of 2D images,
 
 ```python
 import cv2
-from FreeAeonFractal.FAImageLacunarity import CFAImageLacunarity
+from FreeAeonFractal.FAImageLAC import CFAImageLAC
 from FreeAeonFractal.FAImage import CFAImage
 
 # Read image
@@ -24,9 +24,9 @@ rgb_image = cv2.imread('./images/fractal.png')
 gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
 
 # Create lacunarity analysis object
-lacunarity = CFAImageLacunarity(
+lacunarity = CFAImageLAC(
     gray_image,
-    max_scales=256,
+    max_scales=100,
     with_progress=True,
     partition_mode="gliding"  # or "non-overlapping"
 )
@@ -57,11 +57,27 @@ lacunarity.plot(lac_result, fit_result)
 bin_image, threshold = CFAImage.otsu_binarize(gray_image)
 
 # Lacunarity of binary image
-lacunarity_bin = CFAImageLacunarity(bin_image, partition_mode="gliding")
+lacunarity_bin = CFAImageLAC(bin_image, partition_mode="gliding")
 lac_bin = lacunarity_bin.get_lacunarity(use_binary_mass=True)
 fit_bin = lacunarity_bin.fit_lacunarity(lac_bin)
 
 print("Binary image lacunarity:", lac_bin["lacunarity"])
+```
+
+### Batch Processing
+
+```python
+import glob, cv2
+from FreeAeonFractal.FAImageLAC import CFAImageLAC
+
+images = [cv2.imread(f, cv2.IMREAD_GRAYSCALE) for f in glob.glob('./images/*.png')]
+
+# Batch lacunarity (supports heterogeneous image shapes on CPU)
+lac_results = CFAImageLAC.get_batch_lacunarity(images, max_scales=100)
+fit_results = CFAImageLAC.fit_batch_lacunarity(lac_results)
+
+for fit in fit_results:
+    print("Slope:", fit["slope"], "R²:", fit["r_value"]**2)
 ```
 
 ### Installation
@@ -72,9 +88,9 @@ pip install FreeAeon-Fractal
 
 ## Class Description
 
-### CFAImageLacunarity
+### CFAImageLAC
 
-**Description**: Class for calculating 2D image lacunarity, supporting two box partition strategies.
+**Description**: Class for calculating 2D image lacunarity, supporting two box partition strategies. Uses integral image (summed-area table) for efficient gliding-box computation.
 
 #### Initialization Parameters
 
@@ -86,6 +102,7 @@ pip install FreeAeon-Fractal
 | `with_progress` | bool | True | Whether to show progress bar |
 | `scales_mode` | str | "powers" | Scale generation mode ("powers" or "logspace") |
 | `partition_mode` | str | "gliding" | Partition mode ("gliding" or "non-overlapping") |
+| `min_size` | int | 2 | Minimum box size |
 
 **scales_mode** Options:
 - `"powers"`: Powers of 2 scales (2, 4, 8, 16, ...)
@@ -131,28 +148,39 @@ Each element in `mass_stats` contains:
 }
 ```
 
-##### 2. fit_lacunarity(lac_result, min_valid_lambda=1.0+1e-12)
+##### 2. fit_lacunarity(lac_result, transform="log", fit_range=None)
 
-**Description**: Perform power-law fitting on lacunarity: log(Λ-1) vs log(r)
+**Description**: Perform power-law fitting on lacunarity.
 
 **Parameters**:
 - `lac_result` (dict): Return result from `get_lacunarity()`
-- `min_valid_lambda` (float): Minimum valid lacunarity value
+- `transform` (str): Transform mode
+  - `"log"`: Standard log-log fit, slope = -β (Allain & Cloitre)
+  - `"log_minus_1"`: Fit log(Λ-1) vs log(r)
+- `fit_range` (tuple or None): Optional `(min_scale, max_scale)` to restrict fit
 
 **Return Value** (dict):
 ```python
 {
-    'slope': float,                    # Fit slope
-    'intercept': float,                # Fit intercept
-    'r_value': float,                  # Correlation coefficient
-    'p_value': float,                  # p-value
-    'std_err': float,                  # Standard error
-    'log_scales': list,                # Logarithmic scales
-    'log_lambda_minus_1': list         # log(Λ-1)
+    'slope': float,          # Fit slope
+    'intercept': float,      # Fit intercept
+    'r_value': float,        # Correlation coefficient
+    'p_value': float,        # p-value
+    'std_err': float,        # Standard error
+    'log_scales': list,      # Logarithmic scales used
+    'log_lac': list          # Logarithmic lacunarity values used
 }
 ```
 
-##### 3. plot(lac_result, fit_result=None, ax=None, show=True, title="Lacunarity", label=None)
+##### 3. get_batch_lacunarity(images, ...) [static]
+
+**Description**: Batch lacunarity computation across multiple images. Supports heterogeneous image shapes on CPU.
+
+##### 4. fit_batch_lacunarity(lac_results, ...) [static]
+
+**Description**: Batch fitting of lacunarity results.
+
+##### 5. plot(lac_result, fit_result=None, ax=None, show=True, title="Lacunarity", label=None)
 
 **Description**: Visualize lacunarity curves and fitting results.
 
@@ -166,7 +194,7 @@ Each element in `mass_stats` contains:
 
 **Plots**:
 - Left plot: Λ(r) vs r
-- Right plot (if fit_result provided): log(Λ-1) vs log(r) with fit line
+- Right plot (if fit_result provided): log-log fit with fit line
 
 ## Theoretical Background
 
@@ -193,7 +221,7 @@ Where:
 Lacunarity typically follows a power law:
 
 ```
-Λ(r) - 1 ∝ r^β
+Λ(r) ∝ r^(-β)     (log transform, Allain & Cloitre)
 ```
 
 Where β is the lacunarity exponent.
@@ -201,7 +229,7 @@ Where β is the lacunarity exponent.
 ## Important Notes
 
 1. **Partition Mode Selection**:
-   - `"gliding"`: Recommended for general analysis, smoother results
+   - `"gliding"`: Recommended for general analysis, smoother results, uses integral image for O(1) per-pixel computation
    - `"non-overlapping"`: Faster, suitable for large images
 
 2. **Mass Mode**:
@@ -225,8 +253,9 @@ Where β is the lacunarity exponent.
    - Use `partition_mode="non-overlapping"` for speedup
    - Reduce `max_scales` value
    - Use `scales_mode="powers"`
+   - Use GPU version (`CFAImageLACGPU`) for large batches (requires same-shape images)
 
 ## References
 
-- Plotnick, R. E., et al. (1996). Lacunarity analysis: A general technique for the analysis of spatial patterns. Physical Review E.
-- Allain, C., & Cloitre, M. (1991). Characterizing the lacunarity of random and deterministic fractal sets. Physical Review A.
+- Plotnick, R. E., et al. (1996). Lacunarity analysis: A general technique for the analysis of spatial patterns. *Physical Review E*.
+- Allain, C., & Cloitre, M. (1991). Characterizing the lacunarity of random and deterministic fractal sets. *Physical Review A*.

@@ -266,7 +266,7 @@ max_possible = (W - patch_w) * (H - patch_h)
 num_patches <= max_possible
 ```
 
-##### 8. get_roi_by_q(image, q_range=(-5,5), step=1.0, box_size=16, target_mass=0.95, combine_mode="and", use_grayscale_measure=True, measure_mode="intensity_sum")
+##### 8. get_roi_by_q(image, q_range=(-5,5), step=1.0, box_size=16, target_mass=0.95, combine_mode="and", use_grayscale_measure=True, measure_mode=0)
 
 **描述**：基于多重分形特性提取感兴趣区域（ROI）。
 
@@ -280,7 +280,7 @@ num_patches <= max_possible
 | `target_mass` | float | 0.95 | 目标累积质量 |
 | `combine_mode` | str | "and" | 通道合并模式（"and"或"or"） |
 | `use_grayscale_measure` | bool | True | 是否用灰度计算质量 |
-| `measure_mode` | str | "intensity_sum" | 质量计算模式 |
+| `measure_mode` | int | 0 | 质量计算模式 |
 
 **返回值** (tuple):
 ```python

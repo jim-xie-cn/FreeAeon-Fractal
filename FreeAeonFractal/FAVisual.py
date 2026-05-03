@@ -12,8 +12,8 @@ class CFAVisual(object):
     @staticmethod    
     def plot_1d_points(points,ax = plt ):
         ax.scatter(points, np.zeros_like(points), s=1)
-        ax.get_yaxis().set_visible(False)  # 隐藏y轴刻度
-    
+        ax.get_yaxis().set_visible(False)  
+
     '''show 2D points'''
     @staticmethod    
     def plot_2d_points(points,ax = plt ):

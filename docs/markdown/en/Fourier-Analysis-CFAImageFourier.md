@@ -22,7 +22,7 @@ from FreeAeonFractal.FAImageFourier import CFAImageFourier
 # Read image (supports grayscale or RGB)
 rgb_image = cv2.imread('./images/face.png')
 
-# Create Fourier analysis object
+# Create Fourier analysis object (FFT computed automatically on init)
 fourier = CFAImageFourier(rgb_image)
 
 # Get raw spectrum
@@ -53,10 +53,6 @@ raw_mag, raw_phase = fourier.get_raw_spectrum()
 h, w = raw_mag[0].shape
 Y, X = np.ogrid[:h, :w]
 mask = ((X % 2 == 1) & (Y % 2 == 1)).astype(np.uint8)
-
-# Apply mask to spectrum
-masked_mag = raw_mag * mask
-masked_phase = raw_phase * mask
 
 # Get masked display spectrum
 customized_mag_disp, customized_phase_disp = fourier.get_display_spectrum(
@@ -100,7 +96,7 @@ pip install FreeAeon-Fractal
 
 ### CFAImageFourier
 
-**Description**: Provides image Fourier analysis tools, supporting frequency domain analysis and reconstruction of grayscale and RGB images.
+**Description**: Provides image Fourier analysis tools, supporting frequency domain analysis and reconstruction of grayscale and RGB images. The Fourier transform is computed automatically during initialization.
 
 #### Initialization Parameters
 
@@ -110,7 +106,19 @@ pip install FreeAeon-Fractal
 
 **Note**: Fourier transform is automatically calculated during initialization, no manual call needed.
 
-#### Main Methods
+#### Static Methods
+
+##### get_image_components(image)
+
+**Description**: Static utility — compute magnitude and phase from a 2D FFT.
+
+**Return Value** (tuple): `(magnitude, phase)`
+
+##### normalize_and_enhance(array, alpha, beta)
+
+**Description**: Static utility — log-normalize an array for display.
+
+#### Instance Methods
 
 ##### 1. get_raw_spectrum()
 
@@ -134,8 +142,8 @@ For grayscale images, list length is 1; for RGB images, length is 3.
 **Parameters**:
 - `alpha` (float): Contrast enhancement factor (default 1.0)
 - `beta` (float): Brightness offset (default 0)
-- `magnitude` (array): Custom magnitude spectrum (optional)
-- `phase` (array): Custom phase spectrum (optional)
+- `magnitude` (array): Custom magnitude spectrum (optional, uses original if empty)
+- `phase` (array): Custom phase spectrum (optional, uses original if empty)
 
 **Return Value** (tuple):
 ```python
@@ -229,7 +237,7 @@ I(x, y) = ∫∫ F(u, v) exp[j2π(ux + vy)] du dv
 
 1. **Input Image**:
    - Supports grayscale and RGB images
-   - Automatically performs Fourier transform
+   - Automatically performs Fourier transform at init
 
 2. **Spectrum Visualization**:
    - Uses logarithmic transform for better visualization

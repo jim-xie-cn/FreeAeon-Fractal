@@ -57,14 +57,14 @@ pip install FreeAeon-Fractal
 ```python
 import cv2
 import numpy as np
-from FreeAeonFractal.FA2DMFS import CFA2DMFS
+from FreeAeonFractal.FAImageMFS import CFAImageMFS
 
 # Load and convert to grayscale
 rgb_image = cv2.imread('./images/face.png')
 gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
 
 # Multifractal spectrum analysis
-MFS = CFA2DMFS(gray_image, q_list=np.linspace(-5, 5, 26))
+MFS = CFAImageMFS(gray_image, q_list=np.linspace(-5, 5, 26))
 df_mass, df_fit, df_spec = MFS.get_mfs()
 
 # Visualize results
@@ -74,31 +74,31 @@ MFS.plot(df_mass, df_fit, df_spec)
 ### Fractal Dimensions of an Image
 
 ```python
-from FreeAeonFractal.FAImageDimension import CFAImageDimension
+from FreeAeonFractal.FAImageFD import CFAImageFD
 from FreeAeonFractal.FAImage import CFAImage
 
 # Binarize image
 bin_image, threshold = CFAImage.otsu_binarize(gray_image)
 
 # Calculate fractal dimensions
-fd_bc = CFAImageDimension(bin_image).get_bc_fd()
-fd_dbc = CFAImageDimension(gray_image).get_dbc_fd()
-fd_sdbc = CFAImageDimension(gray_image).get_sdbc_fd()
+fd_bc = CFAImageFD(bin_image).get_bc_fd()
+fd_dbc = CFAImageFD(gray_image).get_dbc_fd()
+fd_sdbc = CFAImageFD(gray_image).get_sdbc_fd()
 
 # Visualize
-CFAImageDimension.plot(rgb_image, bin_image, fd_bc, fd_dbc, fd_sdbc)
+CFAImageFD.plot(rgb_image, gray_image, bin_image, fd_bc, fd_dbc, fd_sdbc)
 ```
 
 ### Multifractal Spectrum of a Time Series
 
 ```python
-from FreeAeonFractal.FA1DMFS import CFA1DMFS
+from FreeAeonFractal.FASeriesMFS import CFASeriesMFS
 
 # Generate random walk
 x = np.cumsum(np.random.randn(5000))
 
 # Multifractal analysis
-mfs = CFA1DMFS(x, q_list=np.linspace(-5, 5, 21))
+mfs = CFASeriesMFS(x, q_list=np.linspace(-5, 5, 21))
 df_mfs = mfs.get_mfs()
 
 # Visualize
@@ -113,8 +113,8 @@ Multifractal spectrum reveals the complexity and heterogeneity of data across di
 
 | Class | Description | Applications | Documentation |
 |-------|-------------|--------------|---------------|
-| **CFA2DMFS** | 2D Image Multifractal Spectrum | Texture analysis, medical imaging, materials science | [Details](Multifractal-Spectrum-CFA2DMFS.md) |
-| **CFA1DMFS** | 1D Series Multifractal Spectrum | Financial time series, physiological signals, climate data | [Details](Series-Multifractal-CFA1DMFS.md) |
+| **CFAImageMFS** | 2D Image Multifractal Spectrum | Texture analysis, medical imaging, materials science | [Details](Multifractal-Spectrum-CFAImageMFS.md) |
+| **CFASeriesMFS** | 1D Series Multifractal Spectrum | Financial time series, physiological signals, climate data | [Details](Series-Multifractal-CFASeriesMFS.md) |
 
 **Core Concepts**:
 - **τ(q)** Mass Exponent: Scaling behavior for different q orders
@@ -125,7 +125,7 @@ Multifractal spectrum reveals the complexity and heterogeneity of data across di
 **GPU Acceleration**:
 ```python
 # Use GPU version
-from FreeAeonFractal.FA2DMFSGPU import CFA2DMFSGPU as CFA2DMFS
+from FreeAeonFractal.FAImageMFSGPU import CFAImageMFSGPU as CFAImageMFS
 ```
 
 ### 2. Fractal Dimension Analysis
@@ -134,7 +134,7 @@ Fractal dimension quantifies image complexity and self-similarity.
 
 | Class | Description | Methods | Documentation |
 |-------|-------------|---------|---------------|
-| **CFAImageDimension** | Image Fractal Dimension | BC, DBC, SDBC | [Details](Fractal-Dimension-CFAImageDimension.md) |
+| **CFAImageFD** | Image Fractal Dimension | BC, DBC, SDBC | [Details](Fractal-Dimension-CFAImageFD.md) |
 
 **Three Methods**:
 - **BC** (Box-Counting): For binary images
@@ -152,7 +152,7 @@ Lacunarity quantifies spatial heterogeneity and gap characteristics.
 
 | Class | Description | Partition Modes | Documentation |
 |-------|-------------|-----------------|---------------|
-| **CFAImageLacunarity** | Image Lacunarity Analysis | Gliding, Non-overlapping | [Details](Lacunarity-Analysis-CFAImageLacunarity.md) |
+| **CFAImageLAC** | Image Lacunarity Analysis | Gliding, Non-overlapping | [Details](Lacunarity-Analysis-CFAImageLAC.md) |
 
 **Partition Modes**:
 - **Gliding Box**: Sliding windows (overlapping), smoother results
@@ -236,14 +236,14 @@ All core computational modules provide GPU-accelerated versions for significant 
 
 | Feature | CPU Module | GPU Module | Speedup | Documentation |
 |---------|------------|------------|---------|---------------|
-| 2D Multifractal Spectrum | CFA2DMFS | CFA2DMFSGPU | 5-20x | [Details](GPU-Acceleration.md) |
-| Image Fractal Dimension | CFAImageDimension | CFAImageDimensionGPU | 3-10x | [Details](GPU-Acceleration.md) |
-| Image Lacunarity | CFAImageLacunarity | CFAImageLacunarityGPU | 5-15x | [Details](GPU-Acceleration.md) |
+| 2D Multifractal Spectrum | CFAImageMFS | CFAImageMFSGPU | 5-20x | [Details](GPU-Acceleration.md) |
+| Image Fractal Dimension | CFAImageFD | CFAImageFDGPU | 3-10x | [Details](GPU-Acceleration.md) |
+| Image Lacunarity | CFAImageLAC | CFAImageLACGPU | 5-15x | [Details](GPU-Acceleration.md) |
 
 **Usage**:
 ```python
 # Simple import replacement
-from FreeAeonFractal.FA2DMFSGPU import CFA2DMFSGPU as CFA2DMFS
+from FreeAeonFractal.FAImageMFSGPU import CFAImageMFSGPU as CFAImageMFS
 # Rest of code remains identical!
 ```
 
@@ -296,19 +296,19 @@ Modules supporting GPU acceleration:
 
 | Module | CPU Version | GPU Version |
 |--------|-------------|-------------|
-| 2D Multifractal Spectrum | `FA2DMFS.CFA2DMFS` | `FA2DMFSGPU.CFA2DMFSGPU` |
-| Image Fractal Dimension | `FAImageDimension.CFAImageDimension` | `FAImageDimensionGPU.CFAImageDimensionGPU` |
-| Image Lacunarity | `FAImageLacunarity.CFAImageLacunarity` | `FAImageLacunarityGPU.CFAImageLacunarityGPU` |
+| 2D Multifractal Spectrum | `FAImageMFS.CFAImageMFS` | `FAImageMFSGPU.CFAImageMFSGPU` |
+| Image Fractal Dimension | `FAImageFD.CFAImageFD` | `FAImageFDGPU.CFAImageFDGPU` |
+| Image Lacunarity | `FAImageLAC.CFAImageLAC` | `FAImageLACGPU.CFAImageLACGPU` |
 
 **Usage**:
 
 ```python
 # Import GPU version
-from FreeAeonFractal.FA2DMFSGPU import CFA2DMFSGPU as CFA2DMFS
-from FreeAeonFractal.FAImageDimensionGPU import CFAImageDimensionGPU as CFAImageDimension
+from FreeAeonFractal.FAImageMFSGPU import CFAImageMFSGPU as CFAImageMFS
+from FreeAeonFractal.FAImageFDGPU import CFAImageFDGPU as CFAImageFD
 
 # Use the same way as CPU version
-MFS = CFA2DMFS(image, q_list=np.linspace(-5, 5, 26))
+MFS = CFAImageMFS(image, q_list=np.linspace(-5, 5, 26))
 df_mass, df_fit, df_spec = MFS.get_mfs()
 ```
 
@@ -339,15 +339,17 @@ A: (1) D(q) varies monotonically with q (2) f(α) is convex with certain width (
 ```
 FreeAeon-Fractal/
 ├── FreeAeonFractal/          # Core modules
-│   ├── FA2DMFS.py            # 2D multifractal spectrum
-│   ├── FA2DMFSGPU.py         # 2D multifractal spectrum (GPU)
-│   ├── FA1DMFS.py            # 1D multifractal spectrum
-│   ├── FAImageDimension.py   # Fractal dimension
-│   ├── FAImageDimensionGPU.py# Fractal dimension (GPU)
-│   ├── FAImageLacunarity.py  # Lacunarity
-│   ├── FAImageLacunarityGPU.py # Lacunarity (GPU)
+│   ├── FAImageMFS.py         # 2D multifractal spectrum
+│   ├── FAImageMFSGPU.py      # 2D multifractal spectrum (GPU)
+│   ├── FASeriesMFS.py        # 1D multifractal spectrum
+│   ├── FAImageFD.py          # Fractal dimension
+│   ├── FAImageFDGPU.py       # Fractal dimension (GPU)
+│   ├── FAImageLAC.py         # Lacunarity
+│   ├── FAImageLACGPU.py      # Lacunarity (GPU)
 │   ├── FAImageFourier.py     # Fourier analysis
 │   ├── FAImage.py            # Image utilities
+│   ├── FASample.py           # Fractal sample generator
+│   ├── FAVisual.py           # Visualization tools
 │   └── __init__.py
 ├── demo.py                   # Command line interface
 ├── images/                   # Example images
