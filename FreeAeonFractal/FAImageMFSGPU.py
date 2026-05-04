@@ -1279,6 +1279,7 @@ def main():
             max_scales=80, min_points=6, use_middle_scales=False,
             if_auto_line_fit=False, fit_scale_frac=(0.3, 0.7),
             auto_fit_min_len_ratio=0.6, cap_d0_at_2=False)
+        mfs.plot(df_mass,df_fit,df_spec)
     print("time used (no batch):", time.time() - start)
     print(df_fit.head())
 
