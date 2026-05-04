@@ -125,6 +125,7 @@ Example:
 - `--mode`: Analysis mode:  
   - `fd` – Fractal Dimension  
   - `mfs` – Multifractal Spectrum (default)
+  - `alpha` – Local Multifractal $\alpha$-map
   - `lacunarity` - Lacunarity analysis
   - `fourier` - Fourier analysis
   - `series` - Multifractal Spectrum for Series analysis
