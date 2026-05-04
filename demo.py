@@ -58,7 +58,7 @@ def demo_mfs(image_path):
     rgb_image = cv2.cvtColor(cv2.imread(image_path), cv2.COLOR_BGR2RGB)
     gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_RGB2GRAY)
 
-    q_list = np.linspace(-5, 5, 51)
+    q_list = np.linspace(-10, 10, 101)
     # --- single ----
     t0 = time.time()
     MFS = CFAImageMFS(gray_image,q_list = q_list )
@@ -89,7 +89,9 @@ def demo_alpha(image_path):
     # --- single ----
     t0 = time.time()
     MFS = CFAImageMFS(gray_image,q_list = q_list )
-    alpha_map, info = MFS.compute_alpha_map(scales=[2, 4, 8, 16, 32])
+    scales = list(range(1, 100)) 
+
+    alpha_map, info = MFS.compute_alpha_map(scales=scales)
     print(f"Single alpha_map (1) imgs:{time.time()-t0:.3f}s")
     print("  alpha map:",alpha_map)
     print("  scale info",info)
@@ -99,7 +101,7 @@ def demo_alpha(image_path):
     t0 = time.time()
     imgs = [gray_image] * 20
     t0 = time.time()
-    batch_alpha_map = CFAImageMFS.compute_alpha_map_batch(imgs,with_progress=False, scales=[2, 4, 8, 16, 32])
+    batch_alpha_map = CFAImageMFS.compute_alpha_map_batch(imgs,with_progress=False, scales=scales)
     alpha_maps = batch_alpha_map[0]
     infos = batch_alpha_map[1]
     print(f"Batch alpha_map (20) imgs:{time.time()-t0:.3f}s" )

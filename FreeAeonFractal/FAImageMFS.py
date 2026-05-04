@@ -629,7 +629,9 @@ class CFAImageMFS:
         return results
 
     # ------------------------------------------------------------
-    # Plotting
+    # Plotting 
+    # df_fit:  q → τ(q) → D(q)     (fit from τ(q))
+    # df_spec: q → τ(q) → α(q) → f(α)  (transform from Legendre, τ(q) and D(q) are same as df_fit )
     # ------------------------------------------------------------
     def plot(self, df_mass, df_fit, df_spec):
         fig, axs = plt.subplots(2, 3, figsize=(14,8))
@@ -656,6 +658,7 @@ class CFAImageMFS:
 
         if df_spec is not None and not df_spec.empty and np.any(np.isfinite(df_spec["alpha"].values)):
             sns.lineplot(data=df_spec, x="alpha", y="f_alpha", ax=axs[0, 1])
+            
             axs[0, 1].set_xlabel(r"$\alpha$")
             axs[0, 1].set_ylabel(r"$f(\alpha)$")
             axs[0, 1].set_title(r"Multifractal spectrum: $f(\alpha)$ vs $\alpha$")
@@ -665,8 +668,9 @@ class CFAImageMFS:
         else:
             axs[0, 1].set_title("f(alpha): (no data)")
 
-        if df_fit is not None and not df_fit.empty:
-            sns.lineplot(data=df_fit, x="q", y="tau", ax=axs[0, 2])
+        if df_spec is not None and not df_spec.empty:
+            sns.lineplot(data=df_spec, x="q", y="tau", ax=axs[0, 2])
+
             axs[0, 2].set_xlabel("$q$")
             axs[0, 2].set_ylabel(r"$\tau(q)$")
             axs[0, 2].set_title(r"$\tau(q)$ vs $q$")
@@ -676,8 +680,8 @@ class CFAImageMFS:
         else:
             axs[0, 2].set_title("tau(q): (no data)")
 
-        if df_fit is not None and not df_fit.empty:
-            sns.lineplot(data=df_fit, x="q", y="Dq", ax=axs[1, 0])
+        if df_spec is not None and not df_spec.empty:
+            sns.lineplot(data=df_spec, x="q", y="Dq", ax=axs[1, 0])
             axs[1, 0].set_xlabel("$q$")
             axs[1, 0].set_ylabel(r"$D(q)$")
             axs[1, 0].set_title(r"$D(q)$ vs $q$ (with $D_1$ at q=1)")
