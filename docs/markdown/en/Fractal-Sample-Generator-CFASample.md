@@ -4,119 +4,73 @@
 
 The `CFASample` class generates classic fractal patterns based on Iterated Function Systems (IFS). Main application scenarios include:
 
-- **Fractal Pattern Generation**: Generate classic fractal geometric patterns
-- **Teaching Demonstrations**: Demonstrate basic principles of fractal geometry
-- **Test Data**: Provide test data for fractal analysis algorithms
-- **Artistic Creation**: Generate beautiful fractal art patterns
-- **Algorithm Validation**: Verify correctness of fractal dimension calculations
+- **Algorithm Testing**: Generate ground-truth fractals with known dimensions
+- **Education**: Demonstrate fractal geometry concepts
+- **Benchmarking**: Compare analysis methods on known fractal structures
+- **Artistic Creation**: Generate fractal artwork
+- **Data Augmentation**: Create synthetic fractal textures
 
 ## Usage Examples
 
-### Cantor Set
+### Generate Classic Fractals
 
 ```python
 import numpy as np
+import matplotlib.pyplot as plt
 from FreeAeonFractal.FASample import CFASample
 from FreeAeonFractal.FAVisual import CFAVisual
-import matplotlib.pyplot as plt
 
-# Generate Cantor Set (fractal dimension ≈ 0.63)
-cantor = CFASample.get_Cantor_Set(
-    init_point=np.array([0.0]),
-    iterations=256
-)
+# 1D: Cantor Set (dimension ≈ 0.63)
+points_1d = CFASample.get_Cantor_Set(iterations=256)
 
-# Visualize
-plt.figure(figsize=(12, 2))
-CFAVisual.plot_1d_points(cantor)
-plt.title('Cantor Set (Dimension ≈ 0.63)')
-plt.show()
-```
+# 2D: Sierpinski Triangle (dimension ≈ 1.58)
+points_2d = CFASample.get_Sierpinski_Triangle(iterations=1024)
 
-### Sierpinski Triangle
+# 2D: Barnsley Fern (dimension ≈ 1.67)
+points_fern = CFASample.get_Barnsley_Fern(iterations=4096)
 
-```python
-# Generate Sierpinski Triangle (fractal dimension ≈ 1.58)
-triangle = CFASample.get_Sierpinski_Triangle(
-    init_point=np.array([0.0, 0.0]),
-    iterations=256
-)
+# 3D: Menger Sponge (dimension ≈ 2.73)
+points_3d = CFASample.get_Menger_Sponge(iterations=10240)
 
-# Visualize
-plt.figure(figsize=(8, 8))
-CFAVisual.plot_2d_points(triangle)
-plt.title('Sierpinski Triangle (Dimension ≈ 1.58)')
-plt.axis('equal')
-plt.show()
-```
-
-### Barnsley Fern
-
-```python
-# Generate Barnsley Fern (fractal dimension ≈ 1.67)
-fern = CFASample.get_Barnsley_Fern(
-    init_point=np.array([0.0, 0.0]),
-    iterations=4096
-)
-
-# Visualize
-plt.figure(figsize=(6, 10))
-CFAVisual.plot_2d_points(fern)
-plt.title('Barnsley Fern (Dimension ≈ 1.67)')
-plt.axis('equal')
-plt.show()
-```
-
-### Menger Sponge
-
-```python
-# Generate Menger Sponge (fractal dimension ≈ 2.73)
-sponge = CFASample.get_Menger_Sponge(
-    init_point=np.array([0.0, 0.0, 0.0]),
-    iterations=10240
-)
-
-# Visualize 3D
-fig = plt.figure(figsize=(10, 10))
-ax = fig.add_subplot(111, projection='3d')
-CFAVisual.plot_3d_points(sponge, ax)
-ax.set_title('Menger Sponge (Dimension ≈ 2.73)')
+fig = plt.figure(figsize=(12, 6))
+ax1 = fig.add_subplot(141); CFAVisual.plot_1d_points(points_1d, ax1); ax1.set_title("Cantor Set")
+ax2 = fig.add_subplot(142); CFAVisual.plot_2d_points(points_2d, ax2); ax2.set_title("Sierpinski Triangle")
+ax3 = fig.add_subplot(143); CFAVisual.plot_2d_points(points_fern, ax3); ax3.set_title("Barnsley Fern")
+ax4 = fig.add_subplot(144, projection='3d'); CFAVisual.plot_3d_points(points_3d, ax4); ax4.set_title("Menger Sponge")
+plt.tight_layout()
 plt.show()
 ```
 
 ### Convert Points to Image
 
 ```python
-# Generate fractal point set
-points = CFASample.get_Sierpinski_Triangle(iterations=256)
+from FreeAeonFractal.FASample import CFASample
 
-# Convert to image
-image = CFASample.get_image_from_points(
-    points,
-    img_size=(512, 512),
-    margin=0.05
-)
+points = CFASample.get_Sierpinski_Triangle(iterations=4096)
+image = CFASample.get_image_from_points(points, img_size=(512, 512))
 
-# Visualize
-plt.figure(figsize=(8, 8))
-CFAVisual.plot_2d_image(image, cmap='binary')
-plt.title('Sierpinski Triangle as Image')
-plt.show()
+# Now use for fractal analysis
+from FreeAeonFractal.FAImageFD import CFAImageFD
+fd_bc = CFAImageFD(image).get_bc_fd()
+print("Sierpinski FD (BC):", fd_bc['fd'])  # should be ≈ 1.58
 ```
 
 ### Custom IFS
 
 ```python
-# Generate custom fractal using IFS engine
-trans_matrix = [...]       # List of affine transformation matrices
-trans_probability = [...]  # Probability for each transformation
+import numpy as np
+from FreeAeonFractal.FASample import CFASample
 
-points = CFASample.generate(
-    init_point=np.array([0.0, 0.0]),
-    iterations=5000,
-    trans_matrix=trans_matrix,
-    trans_probability=trans_probability
-)
+# Custom transformation matrices and probabilities
+trans_matrix = np.array([
+    [[0.5, 0.0, 0.0], [0.0, 0.5, 0.0]],    # scale by 0.5
+    [[0.5, 0.0, 1.0], [0.0, 0.5, 0.0]],    # scale + translate x
+    [[0.5, 0.0, 0.5], [0.0, 0.5, 0.5]],    # scale + translate xy
+])
+trans_probability = np.array([0.33, 0.33, 0.34])
+init_point = np.array([0.0, 0.0])
+
+points = CFASample.generate(init_point, iterations=2048, trans_matrix=trans_matrix, trans_probability=trans_probability)
 ```
 
 ### Installation
@@ -129,96 +83,82 @@ pip install FreeAeon-Fractal
 
 ### CFASample
 
-**Description**: Fractal sample generator using Iterated Function Systems (IFS) to generate classic fractal patterns.
-
-All methods are static, called using `CFASample.method_name()`.
-
-#### Main Generation Methods
-
-| Method | Dimension | Fractal Dim | Transforms | Default Iter |
-|--------|-----------|-------------|------------|--------------|
-| `get_Cantor_Set()` | 1D | 0.63 | 2 | 256 |
-| `get_Sierpinski_Triangle()` | 2D | 1.58 | 3 | 256 |
-| `get_Barnsley_Fern()` | 2D | 1.67 | 4 | 4096 |
-| `get_Menger_Sponge()` | 3D | 2.727 | 20 | 10240 |
-| `get_4D_Points()` | 4D | — | — | 4096 |
+**Description**: IFS (Iterated Function System) fractal generator. All generation methods use randomized iterated affine transformations.
 
 #### Methods
 
-##### 1. generate(init_point, iterations, trans_matrix, trans_probability)
+##### generate(init_point, iterations, trans_matrix, trans_probability) [static]
 
-**Description**: Core IFS engine. Iterates a point through randomly chosen affine transformations.
-
-**Parameters**:
-- `init_point` (numpy.ndarray): Initial point
-- `iterations` (int): Number of iterations
-- `trans_matrix` (list): List of affine transformation matrices
-- `trans_probability` (list): Probability for each transformation (must sum to 1)
-
-**Return**: numpy.ndarray of generated points
-
-##### 2. get_Cantor_Set(init_point, iterations=256)
-
-**Description**: Generate Cantor Set (1D fractal).
+**Description**: Core IFS generator. Applies randomly selected affine transformations iteratively.
 
 **Parameters**:
-- `init_point` (numpy.ndarray): Initial point, shape (1,), default [0.0]
-- `iterations` (int): Number of iterations, default 256
+- `init_point` (ndarray): Starting point in the appropriate dimension
+- `iterations` (int): Number of IFS iterations
+- `trans_matrix` (ndarray): Array of affine transformation matrices; shape `(n_transforms, ndim, ndim+1)`
+- `trans_probability` (ndarray): Probability of selecting each transformation (must sum to 1)
 
-**Return**: numpy.ndarray, shape (iterations, 1)
+**Return Value**: `(iterations, ndim)` array of generated points
 
-**Fractal Dimension**: ≈ 0.6309
+##### get_Cantor_Set(init_point=np.array([0.0]), iterations=256) [static]
 
-##### 3. get_Sierpinski_Triangle(init_point, iterations=256)
+**Description**: Generate 1D Cantor Set points.
 
-**Description**: Generate Sierpinski Triangle (2D fractal).
+**Return Value**: (iterations,) point array
 
-**Parameters**:
-- `init_point` (numpy.ndarray): Initial point, shape (2,)
-- `iterations` (int): Number of iterations, default 256
+**Theoretical dimension**: ≈ 0.6309 (log 2 / log 3)
 
-**Return**: numpy.ndarray, shape (iterations, 2)
+##### get_Sierpinski_Triangle(init_point=np.array([0.0, 0.0]), iterations=256) [static]
 
-**Fractal Dimension**: ≈ 1.585
+**Description**: Generate 2D Sierpinski Triangle points.
 
-##### 4. get_Barnsley_Fern(init_point, iterations=4096)
+**Return Value**: (iterations, 2) point array
 
-**Description**: Generate Barnsley Fern (2D fractal).
+**Theoretical dimension**: ≈ 1.585 (log 3 / log 2)
 
-**Parameters**:
-- `init_point` (numpy.ndarray): Initial point, shape (2,)
-- `iterations` (int): Number of iterations, default 4096
+##### get_Barnsley_Fern(init_point=np.array([0.0, 0.0]), iterations=4096)
 
-**Return**: numpy.ndarray, shape (iterations, 2)
+**Description**: Generate 2D Barnsley Fern points.
 
-**Fractal Dimension**: ≈ 1.67
+**Return Value**: (iterations, 2) point array
 
-##### 5. get_Menger_Sponge(init_point, iterations=10240)
+**Theoretical dimension**: ≈ 1.67
 
-**Description**: Generate Menger Sponge (3D fractal, 20 transforms).
+##### get_Menger_Sponge(init_point=np.array([0.0, 0.0, 0.0]), iterations=10240) [static]
 
-**Parameters**:
-- `init_point` (numpy.ndarray): Initial point, shape (3,)
-- `iterations` (int): Number of iterations, default 10240
+**Description**: Generate 3D Menger Sponge points using 20 contraction maps (3D cube minus the 7 center/edge pieces).
 
-**Return**: numpy.ndarray, shape (iterations, 3)
+**Return Value**: (iterations, 3) point array
 
-**Fractal Dimension**: ≈ 2.727
+**Theoretical dimension**: ≈ 2.727 (log 20 / log 3)
 
-##### 6. get_image_from_points(points, img_size=(512, 512), margin=0.05)
+##### get_image_from_points(points, img_size=(512, 512), margin=0.05) [static]
 
-**Description**: Convert 2D point set to binary image.
+**Description**: Convert 2D IFS point cloud to a binary uint8 image.
 
 **Parameters**:
-- `points` (numpy.ndarray): 2D point array, shape (N, 2)
-- `img_size` (tuple): Output image size (height, width)
-- `margin` (float): Margin ratio, default 0.05 (5%)
+- `points` (ndarray): (N, 2) point array
+- `img_size` (tuple): Output image dimensions `(H, W)`
+- `margin` (float): Fractional margin added around point bounds
 
-**Return**: numpy.ndarray, uint8 binary image
-- Point locations: 255 (white)
-- Background: 0 (black)
+**Return Value**: `(H, W)` uint8 image with value 255 at occupied pixels
+
+## Fractal Dimensions
+
+| Fractal | Dimension | Method |
+|---------|-----------|--------|
+| Cantor Set | ≈ 0.63 | 1D box-counting |
+| Sierpinski Triangle | ≈ 1.58 | 2D box-counting |
+| Barnsley Fern | ≈ 1.67 | 2D box-counting |
+| Menger Sponge | ≈ 2.73 | 3D box-counting |
+
+## Important Notes
+
+1. **Iteration Count**: More iterations produce denser, more accurate fractal approximations; 1000+ is recommended for analysis
+2. **Image Size**: For fractal dimension analysis, 256×256 or larger images give more reliable scale ranges
+3. **IFS Convergence**: The IFS chaos game converges regardless of starting point after a burn-in period; the first few hundred points can be discarded if needed
+4. **get_Barnsley_Fern**: Note this method is not decorated as `@staticmethod` in the current code; call via `CFASample.get_Barnsley_Fern()`
 
 ## References
 
-- Barnsley, M. F. (1993). Fractals Everywhere (2nd ed.).
-- Mandelbrot, B. B. (1982). The Fractal Geometry of Nature.
+- Barnsley, M. F. (1988). *Fractals Everywhere*. Academic Press.
+- Mandelbrot, B. B. (1982). *The Fractal Geometry of Nature*. Freeman.

@@ -3,506 +3,120 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GPU加速版本</title>
+    <title>GPU加速版本 - FreeAeon-Fractal</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.8;
-            color: #333;
-            background: #f5f7fa;
-            padding: 20px;
-        }
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-        header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-        }
+        body { font-family: 'Microsoft YaHei', '微软雅黑', sans-serif; line-height: 1.8; color: #333; background: #f5f7fa; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }
+        header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; }
         header h1 { font-size: 2em; margin-bottom: 10px; }
-        header p { opacity: 0.9; }
-        nav {
-            background: #f8f9fa;
-            padding: 15px 30px;
-            border-bottom: 1px solid #e9ecef;
-        }
-        nav a {
-            color: #667eea;
-            text-decoration: none;
-            margin-right: 20px;
-            font-weight: 500;
-        }
-        nav a:hover { color: #764ba2; }
+        nav { background: #f8f9fa; padding: 15px 30px; border-bottom: 1px solid #e9ecef; }
+        nav a { color: #667eea; text-decoration: none; margin-right: 20px; font-weight: 500; }
         main { padding: 40px; }
-        h2 {
-            color: #667eea;
-            font-size: 1.8em;
-            margin-top: 40px;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #667eea;
-        }
-        h3 {
-            color: #764ba2;
-            font-size: 1.4em;
-            margin-top: 30px;
-            margin-bottom: 15px;
-        }
-        h4 {
-            color: #555;
-            font-size: 1.1em;
-            margin-top: 20px;
-            margin-bottom: 10px;
-        }
-        .code-block {
-            background: #1e1e1e;
-            color: #d4d4d4;
-            padding: 20px;
-            border-radius: 5px;
-            overflow-x: auto;
-            margin: 15px 0;
-            font-family: 'Courier New', monospace;
-            font-size: 0.9em;
-        }
-        .code-inline {
-            background: #f0f0f0;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-family: 'Courier New', monospace;
-            font-size: 0.9em;
-            color: #c7254e;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        th, td {
-            padding: 12px 15px;
-            text-align: left;
-            border-bottom: 1px solid #e9ecef;
-        }
-        th {
-            background: #667eea;
-            color: white;
-            font-weight: 600;
-        }
+        h2 { color: #667eea; font-size: 1.8em; margin-top: 40px; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #667eea; }
+        h3 { color: #764ba2; font-size: 1.4em; margin-top: 30px; margin-bottom: 15px; }
+        .code-block { background: #1e1e1e; color: #d4d4d4; padding: 20px; border-radius: 5px; overflow-x: auto; margin: 15px 0; font-family: 'Courier New', monospace; font-size: 0.9em; white-space: pre; }
+        .code-inline { background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-family: 'Courier New', monospace; font-size: 0.9em; color: #c7254e; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #e9ecef; }
+        th { background: #667eea; color: white; font-weight: 600; }
         tr:hover { background: #f8f9fa; }
-        .note {
-            background: #e7f3ff;
-            border-left: 4px solid #2196F3;
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 4px;
-        }
-        .badge {
-            display: inline-block;
-            padding: 4px 10px;
-            background: #667eea;
-            color: white;
-            border-radius: 12px;
-            font-size: 0.85em;
-            margin-right: 5px;
-        }
         ul, ol { margin-left: 30px; margin-bottom: 15px; }
         li { margin-bottom: 8px; }
         a { color: #667eea; text-decoration: none; }
-        a:hover { text-decoration: underline; }
-        .section { margin-bottom: 30px; }
-        footer {
-            background: #2c3e50;
-            color: white;
-            padding: 20px;
-            text-align: center;
-            font-size: 0.9em;
-        }
+        footer { background: #2c3e50; color: white; padding: 20px; text-align: center; font-size: 0.9em; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>GPU加速版本</h1>
-            <p>核心计算模块的GPU加速实现</p>
-        </header>
-
-        <nav>
-            <a href="index.html">← 返回首页</a>
-
-        </nav>
-
-        <main>
-
-<h2>应用场景</h2>
-<p>FreeAeon-Fractal提供GPU加速版本的核心计算模块，显著提升大图像和多尺度分析的计算速度。主要应用场景包括：</p>
-
-<ul>
-<li><strong>大规模图像分析</strong>：处理高分辨率图像（>1024x1024）</li>
-<li><strong>批量处理</strong>：同时分析多个图像</li>
-<li><strong>实时分析</strong>：需要快速响应的应用</li>
-<li><strong>多尺度分析</strong>：大量尺度参数的计算</li>
-</ul>
+<div class="container">
+    <header>
+        <h1>GPU加速版本</h1>
+        <p>即插即用的GPU加速模块，3-20倍速度提升</p>
+    </header>
+    <nav><a href="index.html">← 返回首页</a></nav>
+    <main>
 
 <h2>支持的GPU模块</h2>
 <table>
-<tr><th>CPU模块</th><th>GPU模块</th><th>加速比</th></tr>
-<tr><td><code class="code-inline">FAImageMFS.CFAImageMFS</code></td><td><code class="code-inline">FAImageMFSGPU.CFAImageMFSGPU</code></td><td>5-20x</td></tr>
-<tr><td><code class="code-inline">FAImageFD.CFAImageFD</code></td><td><code class="code-inline">FAImageFDGPU.CFAImageFDGPU</code></td><td>3-10x</td></tr>
-<tr><td><code class="code-inline">FAImageLAC.CFAImageLAC</code></td><td><code class="code-inline">FAImageLACGPU.CFAImageLACGPU</code></td><td>5-15x</td></tr>
+<tr><th>CPU模块</th><th>GPU模块</th><th>典型加速比</th></tr>
+<tr><td>FAImageFD.CFAImageFD</td><td>FAImageFDGPU.CFAImageFDGPU</td><td>3–10×</td></tr>
+<tr><td>FAImageMFS.CFAImageMFS</td><td>FAImageMFSGPU.CFAImageMFSGPU</td><td>5–20×</td></tr>
+<tr><td>FAImageLAC.CFAImageLAC</td><td>FAImageLACGPU.CFAImageLACGPU</td><td>5–15×</td></tr>
 </table>
-
-<strong>注意</strong>：实际加速比取决于图像大小、GPU型号和参数设置。
 
 <h2>系统要求</h2>
-
-<h3>硬件要求</h3>
 <ul>
-<li>NVIDIA GPU（支持CUDA）</li>
-<li>建议显存 ≥ 4GB</li>
-<li>推荐显存 ≥ 8GB（处理大图像）</li>
+<li>支持CUDA的NVIDIA GPU</li>
+<li>带CUDA的PyTorch：<code class="code-inline">pip install torch --index-url https://download.pytorch.org/whl/cu118</code></li>
 </ul>
 
-<h3>软件要求</h3>
-<div class="code-block"># 安装PyTorch（CUDA版本）
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
-<p># 或根据你的CUDA版本选择</p>
-# 访问 https://pytorch.org/ 获取安装命令
-<p># 安装FreeAeon-Fractal</p>
-pip install FreeAeon-Fractal</div>
+<h2>使用方法</h2>
 
-<h3>验证CUDA可用性</h3>
-<div class="code-block">import torch
-print(f"CUDA available: {torch.cuda.is_available()}")
-print(f"CUDA version: {torch.version.cuda}")
-print(f"GPU device: {torch.cuda.get_device_name(0)}")</div>
+<h3>直接替换导入</h3>
+<div class="code-block"># CPU版本
+from FreeAeonFractal.FAImageMFS import CFAImageMFS
 
-<h2>调用示例</h2>
+# GPU版本（API完全相同）
+from FreeAeonFractal.FAImageMFSGPU import CFAImageMFSGPU as CFAImageMFS</div>
 
-<h3>GPU加速的2D多重分形谱</h3>
+<h3>分形维度（GPU）</h3>
+<div class="code-block">from FreeAeonFractal.FAImageFDGPU import CFAImageFDGPU
 
-<div class="code-block">import cv2
-import numpy as np
-from FreeAeonFractal.FAImageMFSGPU import CFAImageMFSGPU
-<p># 读取图像</p>
-gray_image = cv2.imread('./images/face.png', cv2.IMREAD_GRAYSCALE)
-<p># 创建GPU版本（单图像默认dtype=torch.float64）</p>
-MFS = CFAImageMFSGPU(
-    gray_image,
-    q_list=np.linspace(-5, 5, 26),
-    device='cuda',
-    dtype=None  # 自动：单图像float64，批处理float32
-)
-<p># 计算（GPU加速）</p>
+fd_bc   = CFAImageFDGPU(bin_image, device='cuda').get_bc_fd()
+fd_dbc  = CFAImageFDGPU(gray,      device='cuda').get_dbc_fd()
+fd_sdbc = CFAImageFDGPU(gray,      device='cuda').get_sdbc_fd()</div>
+
+<h3>多重分形谱（GPU）</h3>
+<div class="code-block">import numpy as np
+from FreeAeonFractal.FAImageMFSGPU import CFAImageMFSGPU as CFAImageMFS
+
+MFS = CFAImageMFS(gray, q_list=np.linspace(-5, 5, 51))
 df_mass, df_fit, df_spec = MFS.get_mfs()
-<p># 可视化</p>
 MFS.plot(df_mass, df_fit, df_spec)</div>
 
-<h3>GPU加速的分形维度</h3>
-
-<div class="code-block">from FreeAeonFractal.FAImageFDGPU import CFAImageFDGPU
-from FreeAeonFractal.FAImage import CFAImage
-<p># 图像预处理</p>
-gray_image = cv2.imread('./images/fractal.png', cv2.IMREAD_GRAYSCALE)
-bin_image, _ = CFAImage.otsu_binarize(gray_image)
-<p># GPU加速计算</p>
-fd_gpu = CFAImageFDGPU(bin_image, device='cuda')
-fd_bc = fd_gpu.get_bc_fd()
-fd_dbc = fd_gpu.get_dbc_fd()
-<p># 注意：GPU版本的p_value为None（不计算）</p>
-print(f"BC (GPU): {fd_bc['fd']:.4f}")
-print(f"DBC (GPU): {fd_dbc['fd']:.4f}")</div>
-
-<h3>GPU加速的空隙度分析</h3>
-
+<h3>空隙度（GPU）</h3>
 <div class="code-block">from FreeAeonFractal.FAImageLACGPU import CFAImageLACGPU
-<p># 创建GPU版本的空隙度分析对象</p>
-lacunarity_gpu = CFAImageLACGPU(
-    gray_image,
-    max_scales=100,
-    device='cuda'
-)
-<p># 计算（GPU加速）</p>
-lac_result = lacunarity_gpu.get_lacunarity()
-fit_result = lacunarity_gpu.fit_lacunarity(lac_result)
-<p># 可视化</p>
-lacunarity_gpu.plot(lac_result, fit_result)</div>
 
-<h3>使用别名简化代码</h3>
+calc = CFAImageLACGPU(gray, device='cuda')
+lac_result = calc.get_lacunarity()
+fit_result = calc.fit_lacunarity(lac_result)</div>
 
-<div class="code-block"># 在代码开头使用别名，后续代码无需修改
-from FreeAeonFractal.FAImageMFSGPU import CFAImageMFSGPU as CFAImageMFS
-from FreeAeonFractal.FAImageFDGPU import CFAImageFDGPU as CFAImageFD
-<p># 后续代码与CPU版本完全相同</p>
-MFS = CFAImageMFS(image, q_list=np.linspace(-5, 5, 26))
-df_mass, df_fit, df_spec = MFS.get_mfs()</div>
+<h3>批量处理（GPU）</h3>
+<div class="code-block">import glob, cv2, numpy as np
+from FreeAeonFractal.FAImageMFSGPU import CFAImageMFSGPU
 
-<h2>GPU版本特有参数</h2>
+images = [cv2.imread(f, cv2.IMREAD_GRAYSCALE) for f in glob.glob('./images/*.png')]
+results = CFAImageMFSGPU.get_batch_mfs(images, q_list=np.linspace(-5, 5, 26))
+for df_mass, df_fit, df_spec in results:
+    print(df_fit[['q', 'Dq']].head(3))</div>
 
-<h3>1. CFAImageMFSGPU</h3>
-<p>额外参数：</p>
-<ul>
-<li><code class="code-inline">device</code> (str): 设备选择</li>
-</ul>
-  - <code class="code-inline">'cuda'</code>: 使用GPU（默认）
-  - <code class="code-inline">'cpu'</code>: 使用CPU
-  - <code class="code-inline">'cuda:0'</code>, <code class="code-inline">'cuda:1'</code>: 指定GPU编号
-<ul>
-<li><code class="code-inline">dtype</code> (torch.dtype): 数据类型 — 单图像默认 <code class="code-inline">torch.float64</code>，批处理默认 <code class="code-inline">torch.float32</code></li>
-<li><code class="code-inline">q_chunk</code> (int): 每次GPU计算的q值数量（控制显存）</li>
-<li><code class="code-inline">img_chunk</code> (int): 批处理模式下每次GPU计算的图像数量</li>
-</ul>
-
-<strong>示例</strong>：
-<div class="code-block">MFS = CFAImageMFSGPU(
-    image,
-    device='cuda:0',           # 使用第一块GPU
-    dtype=torch.float32,       # 使用单精度
-    q_chunk=10,                # 每次处理10个q值
-)</div>
-
-<h3>2. CFAImageFDGPU</h3>
-<p>额外参数：</p>
-<ul>
-<li><code class="code-inline">device</code> (str): 设备选择</li>
-<li><code class="code-inline">dtype</code> (torch.dtype): 数据类型</li>
-<li><code class="code-inline">img_chunk</code> (int): 批处理分块大小</li>
-</ul>
-
-<strong>注意</strong>：GPU结果中 <code class="code-inline">p_value</code> 字段为 <code class="code-inline">None</code>（不计算）。使用 <code class="code-inline">torch.quantile</code> 进行99百分位归一化，回归使用手动OLS（不依赖SciPy）。
-
-<strong>示例</strong>：
-<div class="code-block">fd_calc = CFAImageFDGPU(
-    image,
-    device='cuda'
-)</div>
-
-<h3>3. CFAImageLACGPU</h3>
-<p>额外参数：</p>
-<ul>
-<li><code class="code-inline">device</code> (str): 设备选择</li>
-<li><code class="code-inline">dtype</code> (torch.dtype): 默认 <code class="code-inline">torch.float64</code></li>
-<li><code class="code-inline">img_chunk</code> (int): 批处理分块大小</li>
-</ul>
-
-<strong>注意</strong>：GPU批处理模式要求所有图像形状相同。
-
-<h2>性能对比</h2>
-
-<h3>测试环境</h3>
-<ul>
-<li>CPU: Intel i7-10700K</li>
-<li>GPU: NVIDIA RTX 3080 (10GB)</li>
-<li>图像: 1024x1024 灰度图</li>
-</ul>
-
-<h3>性能数据</h3>
+<h2>性能说明</h2>
 <table>
-<tr><th>任务</th><th>CPU时间</th><th>GPU时间</th><th>加速比</th></tr>
-<tr><td>2D多重分形谱 (q=51)</td><td>45s</td><td>4s</td><td>11.3x</td></tr>
-<tr><td>分形维度 BC</td><td>8s</td><td>2s</td><td>4.0x</td></tr>
-<tr><td>分形维度 DBC</td><td>25s</td><td>3s</td><td>8.3x</td></tr>
-<tr><td>空隙度分析</td><td>35s</td><td>4s</td><td>8.8x</td></tr>
+<tr><th>场景</th><th>预期加速比</th></tr>
+<tr><td>单张大图像（1024×1024）</td><td>5–10×</td></tr>
+<tr><td>批量100+张图像</td><td>10–20×</td></tr>
+<tr><td>大量q值（51+）</td><td>5–15×</td></tr>
+<tr><td>大量尺度（80+）</td><td>3–8×</td></tr>
 </table>
 
-<h2>优化建议</h2>
+<h2>与CPU版本的API差异</h2>
+<table>
+<tr><th>特性</th><th>CPU</th><th>GPU</th></tr>
+<tr><td><code class="code-inline">p_value</code></td><td>已计算</td><td>None（不计算）</td></tr>
+<tr><td>默认数据类型</td><td>float64</td><td>float64（单图），float32（批量）</td></tr>
+<tr><td><code class="code-inline">device</code>参数</td><td>无</td><td>'cuda' 或 'cpu'</td></tr>
+</table>
 
-<h3>1. 选择合适的数据类型</h3>
-
-<div class="code-block"># 对于一般分析，float32足够且更快
-MFS = CFAImageMFSGPU(image, dtype=torch.float32)
-<p># 对于高精度要求，使用float64</p>
-MFS = CFAImageMFSGPU(image, dtype=torch.float64)</div>
-
-<h3>2. 批量处理多个图像</h3>
-
-<div class="code-block">import glob
-<p>image_files = glob.glob('./images/*.png')</p>
-
-for img_file in image_files:
-    image = cv2.imread(img_file, cv2.IMREAD_GRAYSCALE)
-<p>    # 使用GPU加速</p>
-    mfs = CFAImageMFSGPU(image, device='cuda')
-    df_mass, df_fit, df_spec = mfs.get_mfs()
-<p>    # 保存结果</p>
-    df_spec.to_csv(f'{img_file}_mfs.csv')</div>
-
-<h3>3. 显存管理</h3>
-
+<h2>CUDA可用性检查</h2>
 <div class="code-block">import torch
-<p># 清理GPU缓存</p>
-torch.cuda.empty_cache()
-<p># 检查显存使用</p>
-print(f"Allocated: {torch.cuda.memory_allocated() / 1e9:.2f} GB")
-print(f"Reserved: {torch.cuda.memory_reserved() / 1e9:.2f} GB")</div>
+print("CUDA可用:", torch.cuda.is_available())</div>
+<p>若CUDA不可用，GPU模块将回退到CPU计算。</p>
 
-<h3>4. 自动设备选择</h3>
-
-<div class="code-block"># 自动选择可用设备
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-print(f"Using device: {device}")
-<p>MFS = CFAImageMFSGPU(image, device=device)</div></p>
-
-<h2>CPU vs GPU 使用场景</h2>
-
-<h3>使用CPU版本：</h3>
-<ul>
-<li>小图像 (&lt;512x512)</li>
-<li>快速测试和原型开发</li>
-<li>没有GPU的环境</li>
-<li>q值数量少 (&lt;20)</li>
-</ul>
-
-<h3>使用GPU版本：</h3>
-<ul>
-<li>大图像 (≥1024x1024)</li>
-<li>批量处理多个图像</li>
-<li>q值数量多 (≥30)</li>
-<li>多尺度分析 (max_scales>80)</li>
-<li>实时分析需求</li>
-</ul>
-
-<h2>迁移指南</h2>
-
-<h3>从CPU迁移到GPU</h3>
-<p>只需修改导入语句：</p>
-
-<strong>CPU版本</strong>：
-<div class="code-block">from FreeAeonFractal.FAImageMFS import CFAImageMFS
-from FreeAeonFractal.FAImageFD import CFAImageFD
-from FreeAeonFractal.FAImageLAC import CFAImageLAC
-<p># ... 其余代码不变</div></p>
-
-<strong>GPU版本</strong>：
-<div class="code-block">from FreeAeonFractal.FAImageMFSGPU import CFAImageMFSGPU as CFAImageMFS
-from FreeAeonFractal.FAImageFDGPU import CFAImageFDGPU as CFAImageFD
-from FreeAeonFractal.FAImageLACGPU import CFAImageLACGPU as CFAImageLAC
-<p># ... 其余代码完全相同！</div></p>
-
-<h3>条件导入（智能切换）</h3>
-
-<div class="code-block">import torch
-<p># 根据GPU可用性自动选择</p>
-if torch.cuda.is_available():
-    from FreeAeonFractal.FAImageMFSGPU import CFAImageMFSGPU as CFAImageMFS
-    print("使用GPU加速")
-else:
-    from FreeAeonFractal.FAImageMFS import CFAImageMFS
-    print("使用CPU")
-<p># 后续代码无需修改</p>
-MFS = CFAImageMFS(image, q_list=np.linspace(-5, 5, 26))
-df_mass, df_fit, df_spec = MFS.get_mfs()</div>
-
-<h2>GPU版本类说明</h2>
-
-<h3>1. CFAImageMFSGPU</h3>
-
-<strong>继承自</strong>: CFAImageMFS的GPU实现
-
-<strong>新增参数</strong>：
-<ul>
-<li><code class="code-inline">device</code> (str): 'cuda', 'cpu', 'cuda:0'等</li>
-<li><code class="code-inline">dtype</code> (torch.dtype): torch.float32 或 torch.float64</li>
-<li><code class="code-inline">q_chunk</code> (int): 每次GPU计算的q值数量</li>
-<li><code class="code-inline">img_chunk</code> (int): 批处理模式下每次GPU计算的图像数量</li>
-</ul>
-
-<strong>核心优化</strong>：
-<ul>
-<li>GPU上计算盒子质量μ</li>
-<li>GPU上进行logsumexp计算</li>
-<li>CPU上进行回归和样条拟合</li>
-</ul>
-
-<h3>2. CFAImageFDGPU</h3>
-
-<strong>继承自</strong>: CFAImageFD的GPU实现
-
-<strong>新增参数</strong>：
-<ul>
-<li><code class="code-inline">device</code> (str): 设备选择</li>
-<li><code class="code-inline">img_chunk</code> (int): 批处理分块大小</li>
-</ul>
-
-<strong>核心优化</strong>：
-<ul>
-<li>GPU上进行图像分块</li>
-<li>GPU上计算盒子统计</li>
-<li>使用PyTorch的高效操作</li>
-<li><code class="code-inline">p_value</code> 为 <code class="code-inline">None</code>（不计算）</li>
-</ul>
-
-<h3>3. CFAImageLACGPU</h3>
-
-<strong>继承自</strong>: CFAImageLAC的GPU实现
-
-<strong>新增参数</strong>：
-<ul>
-<li><code class="code-inline">device</code> (str): 设备选择</li>
-<li><code class="code-inline">dtype</code> (torch.dtype): 默认 torch.float64</li>
-<li><code class="code-inline">img_chunk</code> (int): 批处理分块大小</li>
-</ul>
-
-<strong>核心优化</strong>：
-<ul>
-<li>GPU上计算滑动窗口</li>
-<li>GPU上进行质量统计</li>
-<li>批处理模式要求图像形状相同</li>
-</ul>
-
-<h2>常见问题</h2>
-
-<h3>Q: GPU版本报错 "CUDA out of memory"？</h3>
-A:
-1. 减小图像尺寸
-2. 使用 <code class="code-inline">dtype=torch.float32</code>
-3. 减少 <code class="code-inline">max_scales</code> 参数
-4. 减小 <code class="code-inline">q_chunk</code> 或 <code class="code-inline">img_chunk</code>
-5. 清理GPU缓存：<code class="code-inline">torch.cuda.empty_cache()</code>
-
-<h3>Q: GPU版本比CPU还慢？</h3>
-A: 小图像或少量计算时，GPU初始化开销可能超过计算时间。建议图像 ≥512x512 时使用GPU。
-
-<h3>Q: 如何在多GPU环境选择GPU？</h3>
-A: 使用 <code class="code-inline">device='cuda:0'</code> 或 <code class="code-inline">device='cuda:1'</code> 指定GPU编号。
-
-<h3>Q: GPU版本结果与CPU版本不同？</h3>
-A: 微小差异是正常的（浮点运算顺序不同）。使用 <code class="code-inline">dtype=torch.float64</code> 可提高一致性。
-
-<h3>Q: 没有NVIDIA GPU怎么办？</h3>
-A:
-1. 使用CPU版本
-2. 设置 <code class="code-inline">device='cpu'</code>（GPU版本会回退到CPU）
-3. 考虑使用云GPU服务（Google Colab, AWS等）
-
-<h2>最佳实践</h2>
-<p>1. <strong>开发阶段</strong>：使用CPU版本快速测试</p>
-2. <strong>生产环境</strong>：使用GPU版本处理大批量数据
-3. <strong>参数调优</strong>：在CPU上测试参数，在GPU上运行
-4. <strong>精度选择</strong>：单图像使用float64保证精度，批处理使用float32提升吞吐量
-5. <strong>显存监控</strong>：定期检查显存使用情况
-6. <strong>错误处理</strong>：捕获CUDA异常，优雅降级到CPU
-
-<h2>参考资源</h2>
-
-<ul>
-<li><strong>PyTorch官网</strong>: https://pytorch.org/</li>
-<li><strong>CUDA Toolkit</strong>: https://developer.nvidia.com/cuda-toolkit</li>
-<li><strong>GPU性能优化</strong>: https://pytorch.org/tutorials/recipes/recipes/tuning_guide.html</li>
-</ul>
-
-        </main>
-
-        <footer>
-            <p>© 2025 FreeAeon-Fractal. 保留所有权利</p>
-            <p><a href="https://github.com/jim-xie-cn/FreeAeon-Fractal" target="_blank" style="color: #667eea;">GitHub</a></p>
-        </footer>
-    </div>
+    </main>
+    <footer>
+        <p>© 2025 FreeAeon-Fractal. 保留所有权利</p>
+        <p><a href="https://github.com/jim-xie-cn/FreeAeon-Fractal" target="_blank" style="color: #667eea;">GitHub</a></p>
+    </footer>
+</div>
 </body>
 </html>

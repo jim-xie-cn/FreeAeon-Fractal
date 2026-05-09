@@ -2,297 +2,111 @@
 
 ## 应用场景
 
-`CFAVisual` 类提供分形点集和图像的可视化工具，用于展示分形数据的空间分布。主要应用场景包括：
+`CFAVisual` 类提供分形点集和图像的可视化工具。主要应用场景包括：
 
-- **分形点集展示**：可视化1D、2D、3D分形点集
-- **分形图案验证**：验证生成的分形图案是否正确
-- **教学演示**：展示分形几何的基本概念
-- **数据可视化**：展示点云和图像数据
+- **分形教学**：可视化1D/2D/3D分形点集
+- **研究验证**：展示生成的分形以验证IFS参数
+- **图像显示**：并排展示2D分析结果
+- **3D点云**：可视化3D分形结构
 
-## 调用示例
+## 使用示例
 
-### 1D点集可视化
+### 1D点集可视化（康托集）
 
 ```python
-import numpy as np
-from FreeAeonFractal.CFAVisual import CFAVisual
-from FreeAeonFractal.FASample import CFASample
 import matplotlib.pyplot as plt
+from FreeAeonFractal.FAVisual import CFAVisual
+from FreeAeonFractal.FASample import CFASample
 
-# 生成康托集
-points_1d = CFASample.get_Cantor_Set(iterations=1000)
+points_1d = CFASample.get_Cantor_Set(iterations=256)
 
-# 可视化1D点集
-plt.figure(figsize=(10, 2))
-CFAVisual.plot_1d_points(points_1d)
-plt.title('Cantor Set (1D)')
+fig, ax = plt.subplots(figsize=(10, 2))
+CFAVisual.plot_1d_points(points_1d, ax=ax)
+ax.set_title("康托集")
 plt.show()
 ```
 
-### 2D点集可视化
+### 2D点集可视化（谢尔宾斯基三角形）
 
 ```python
-# 生成谢尔宾斯基三角形
-points_2d = CFASample.get_Sierpinski_Triangle(iterations=10000)
+import matplotlib.pyplot as plt
+from FreeAeonFractal.FAVisual import CFAVisual
+from FreeAeonFractal.FASample import CFASample
 
-# 可视化2D点集
-plt.figure(figsize=(8, 8))
-CFAVisual.plot_2d_points(points_2d)
-plt.title('Sierpinski Triangle (2D)')
-plt.axis('equal')
+points_2d = CFASample.get_Sierpinski_Triangle(iterations=1024)
+
+fig, ax = plt.subplots(figsize=(6, 6))
+CFAVisual.plot_2d_points(points_2d, ax=ax)
+ax.set_title("谢尔宾斯基三角形")
 plt.show()
 ```
 
-### 3D点集可视化
+### 3D点集可视化（门格海绵）
 
 ```python
-from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
+from FreeAeonFractal.FAVisual import CFAVisual
+from FreeAeonFractal.FASample import CFASample
 
-# 生成门格海绵
-points_3d = CFASample.get_Menger_Sponge(iterations=50000)
+points_3d = CFASample.get_Menger_Sponge(iterations=10240)
 
-# 可视化3D点集
-fig = plt.figure(figsize=(10, 10))
+fig = plt.figure(figsize=(8, 8))
 ax = fig.add_subplot(111, projection='3d')
 CFAVisual.plot_3d_points(points_3d, ax=ax)
-ax.set_title('Menger Sponge (3D)')
+ax.set_title("门格海绵")
 plt.show()
 ```
 
-### 图像可视化
+### 2D图像显示
 
 ```python
 import cv2
+from FreeAeonFractal.FAVisual import CFAVisual
 
-# 读取图像
 image = cv2.imread('./images/fractal.png', cv2.IMREAD_GRAYSCALE)
-
-# 可视化图像
-plt.figure(figsize=(8, 8))
 CFAVisual.plot_2d_image(image, cmap='gray')
-plt.title('Fractal Image')
-plt.show()
-```
-
-### 综合示例
-
-```python
-# 综合展示多个分形图案
-fig = plt.figure(figsize=(12, 8))
-
-# 1D: 康托集
-ax1 = fig.add_subplot(221)
-points_1d = CFASample.get_Cantor_Set(iterations=1000)
-CFAVisual.plot_1d_points(points_1d, ax1)
-ax1.set_title('Cantor Set')
-
-# 2D: 谢尔宾斯基三角形
-ax2 = fig.add_subplot(222)
-points_2d = CFASample.get_Sierpinski_Triangle(iterations=10000)
-CFAVisual.plot_2d_points(points_2d, ax2)
-ax2.set_title('Sierpinski Triangle')
-
-# 2D: 巴恩斯利蕨
-ax3 = fig.add_subplot(223)
-fern = CFASample.get_Barnsley_Fern(iterations=20000)
-CFAVisual.plot_2d_points(fern, ax3)
-ax3.set_title('Barnsley Fern')
-
-# 3D: 门格海绵
-ax4 = fig.add_subplot(224, projection='3d')
-sponge = CFASample.get_Menger_Sponge(iterations=50000)
-CFAVisual.plot_3d_points(sponge, ax4)
-ax4.set_title('Menger Sponge')
-
-plt.tight_layout()
-plt.show()
-```
-
-### 安装
-
-```bash
-pip install FreeAeon-Fractal
 ```
 
 ## 类说明
 
 ### CFAVisual
 
-**描述**：提供分形点集和图像可视化的静态方法工具类。
+**描述**：静态工具类，用于显示分形点集（1D、2D、3D）和图像。所有方法接受可选的 `ax` 参数以支持子图集成。
 
-所有方法都是静态方法，使用 `CFAVisual.方法名()` 调用。
+#### 方法
 
-#### 静态方法
+##### plot_1d_points(points, ax=plt)
 
-##### 1. plot_1d_points(points, ax=plt)
+**描述**：以水平散点图显示1D点（Y轴隐藏）。
 
-**描述**：显示1D点集（如康托集）。
+**适用场景**：康托集等1D分形结构。
 
-**参数**：
-- `points` (numpy.ndarray): 1D点数组，形状为 (N,)
-- `ax` (matplotlib axis): Matplotlib轴对象，默认为plt
+##### plot_2d_points(points, ax=plt)
 
-**显示效果**：
-- 点绘制在y=0的水平线上
-- y轴隐藏
-- 点的大小固定（s=1）
+**描述**：以散点图显示2D点。
 
-**示例**：
-```python
-points = np.array([0.1, 0.3, 0.7, 0.9])
-CFAVisual.plot_1d_points(points)
-plt.show()
-```
+**参数**：`points` — (N, 2) 坐标数组
 
-##### 2. plot_2d_points(points, ax=plt)
+**适用场景**：谢尔宾斯基三角形、巴恩斯利蕨等2D IFS分形。
 
-**描述**：显示2D点集（如谢尔宾斯基三角形、巴恩斯利蕨）。
+##### plot_3d_points(points, ax=None)
 
-**参数**：
-- `points` (numpy.ndarray): 2D点数组，形状为 (N, 2)
-  - points[:, 0]: x坐标
-  - points[:, 1]: y坐标
-- `ax` (matplotlib axis): Matplotlib轴对象，默认为plt
+**描述**：以3D散点图显示3D点。
 
-**显示效果**：
-- 红色点标记
-- 点大小：s=1
-- 散点图显示
+**参数**：`points` — (N, 3) 坐标数组；`ax=None` 时自动创建新图形
 
-**示例**：
-```python
-points = np.random.rand(1000, 2)
-CFAVisual.plot_2d_points(points)
-plt.axis('equal')
-plt.show()
-```
+**适用场景**：门格海绵等3D分形。
 
-##### 3. plot_3d_points(points, ax=None)
+##### plot_2d_image(image, cmap='gray', ax=plt)
 
-**描述**：显示3D点集（如门格海绵）。
+**描述**：使用 `imshow` 显示2D图像。
 
-**参数**：
-- `points` (numpy.ndarray): 3D点数组，形状为 (N, 3)
-  - points[:, 0]: x坐标
-  - points[:, 1]: y坐标
-  - points[:, 2]: z坐标
-- `ax` (matplotlib 3D axis): 3D轴对象。如果为None，自动创建
+##### plot_3d_image(img, ax=plt)
 
-**显示效果**：
-- 红色点标记
-- 点大小：s=1
-- 3D散点图
+**描述**：从结构化 (N, 4) 数组显示3D点云，第4列为颜色值。
 
-**注意**：需要导入 `from mpl_toolkits.mplot3d import Axes3D`
+## 重要说明
 
-**示例**：
-```python
-from mpl_toolkits.mplot3d import Axes3D
-
-points = np.random.rand(1000, 3)
-fig = plt.figure()
-ax = fig.add_subplot(111, projection='3d')
-CFAVisual.plot_3d_points(points, ax)
-plt.show()
-```
-
-##### 4. plot_2d_image(image, cmap='gray', ax=plt)
-
-**描述**：显示2D图像。
-
-**参数**：
-- `image` (numpy.ndarray): 2D图像数组
-- `cmap` (str): 色图，默认为'gray'
-- `ax` (matplotlib axis): Matplotlib轴对象，默认为plt
-
-**示例**：
-```python
-import cv2
-
-image = cv2.imread('image.png', cv2.IMREAD_GRAYSCALE)
-CFAVisual.plot_2d_image(image, cmap='viridis')
-plt.show()
-```
-
-##### 5. plot_3d_image(img, ax=plt)
-
-**描述**：显示3D图像（点云形式）。
-
-**参数**：
-- `img` (numpy.ndarray): 3D或4D点数组
-  - 形状为 (N, 3): 只有坐标
-  - 形状为 (N, 4): 坐标+值
-- `ax` (matplotlib axis): Matplotlib轴对象
-
-**显示效果**：
-- 使用viridis色图
-- 点大小根据值缩放
-- 3D散点图
-
-**示例**：
-```python
-# 带值的3D点云
-points = np.random.rand(1000, 4)
-CFAVisual.plot_3d_image(points)
-plt.show()
-```
-
-## 与FASample配合使用
-
-`CFAVisual` 通常与 `CFASample` 类配合使用，用于可视化生成的分形图案。
-
-```python
-from FreeAeonFractal.FASample import CFASample
-from FreeAeonFractal.CFAVisual import CFAVisual
-
-# 生成并可视化康托集
-cantor = CFASample.get_Cantor_Set(iterations=2000)
-CFAVisual.plot_1d_points(cantor)
-plt.title('Cantor Set (D ≈ 0.63)')
-plt.show()
-
-# 生成并可视化谢尔宾斯基三角形
-triangle = CFASample.get_Sierpinski_Triangle(iterations=10000)
-CFAVisual.plot_2d_points(triangle)
-plt.title('Sierpinski Triangle (D ≈ 1.58)')
-plt.axis('equal')
-plt.show()
-
-# 生成并可视化巴恩斯利蕨
-fern = CFASample.get_Barnsley_Fern(iterations=50000)
-CFAVisual.plot_2d_points(fern)
-plt.title('Barnsley Fern (D ≈ 1.67)')
-plt.axis('equal')
-plt.show()
-```
-
-## 重要提示
-
-1. **坐标轴**：
-   - 1D点集：y轴自动隐藏
-   - 2D点集：建议使用 `plt.axis('equal')` 保持比例
-   - 3D点集：需要创建3D轴
-
-2. **点的大小**：
-   - 默认 s=1，适合大量点
-   - 可以通过修改源码调整大小
-
-3. **颜色**：
-   - 1D/2D/3D点集默认红色
-   - 图像可通过cmap参数调整
-
-4. **性能**：
-   - 大量点（>100万）可能较慢
-   - 建议适当减少点数
-
-## 依赖
-
-```python
-import matplotlib.pyplot as plt
-import numpy as np
-from mpl_toolkits.mplot3d import Axes3D  # 3D可视化需要
-```
-
-## 参考文献
-
-- Mandelbrot, B. B. (1982). The Fractal Geometry of Nature.
+1. **ax参数**：所有方法接受 `ax=plt`（直接使用pyplot）或显式坐标轴对象
+2. **点密度**：点数超过100K时建议先降采样再显示
+3. **3D投影**：`plot_3d_points` 需要 `projection='3d'` 坐标轴；`ax=None` 时自动创建

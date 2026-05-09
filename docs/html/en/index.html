@@ -151,16 +151,6 @@
             font-size: 0.9em;
         }
 
-        .badge {
-            display: inline-block;
-            padding: 4px 10px;
-            background: #667eea;
-            color: white;
-            border-radius: 12px;
-            font-size: 0.8em;
-            margin-right: 5px;
-        }
-
         table {
             width: 100%;
             border-collapse: collapse;
@@ -219,7 +209,7 @@
     <div class="container">
         <header>
             <h1>FreeAeon-Fractal</h1>
-            <p>Python Toolkit for Multifractal Spectra, Fractal Dimensions, Lacunarity, and Fourier Spectra</p>
+            <p>The first GPU-accelerated Python toolkit for Multifractal Spectra, Fractal Dimensions, Lacunarity, and Fourier Spectra</p>
         </header>
 
         <nav>
@@ -281,6 +271,8 @@
                     <li>Python 3.6+</li>
                     <li>OpenCV (cv2) support</li>
                 </ul>
+                <p style="margin-top:10px;"><strong>For series analysis:</strong> <code>pip install MFDFA</code></p>
+                <p><strong>For GPU acceleration:</strong> <code>pip install torch --index-url https://download.pytorch.org/whl/cu118</code></p>
             </section>
 
             <section id="features" class="section">
@@ -298,37 +290,37 @@
                         <tr>
                             <td><strong>Multifractal</strong></td>
                             <td>CFAImageMFS</td>
-                            <td>2D image multifractal spectrum</td>
+                            <td>2D image multifractal spectrum, alpha map</td>
                             <td><a href="Multifractal-Spectrum-CFAImageMFS.html">View</a></td>
                         </tr>
                         <tr>
                             <td></td>
                             <td>CFASeriesMFS</td>
-                            <td>1D series multifractal spectrum</td>
+                            <td>1D series multifractal spectrum (MFDFA)</td>
                             <td><a href="Series-Multifractal-CFASeriesMFS.html">View</a></td>
                         </tr>
                         <tr>
                             <td><strong>Fractal Dimension</strong></td>
                             <td>CFAImageFD</td>
-                            <td>BC/DBC/SDBC methods</td>
+                            <td>BC/DBC/SDBC methods, batch processing</td>
                             <td><a href="Fractal-Dimension-CFAImageFD.html">View</a></td>
                         </tr>
                         <tr>
                             <td><strong>Lacunarity</strong></td>
                             <td>CFAImageLAC</td>
-                            <td>Gliding/Non-overlapping modes</td>
+                            <td>Gliding/Non-overlapping, integral image speedup</td>
                             <td><a href="Lacunarity-Analysis-CFAImageLAC.html">View</a></td>
                         </tr>
                         <tr>
                             <td><strong>Fourier Analysis</strong></td>
                             <td>CFAImageFourier</td>
-                            <td>Spectrum, filtering, reconstruction</td>
+                            <td>Spectrum, custom mask filtering, reconstruction</td>
                             <td><a href="Fourier-Analysis-CFAImageFourier.html">View</a></td>
                         </tr>
                         <tr>
                             <td><strong>Image Utils</strong></td>
                             <td>CFAImage</td>
-                            <td>Blocking, binarization, ROI</td>
+                            <td>Blocking, binarization, ROI by q</td>
                             <td><a href="Image-Utils-CFAImage.html">View</a></td>
                         </tr>
                         <tr>
@@ -340,13 +332,13 @@
                         <tr>
                             <td><strong>Sample Gen</strong></td>
                             <td>CFASample</td>
-                            <td>Classic fractal patterns (IFS)</td>
+                            <td>Cantor Set, Sierpinski, Barnsley Fern, Menger Sponge</td>
                             <td><a href="Fractal-Sample-Generator-CFASample.html">View</a></td>
                         </tr>
                         <tr>
                             <td><strong>GPU Accel</strong></td>
                             <td>*GPU versions</td>
-                            <td>5-20x speedup</td>
+                            <td>3–20× speedup for FD, MFS, LAC</td>
                             <td><a href="GPU-Acceleration.html">View</a></td>
                         </tr>
                     </tbody>
@@ -358,19 +350,14 @@
 
                 <h3>Multifractal Spectrum of an Image</h3>
                 <div class="code-block">
-                    <pre>import cv2
-import numpy as np
+                    <pre>import cv2, numpy as np
 from FreeAeonFractal.FAImageMFS import CFAImageMFS
 
-# Load image
 rgb_image = cv2.imread('./images/face.png')
 gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
 
-# Multifractal analysis
 MFS = CFAImageMFS(gray_image, q_list=np.linspace(-5, 5, 26))
 df_mass, df_fit, df_spec = MFS.get_mfs()
-
-# Visualize
 MFS.plot(df_mass, df_fit, df_spec)</pre>
                 </div>
 
@@ -379,48 +366,275 @@ MFS.plot(df_mass, df_fit, df_spec)</pre>
                     <pre>from FreeAeonFractal.FAImageFD import CFAImageFD
 from FreeAeonFractal.FAImage import CFAImage
 
-# Binarize
 bin_image, threshold = CFAImage.otsu_binarize(gray_image)
 
-# Calculate fractal dimensions
-fd_bc = CFAImageFD(bin_image).get_bc_fd()
-fd_dbc = CFAImageFD(gray_image).get_dbc_fd()
+fd_bc   = CFAImageFD(bin_image).get_bc_fd()
+fd_dbc  = CFAImageFD(gray_image).get_dbc_fd()
 fd_sdbc = CFAImageFD(gray_image).get_sdbc_fd()
 
-# Visualize (note: new API includes gray_image parameter)
 CFAImageFD.plot(rgb_image, gray_image, bin_image, fd_bc, fd_dbc, fd_sdbc)</pre>
+                </div>
+
+                <h3>Local Alpha Map</h3>
+                <div class="code-block">
+                    <pre>MFS = CFAImageMFS(gray_image)
+alpha_map, info = MFS.compute_alpha_map()
+CFAImageMFS.plot_alpha_map(alpha_map)</pre>
+                </div>
+
+                <h3>Lacunarity Analysis</h3>
+                <div class="code-block">
+                    <pre>from FreeAeonFractal.FAImageLAC import CFAImageLAC
+
+calc = CFAImageLAC(gray_image, partition_mode="gliding")
+lac_result = calc.get_lacunarity()
+fit_result = calc.fit_lacunarity(lac_result)
+calc.plot(lac_result, fit_result)</pre>
+                </div>
+
+                <h3>Fourier Analysis</h3>
+                <div class="code-block">
+                    <pre>from FreeAeonFractal.FAImageFourier import CFAImageFourier
+
+fourier = CFAImageFourier(rgb_image)
+mag_disp, phase_disp = fourier.get_display_spectrum(alpha=1.5)
+full_reconstructed = fourier.get_reconstruct()
+fourier.plot(raw_magnitude_disp=mag_disp, raw_phase_disp=phase_disp,
+             full_reconstructed=full_reconstructed)</pre>
                 </div>
 
                 <h3>Multifractal Spectrum of a Time Series</h3>
                 <div class="code-block">
                     <pre>from FreeAeonFractal.FASeriesMFS import CFASeriesMFS
 
-# Generate random walk
 x = np.cumsum(np.random.randn(5000))
-
-# Multifractal analysis
 mfs = CFASeriesMFS(x, q_list=np.linspace(-5, 5, 21))
 df_mfs = mfs.get_mfs()
-
-# Visualize
 mfs.plot(df_mfs)</pre>
                 </div>
             </section>
 
             <section class="section">
+                <h2>Command Line Usage</h2>
+                <div class="code-block">
+                    <pre>python demo.py --mode mfs        --image ./images/face.png
+python demo.py --mode fd         --image ./images/fractal.png
+python demo.py --mode alpha      --image ./images/face.png
+python demo.py --mode lacunarity --image ./images/fractal.png
+python demo.py --mode fourier    --image ./images/face.png
+python demo.py --mode series</pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>demo.py Examples</h2>
+                <p>Complete Python code from each <code>--mode</code> in <code>demo.py</code>.</p>
+
+                <h3>mode=fd — Fractal Dimension</h3>
+                <div class="code-block">
+                    <pre>import cv2, time, numpy as np
+from FreeAeonFractal.FAImageFD import CFAImageFD
+from FreeAeonFractal.FAImage import CFAImage
+
+rgb_image  = cv2.cvtColor(cv2.imread('./images/face.png'), cv2.COLOR_BGR2RGB)
+gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_RGB2GRAY)
+bin_image, threshold = CFAImage.otsu_binarize(gray_image)
+max_scales = 32
+
+# --- Single image ---
+t0 = time.time()
+fd_bc   = CFAImageFD(bin_image,  max_scales=max_scales).get_bc_fd(corp_type=-1)
+fd_dbc  = CFAImageFD(gray_image, max_scales=max_scales).get_dbc_fd(corp_type=-1)
+fd_sdbc = CFAImageFD(gray_image, max_scales=max_scales).get_sdbc_fd(corp_type=-1)
+print(f"Single (1) img: {time.time()-t0:.3f}s")
+print("  BC:", fd_bc['fd'], " DBC:", fd_dbc['fd'], " SDBC:", fd_sdbc['fd'])
+CFAImageFD.plot(rgb_image, gray_image, bin_image, fd_bc, fd_dbc, fd_sdbc)
+
+# --- Batch (100 images) ---
+t0 = time.time()
+bc_list   = CFAImageFD.get_batch_bc([bin_image]*100,   max_scales=max_scales, with_progress=False)
+dbc_list  = CFAImageFD.get_batch_dbc([gray_image]*100,  max_scales=max_scales, with_progress=False)
+sdbc_list = CFAImageFD.get_batch_sdbc([gray_image]*100, max_scales=max_scales, with_progress=False)
+print(f"Batch (100 imgs): {time.time()-t0:.3f}s")
+print(f"  BC[99]={bc_list[99]['fd']:.4f}  DBC[99]={dbc_list[99]['fd']:.4f}  SDBC[99]={sdbc_list[99]['fd']:.4f}")
+CFAImageFD.plot(rgb_image, gray_image, bin_image, bc_list[99], dbc_list[99], sdbc_list[99])</pre>
+                </div>
+
+                <h3>mode=mfs — Multifractal Spectrum</h3>
+                <div class="code-block">
+                    <pre>import cv2, time, numpy as np
+from FreeAeonFractal.FAImageMFS import CFAImageMFS
+
+rgb_image  = cv2.cvtColor(cv2.imread('./images/face.png'), cv2.COLOR_BGR2RGB)
+gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_RGB2GRAY)
+q_list = np.linspace(-10, 10, 101)
+
+# --- Single image ---
+t0 = time.time()
+MFS = CFAImageMFS(gray_image, q_list=q_list)
+df_mass, df_fit, df_spec = MFS.get_mfs()
+print(f"Single MFS: {time.time()-t0:.3f}s"); print(df_fit.head())
+MFS.plot(df_mass, df_fit, df_spec)
+
+# --- Batch (20 images) ---
+t0 = time.time()
+batch_results = CFAImageMFS.get_batch_mfs(
+    [gray_image]*20, with_progress=False, q_list=q_list, corp_type=-1,
+    bg_reverse=False, bg_threshold=0.01, bg_otsu=False, max_scales=80,
+    min_points=6, use_middle_scales=False, if_auto_line_fit=False,
+    fit_scale_frac=(0.3, 0.7), auto_fit_min_len_ratio=0.6, cap_d0_at_2=False)
+df_mass1, df_fit1, df_spec1 = batch_results[0]
+print(f"Batch MFS (20): {time.time()-t0:.3f}s"); print(df_fit1.head())
+MFS.plot(df_mass1, df_fit1, df_spec1)</pre>
+                </div>
+
+                <h3>mode=alpha — Local Multifractal α-map</h3>
+                <div class="code-block">
+                    <pre>import cv2, time, numpy as np
+from FreeAeonFractal.FAImageMFS import CFAImageMFS
+
+rgb_image  = cv2.cvtColor(cv2.imread('./images/face.png'), cv2.COLOR_BGR2RGB)
+gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_RGB2GRAY)
+q_list = np.linspace(-5, 5, 51)
+scales = list(range(1, 100))
+
+# --- Single image ---
+t0 = time.time()
+MFS = CFAImageMFS(gray_image, q_list=q_list)
+alpha_map, info = MFS.compute_alpha_map(scales=scales)
+print(f"Single alpha_map: {time.time()-t0:.3f}s")
+print("  alpha map:", alpha_map, "\n  scale info:", info)
+CFAImageMFS.plot_alpha_map(alpha_map)
+
+# --- Batch (20 images) ---
+t0 = time.time()
+batch_alpha_map = CFAImageMFS.compute_alpha_map_batch([gray_image]*20, with_progress=False, scales=scales)
+alpha_maps, infos = batch_alpha_map[0], batch_alpha_map[1]
+print(f"Batch alpha_map (20): {time.time()-t0:.3f}s")
+CFAImageMFS.plot_alpha_map(alpha_maps[0])</pre>
+                </div>
+
+                <h3>mode=lacunarity — Lacunarity Analysis</h3>
+                <div class="code-block">
+                    <pre>import cv2, time
+from FreeAeonFractal.FAImageLAC import CFAImageLAC
+
+rgb_image  = cv2.cvtColor(cv2.imread('./images/fractal.png'), cv2.COLOR_BGR2RGB)
+gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_RGB2GRAY)
+
+lacunarity = CFAImageLAC(gray_image, max_scales=256, with_progress=True)
+
+# --- Single image ---
+t0 = time.time()
+lac_gray = lacunarity.get_lacunarity(corp_type=-1, use_binary_mass=False, include_zero=True)
+fit_gray = lacunarity.fit_lacunarity(lac_gray)
+print(f"Single lacunarity: {time.time()-t0:.3f}s")
+print("  slope:", fit_gray["slope"], " R:", fit_gray["r_value"], " P:", fit_gray["p_value"])
+lacunarity.plot(lac_gray, fit_gray)
+
+# --- Batch (100 images) ---
+t0 = time.time()
+batchs = CFAImageLAC.get_batch_lacunarity(
+    [gray_image]*100, scales_mode="powers", partition_mode="gliding",
+    use_binary_mass=False, with_progress=False)
+fits = CFAImageLAC.fit_batch_lacunarity(batchs)
+print(f"Batch lacunarity (100): {time.time()-t0:.3f}s")
+print("  slope:", fits[99]["slope"], " R:", fits[99]["r_value"])
+lacunarity.plot(batchs[99], fits[99])</pre>
+                </div>
+
+                <h3>mode=fourier — Fourier Analysis</h3>
+                <div class="code-block">
+                    <pre>import cv2, numpy as np
+from FreeAeonFractal.FAImageFourier import CFAImageFourier
+
+rgb_image = cv2.cvtColor(cv2.imread('./images/face.png'), cv2.COLOR_BGR2RGB)
+fourier = CFAImageFourier(rgb_image)  # supports grayscale and RGB
+
+raw_mag, raw_phase = fourier.get_raw_spectrum()
+raw_mag_disp, raw_phase_disp = fourier.get_display_spectrum(alpha=1.5)
+
+# Custom mask: keep odd-frequency components
+h, w = raw_mag[0].shape
+Y, X = np.ogrid[:h, :w]
+mask = ((X % 2 == 1) & (Y % 2 == 1)).astype(np.uint8)
+
+customized_mag_list   = raw_mag   * mask
+customized_phase_list = raw_phase * mask
+customized_mag_disp, customized_phase_disp = fourier.get_display_spectrum(
+    alpha=1.5, magnitude=customized_mag_list, phase=customized_phase_list)
+
+full_reconstructed   = fourier.get_reconstruct()
+masked_reconstructed = fourier.extract_by_freq_mask(mask)
+
+fourier.plot(raw_mag_disp, raw_phase_disp,
+             customized_mag_disp, customized_phase_disp,
+             full_reconstructed, masked_reconstructed)
+print(masked_reconstructed)</pre>
+                </div>
+
+                <h3>mode=series — Series Multifractal Spectrum</h3>
+                <div class="code-block">
+                    <pre>import numpy as np
+from FreeAeonFractal.FASeriesMFS import CFASeriesMFS
+
+x = np.cumsum(np.random.randn(5000))   # random walk example
+mfs = CFASeriesMFS(x)
+df_mfs = mfs.get_mfs()
+mfs.plot(df_mfs)
+print(df_mfs)</pre>
+                </div>
+            </section>
+
+            <section class="section">
                 <h2>Documentation Navigation</h2>
-                <p>Access detailed documentation for each module:</p>
-                <ul style="line-height: 2;">
-                    <li><a href="Multifractal-Spectrum-CFAImageMFS.html">Multifractal Spectrum Analysis - CFAImageMFS</a></li>
-                    <li><a href="Series-Multifractal-CFASeriesMFS.html">Series Multifractal Spectrum - CFASeriesMFS</a></li>
-                    <li><a href="Fractal-Dimension-CFAImageFD.html">Fractal Dimension Analysis - CFAImageFD</a></li>
-                    <li><a href="Lacunarity-Analysis-CFAImageLAC.html">Lacunarity Analysis - CFAImageLAC</a></li>
-                    <li><a href="Fourier-Analysis-CFAImageFourier.html">Fourier Analysis - CFAImageFourier</a></li>
-                    <li><a href="Image-Utils-CFAImage.html">Image Utilities - CFAImage</a></li>
-                    <li><a href="Visualization-Tools-CFAVisual.html">Visualization Tools - CFAVisual</a></li>
-                    <li><a href="Fractal-Sample-Generator-CFASample.html">Fractal Sample Generator - CFASample</a></li>
-                    <li><a href="GPU-Acceleration.html">GPU Acceleration</a></li>
-                </ul>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>🎯 Multifractal Spectrum</h4>
+                        <p>2D image MFS with fixed-ROI normalization</p>
+                        <a href="Multifractal-Spectrum-CFAImageMFS.html">CFAImageMFS →</a>
+                    </div>
+                    <div class="feature-card">
+                        <h4>📈 Series MFS</h4>
+                        <p>1D time series MFDFA analysis</p>
+                        <a href="Series-Multifractal-CFASeriesMFS.html">CFASeriesMFS →</a>
+                    </div>
+                    <div class="feature-card">
+                        <h4>📏 Fractal Dimension</h4>
+                        <p>BC, DBC, SDBC methods</p>
+                        <a href="Fractal-Dimension-CFAImageFD.html">CFAImageFD →</a>
+                    </div>
+                    <div class="feature-card">
+                        <h4>🔍 Lacunarity</h4>
+                        <p>Spatial heterogeneity analysis</p>
+                        <a href="Lacunarity-Analysis-CFAImageLAC.html">CFAImageLAC →</a>
+                    </div>
+                    <div class="feature-card">
+                        <h4>🌊 Fourier Analysis</h4>
+                        <p>Frequency domain filtering</p>
+                        <a href="Fourier-Analysis-CFAImageFourier.html">CFAImageFourier →</a>
+                    </div>
+                    <div class="feature-card">
+                        <h4>🛠 Image Utilities</h4>
+                        <p>Blocking, binarization, ROI by q</p>
+                        <a href="Image-Utils-CFAImage.html">CFAImage →</a>
+                    </div>
+                    <div class="feature-card">
+                        <h4>📊 Visualization</h4>
+                        <p>1D/2D/3D point &amp; image display</p>
+                        <a href="Visualization-Tools-CFAVisual.html">CFAVisual →</a>
+                    </div>
+                    <div class="feature-card">
+                        <h4>🌀 Sample Generator</h4>
+                        <p>Cantor Set, Sierpinski, Barnsley Fern, Menger Sponge</p>
+                        <a href="Fractal-Sample-Generator-CFASample.html">CFASample →</a>
+                    </div>
+                    <div class="feature-card">
+                        <h4>⚡ GPU Acceleration</h4>
+                        <p>3–20× speedup for all modules</p>
+                        <a href="GPU-Acceleration.html">GPU →</a>
+                    </div>
+                </div>
             </section>
         </main>
 

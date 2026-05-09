@@ -5,21 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FreeAeon-Fractal 使用文档</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Microsoft YaHei', '微软雅黑', sans-serif;
             line-height: 1.6;
             color: #333;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 20px;
         }
-
         .container {
             max-width: 1200px;
             margin: 0 auto;
@@ -28,74 +22,22 @@
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             overflow: hidden;
         }
-
         header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             padding: 40px 30px;
             text-align: center;
         }
-
-        header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            font-weight: 300;
-        }
-
-        header p {
-            font-size: 1.2em;
-            opacity: 0.9;
-        }
-
-        nav {
-            background: #f8f9fa;
-            padding: 20px 30px;
-            border-bottom: 2px solid #e9ecef;
-        }
-
-        nav a {
-            display: inline-block;
-            margin-right: 20px;
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 500;
-            transition: color 0.3s;
-        }
-
-        nav a:hover {
-            color: #764ba2;
-        }
-
-        main {
-            padding: 40px 30px;
-        }
-
-        .section {
-            margin-bottom: 50px;
-        }
-
-        h2 {
-            color: #667eea;
-            font-size: 2em;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 3px solid #667eea;
-        }
-
-        h3 {
-            color: #764ba2;
-            font-size: 1.5em;
-            margin-top: 30px;
-            margin-bottom: 15px;
-        }
-
-        .feature-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-top: 20px;
-        }
-
+        header h1 { font-size: 2.5em; margin-bottom: 10px; font-weight: 300; }
+        header p { font-size: 1.2em; opacity: 0.9; }
+        nav { background: #f8f9fa; padding: 20px 30px; border-bottom: 2px solid #e9ecef; }
+        nav a { display: inline-block; margin-right: 20px; color: #667eea; text-decoration: none; font-weight: 500; }
+        nav a:hover { color: #764ba2; }
+        main { padding: 40px 30px; }
+        .section { margin-bottom: 50px; }
+        h2 { color: #667eea; font-size: 2em; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 3px solid #667eea; }
+        h3 { color: #764ba2; font-size: 1.5em; margin-top: 30px; margin-bottom: 15px; }
+        .feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 20px; }
         .feature-card {
             background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
             padding: 25px;
@@ -103,123 +45,28 @@
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             transition: transform 0.3s, box-shadow 0.3s;
         }
-
-        .feature-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
-        }
-
-        .feature-card h4 {
-            color: #667eea;
-            font-size: 1.3em;
-            margin-bottom: 10px;
-        }
-
-        .feature-card p {
-            color: #555;
-            font-size: 0.95em;
-            margin-bottom: 15px;
-        }
-
-        .feature-card a {
-            display: inline-block;
-            padding: 8px 16px;
-            background: #667eea;
-            color: white;
-            text-decoration: none;
-            border-radius: 5px;
-            font-size: 0.9em;
-            transition: background 0.3s;
-        }
-
-        .feature-card a:hover {
-            background: #764ba2;
-        }
-
-        .code-block {
-            background: #f8f9fa;
-            border-left: 4px solid #667eea;
-            padding: 20px;
-            margin: 20px 0;
-            border-radius: 5px;
-            overflow-x: auto;
-        }
-
-        pre {
-            margin: 0;
-            font-family: 'Courier New', monospace;
-            font-size: 0.9em;
-        }
-
-        .badge {
-            display: inline-block;
-            padding: 4px 10px;
-            background: #667eea;
-            color: white;
-            border-radius: 12px;
-            font-size: 0.8em;
-            margin-right: 5px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-            background: white;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        th, td {
-            padding: 12px 15px;
-            text-align: left;
-            border-bottom: 1px solid #e9ecef;
-        }
-
-        th {
-            background: #667eea;
-            color: white;
-            font-weight: 600;
-        }
-
-        tr:hover {
-            background: #f8f9fa;
-        }
-
-        .install-box {
-            background: #1e1e1e;
-            color: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            margin: 20px 0;
-        }
-
-        .install-box code {
-            color: #9cdcfe;
-            font-family: 'Courier New', monospace;
-        }
-
-        footer {
-            background: #2c3e50;
-            color: white;
-            padding: 30px;
-            text-align: center;
-        }
-
-        footer a {
-            color: #667eea;
-            text-decoration: none;
-        }
-
-        footer a:hover {
-            text-decoration: underline;
-        }
+        .feature-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15); }
+        .feature-card h4 { color: #667eea; font-size: 1.3em; margin-bottom: 10px; }
+        .feature-card p { color: #555; font-size: 0.95em; margin-bottom: 15px; }
+        .feature-card a { display: inline-block; padding: 8px 16px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; font-size: 0.9em; }
+        .feature-card a:hover { background: #764ba2; }
+        .code-block { background: #f8f9fa; border-left: 4px solid #667eea; padding: 20px; margin: 20px 0; border-radius: 5px; overflow-x: auto; }
+        pre { margin: 0; font-family: 'Courier New', monospace; font-size: 0.9em; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; background: white; box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #e9ecef; }
+        th { background: #667eea; color: white; font-weight: 600; }
+        tr:hover { background: #f8f9fa; }
+        .install-box { background: #1e1e1e; color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        .install-box code { color: #9cdcfe; font-family: 'Courier New', monospace; }
+        footer { background: #2c3e50; color: white; padding: 30px; text-align: center; }
+        footer a { color: #667eea; text-decoration: none; }
     </style>
 </head>
 <body>
     <div class="container">
         <header>
             <h1>FreeAeon-Fractal</h1>
-            <p>多重分形谱、分形维度、空隙度和傅里叶频谱分析工具包</p>
+            <p>第一个GPU加速的图像多重分形谱、分形维度、空隙度和傅里叶频谱Python工具包</p>
         </header>
 
         <nav>
@@ -235,38 +82,14 @@
                 <h2>应用领域</h2>
                 <table>
                     <thead>
-                        <tr>
-                            <th>领域</th>
-                            <th>应用</th>
-                            <th>相关模块</th>
-                        </tr>
+                        <tr><th>领域</th><th>应用</th><th>相关模块</th></tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td>医学影像</td>
-                            <td>组织复杂度、异质性分析</td>
-                            <td>多重分形谱、分形维度</td>
-                        </tr>
-                        <tr>
-                            <td>材料科学</td>
-                            <td>表面形貌、孔隙结构</td>
-                            <td>分形维度、空隙度</td>
-                        </tr>
-                        <tr>
-                            <td>金融分析</td>
-                            <td>价格波动、风险评估</td>
-                            <td>序列多重分形谱</td>
-                        </tr>
-                        <tr>
-                            <td>地球科学</td>
-                            <td>地形分析、植被分布</td>
-                            <td>分形维度、空隙度</td>
-                        </tr>
-                        <tr>
-                            <td>图像处理</td>
-                            <td>纹理分类、图像分割</td>
-                            <td>所有模块</td>
-                        </tr>
+                        <tr><td>医学影像分析</td><td>组织复杂度、异质性分析</td><td>多重分形谱、分形维度</td></tr>
+                        <tr><td>材料科学</td><td>表面形貌、孔隙结构</td><td>分形维度、空隙度</td></tr>
+                        <tr><td>金融分析</td><td>价格波动、风险评估</td><td>序列多重分形谱</td></tr>
+                        <tr><td>地球科学</td><td>地形分析、植被分布</td><td>分形维度、空隙度</td></tr>
+                        <tr><td>图像处理</td><td>纹理分类、图像分割</td><td>所有模块</td></tr>
                     </tbody>
                 </table>
             </section>
@@ -281,74 +104,26 @@
                     <li>Python 3.6+</li>
                     <li>OpenCV (cv2) 支持</li>
                 </ul>
+                <p style="margin-top:10px;"><strong>序列分析额外依赖：</strong> <code>pip install MFDFA</code></p>
+                <p><strong>GPU加速：</strong> <code>pip install torch --index-url https://download.pytorch.org/whl/cu118</code></p>
             </section>
 
             <section id="features" class="section">
                 <h2>功能模块</h2>
                 <table>
                     <thead>
-                        <tr>
-                            <th>模块</th>
-                            <th>类名</th>
-                            <th>功能</th>
-                            <th>文档</th>
-                        </tr>
+                        <tr><th>模块</th><th>类名</th><th>功能</th><th>文档</th></tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td><strong>多重分形谱</strong></td>
-                            <td>CFAImageMFS</td>
-                            <td>2D图像多重分形谱分析</td>
-                            <td><a href="多重分形谱分析-CFAImageMFS.html">查看</a></td>
-                        </tr>
-                        <tr>
-                            <td></td>
-                            <td>CFASeriesMFS</td>
-                            <td>1D序列多重分形谱分析</td>
-                            <td><a href="序列多重分形谱-CFASeriesMFS.html">查看</a></td>
-                        </tr>
-                        <tr>
-                            <td><strong>分形维度</strong></td>
-                            <td>CFAImageFD</td>
-                            <td>BC/DBC/SDBC三种方法</td>
-                            <td><a href="分形维度分析-CFAImageFD.html">查看</a></td>
-                        </tr>
-                        <tr>
-                            <td><strong>空隙度分析</strong></td>
-                            <td>CFAImageLAC</td>
-                            <td>Gliding/Non-overlapping模式</td>
-                            <td><a href="空隙度分析-CFAImageLAC.html">查看</a></td>
-                        </tr>
-                        <tr>
-                            <td><strong>傅里叶分析</strong></td>
-                            <td>CFAImageFourier</td>
-                            <td>频谱分析、滤波、重构</td>
-                            <td><a href="傅里叶分析-CFAImageFourier.html">查看</a></td>
-                        </tr>
-                        <tr>
-                            <td><strong>图像工具</strong></td>
-                            <td>CFAImage</td>
-                            <td>分块、合并、二值化、ROI</td>
-                            <td><a href="图像工具-CFAImage.html">查看</a></td>
-                        </tr>
-                        <tr>
-                            <td><strong>可视化</strong></td>
-                            <td>CFAVisual</td>
-                            <td>1D/2D/3D点集和图像显示</td>
-                            <td><a href="可视化工具-CFAVisual.html">查看</a></td>
-                        </tr>
-                        <tr>
-                            <td><strong>样本生成</strong></td>
-                            <td>CFASample</td>
-                            <td>经典分形图案生成（IFS）</td>
-                            <td><a href="分形样本生成-CFASample.html">查看</a></td>
-                        </tr>
-                        <tr>
-                            <td><strong>GPU加速</strong></td>
-                            <td>CFAImageMFSGPU等</td>
-                            <td>5-20倍性能提升</td>
-                            <td><a href="GPU加速版本.html">查看</a></td>
-                        </tr>
+                        <tr><td><strong>多重分形谱</strong></td><td>CFAImageMFS</td><td>2D图像多重分形谱、局部奇异度图</td><td><a href="多重分形谱分析-CFAImageMFS.html">查看</a></td></tr>
+                        <tr><td></td><td>CFASeriesMFS</td><td>1D序列多重分形谱（MFDFA）</td><td><a href="序列多重分形谱-CFASeriesMFS.html">查看</a></td></tr>
+                        <tr><td><strong>分形维度</strong></td><td>CFAImageFD</td><td>BC/DBC/SDBC方法、批量处理</td><td><a href="分形维度分析-CFAImageFD.html">查看</a></td></tr>
+                        <tr><td><strong>空隙度</strong></td><td>CFAImageLAC</td><td>滑动/非重叠盒、积分图像加速</td><td><a href="空隙度分析-CFAImageLAC.html">查看</a></td></tr>
+                        <tr><td><strong>傅里叶分析</strong></td><td>CFAImageFourier</td><td>频谱分析、自定义掩码滤波、重构</td><td><a href="傅里叶分析-CFAImageFourier.html">查看</a></td></tr>
+                        <tr><td><strong>图像工具</strong></td><td>CFAImage</td><td>分块、二值化、ROI提取</td><td><a href="图像工具-CFAImage.html">查看</a></td></tr>
+                        <tr><td><strong>可视化</strong></td><td>CFAVisual</td><td>1D/2D/3D点集和图像显示</td><td><a href="可视化工具-CFAVisual.html">查看</a></td></tr>
+                        <tr><td><strong>分形样本生成</strong></td><td>CFASample</td><td>康托集、谢尔宾斯基、巴恩斯利蕨、门格海绵</td><td><a href="分形样本生成-CFASample.html">查看</a></td></tr>
+                        <tr><td><strong>GPU加速</strong></td><td>*GPU版本</td><td>3–20×速度提升</td><td><a href="GPU加速版本.html">查看</a></td></tr>
                     </tbody>
                 </table>
             </section>
@@ -358,59 +133,296 @@
 
                 <h3>计算图像多重分形谱</h3>
                 <div class="code-block">
-                    <pre>import cv2
-import numpy as np
+                    <pre>import cv2, numpy as np
 from FreeAeonFractal.FAImageMFS import CFAImageMFS
 
-# 读取图像
 rgb_image = cv2.imread('./images/face.png')
 gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
 
-# 多重分形谱分析
 MFS = CFAImageMFS(gray_image, q_list=np.linspace(-5, 5, 26))
 df_mass, df_fit, df_spec = MFS.get_mfs()
-
-# 可视化
 MFS.plot(df_mass, df_fit, df_spec)</pre>
                 </div>
 
-                <h3>计算图像分形维度</h3>
+                <h3>计算分形维度</h3>
                 <div class="code-block">
                     <pre>from FreeAeonFractal.FAImageFD import CFAImageFD
 from FreeAeonFractal.FAImage import CFAImage
 
-# 二值化
 bin_image, threshold = CFAImage.otsu_binarize(gray_image)
 
-# 计算分形维度
-fd_bc = CFAImageFD(bin_image).get_bc_fd()
-fd_dbc = CFAImageFD(gray_image).get_dbc_fd()
+fd_bc   = CFAImageFD(bin_image).get_bc_fd()
+fd_dbc  = CFAImageFD(gray_image).get_dbc_fd()
 fd_sdbc = CFAImageFD(gray_image).get_sdbc_fd()
 
-# 可视化（新版本包含gray_img参数）
 CFAImageFD.plot(rgb_image, gray_image, bin_image, fd_bc, fd_dbc, fd_sdbc)</pre>
+                </div>
+
+                <h3>局部奇异度图</h3>
+                <div class="code-block">
+                    <pre>MFS = CFAImageMFS(gray_image)
+alpha_map, info = MFS.compute_alpha_map()
+CFAImageMFS.plot_alpha_map(alpha_map)</pre>
+                </div>
+
+                <h3>空隙度分析</h3>
+                <div class="code-block">
+                    <pre>from FreeAeonFractal.FAImageLAC import CFAImageLAC
+
+calc = CFAImageLAC(gray_image, partition_mode="gliding")
+lac_result = calc.get_lacunarity()
+fit_result = calc.fit_lacunarity(lac_result)
+calc.plot(lac_result, fit_result)</pre>
+                </div>
+
+                <h3>傅里叶分析</h3>
+                <div class="code-block">
+                    <pre>from FreeAeonFractal.FAImageFourier import CFAImageFourier
+
+fourier = CFAImageFourier(rgb_image)
+mag_disp, phase_disp = fourier.get_display_spectrum(alpha=1.5)
+full_reconstructed = fourier.get_reconstruct()
+fourier.plot(raw_magnitude_disp=mag_disp, raw_phase_disp=phase_disp,
+             full_reconstructed=full_reconstructed)</pre>
+                </div>
+
+                <h3>序列多重分形谱</h3>
+                <div class="code-block">
+                    <pre>from FreeAeonFractal.FASeriesMFS import CFASeriesMFS
+
+x = np.cumsum(np.random.randn(5000))
+mfs = CFASeriesMFS(x, q_list=np.linspace(-5, 5, 21))
+df_mfs = mfs.get_mfs()
+mfs.plot(df_mfs)</pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>命令行使用</h2>
+                <div class="code-block">
+                    <pre>python demo.py --mode mfs        --image ./images/face.png
+python demo.py --mode fd         --image ./images/fractal.png
+python demo.py --mode alpha      --image ./images/face.png
+python demo.py --mode lacunarity --image ./images/fractal.png
+python demo.py --mode fourier    --image ./images/face.png
+python demo.py --mode series</pre>
+                </div>
+            </section>
+
+            <section class="section">
+                <h2>demo.py 完整示例</h2>
+                <p>以下为 <code>demo.py</code> 中各 <code>--mode</code> 对应的完整Python代码。</p>
+
+                <h3>mode=fd — 分形维度</h3>
+                <div class="code-block">
+                    <pre>import cv2, time, numpy as np
+from FreeAeonFractal.FAImageFD import CFAImageFD
+from FreeAeonFractal.FAImage import CFAImage
+
+rgb_image  = cv2.cvtColor(cv2.imread('./images/face.png'), cv2.COLOR_BGR2RGB)
+gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_RGB2GRAY)
+bin_image, threshold = CFAImage.otsu_binarize(gray_image)
+max_scales = 32
+
+# --- 单张图像 ---
+t0 = time.time()
+fd_bc   = CFAImageFD(bin_image,  max_scales=max_scales).get_bc_fd(corp_type=-1)
+fd_dbc  = CFAImageFD(gray_image, max_scales=max_scales).get_dbc_fd(corp_type=-1)
+fd_sdbc = CFAImageFD(gray_image, max_scales=max_scales).get_sdbc_fd(corp_type=-1)
+print(f"单张图像: {time.time()-t0:.3f}s")
+print("  BC:", fd_bc['fd'], " DBC:", fd_dbc['fd'], " SDBC:", fd_sdbc['fd'])
+CFAImageFD.plot(rgb_image, gray_image, bin_image, fd_bc, fd_dbc, fd_sdbc)
+
+# --- 批量（100张）---
+t0 = time.time()
+bc_list   = CFAImageFD.get_batch_bc([bin_image]*100,   max_scales=max_scales, with_progress=False)
+dbc_list  = CFAImageFD.get_batch_dbc([gray_image]*100,  max_scales=max_scales, with_progress=False)
+sdbc_list = CFAImageFD.get_batch_sdbc([gray_image]*100, max_scales=max_scales, with_progress=False)
+print(f"批量（100张）: {time.time()-t0:.3f}s")
+print(f"  BC[99]={bc_list[99]['fd']:.4f}  DBC[99]={dbc_list[99]['fd']:.4f}  SDBC[99]={sdbc_list[99]['fd']:.4f}")
+CFAImageFD.plot(rgb_image, gray_image, bin_image, bc_list[99], dbc_list[99], sdbc_list[99])</pre>
+                </div>
+
+                <h3>mode=mfs — 多重分形谱</h3>
+                <div class="code-block">
+                    <pre>import cv2, time, numpy as np
+from FreeAeonFractal.FAImageMFS import CFAImageMFS
+
+rgb_image  = cv2.cvtColor(cv2.imread('./images/face.png'), cv2.COLOR_BGR2RGB)
+gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_RGB2GRAY)
+q_list = np.linspace(-10, 10, 101)
+
+# --- 单张图像 ---
+t0 = time.time()
+MFS = CFAImageMFS(gray_image, q_list=q_list)
+df_mass, df_fit, df_spec = MFS.get_mfs()
+print(f"单张MFS: {time.time()-t0:.3f}s"); print(df_fit.head())
+MFS.plot(df_mass, df_fit, df_spec)
+
+# --- 批量（20张）---
+t0 = time.time()
+batch_results = CFAImageMFS.get_batch_mfs(
+    [gray_image]*20, with_progress=False, q_list=q_list, corp_type=-1,
+    bg_reverse=False, bg_threshold=0.01, bg_otsu=False, max_scales=80,
+    min_points=6, use_middle_scales=False, if_auto_line_fit=False,
+    fit_scale_frac=(0.3, 0.7), auto_fit_min_len_ratio=0.6, cap_d0_at_2=False)
+df_mass1, df_fit1, df_spec1 = batch_results[0]
+print(f"批量MFS（20张）: {time.time()-t0:.3f}s"); print(df_fit1.head())
+MFS.plot(df_mass1, df_fit1, df_spec1)</pre>
+                </div>
+
+                <h3>mode=alpha — 局部奇异度图</h3>
+                <div class="code-block">
+                    <pre>import cv2, time, numpy as np
+from FreeAeonFractal.FAImageMFS import CFAImageMFS
+
+rgb_image  = cv2.cvtColor(cv2.imread('./images/face.png'), cv2.COLOR_BGR2RGB)
+gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_RGB2GRAY)
+q_list = np.linspace(-5, 5, 51)
+scales = list(range(1, 100))
+
+# --- 单张图像 ---
+t0 = time.time()
+MFS = CFAImageMFS(gray_image, q_list=q_list)
+alpha_map, info = MFS.compute_alpha_map(scales=scales)
+print(f"单张alpha_map: {time.time()-t0:.3f}s")
+print("  alpha map:", alpha_map, "\n  scale info:", info)
+CFAImageMFS.plot_alpha_map(alpha_map)
+
+# --- 批量（20张）---
+t0 = time.time()
+batch_alpha_map = CFAImageMFS.compute_alpha_map_batch([gray_image]*20, with_progress=False, scales=scales)
+alpha_maps, infos = batch_alpha_map[0], batch_alpha_map[1]
+print(f"批量alpha_map（20张）: {time.time()-t0:.3f}s")
+CFAImageMFS.plot_alpha_map(alpha_maps[0])</pre>
+                </div>
+
+                <h3>mode=lacunarity — 空隙度分析</h3>
+                <div class="code-block">
+                    <pre>import cv2, time
+from FreeAeonFractal.FAImageLAC import CFAImageLAC
+
+rgb_image  = cv2.cvtColor(cv2.imread('./images/fractal.png'), cv2.COLOR_BGR2RGB)
+gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_RGB2GRAY)
+
+lacunarity = CFAImageLAC(gray_image, max_scales=256, with_progress=True)
+
+# --- 单张图像 ---
+t0 = time.time()
+lac_gray = lacunarity.get_lacunarity(corp_type=-1, use_binary_mass=False, include_zero=True)
+fit_gray = lacunarity.fit_lacunarity(lac_gray)
+print(f"单张空隙度: {time.time()-t0:.3f}s")
+print("  斜率:", fit_gray["slope"], " R:", fit_gray["r_value"], " P:", fit_gray["p_value"])
+lacunarity.plot(lac_gray, fit_gray)
+
+# --- 批量（100张）---
+t0 = time.time()
+batchs = CFAImageLAC.get_batch_lacunarity(
+    [gray_image]*100, scales_mode="powers", partition_mode="gliding",
+    use_binary_mass=False, with_progress=False)
+fits = CFAImageLAC.fit_batch_lacunarity(batchs)
+print(f"批量空隙度（100张）: {time.time()-t0:.3f}s")
+print("  斜率:", fits[99]["slope"], " R:", fits[99]["r_value"])
+lacunarity.plot(batchs[99], fits[99])</pre>
+                </div>
+
+                <h3>mode=fourier — 傅里叶分析</h3>
+                <div class="code-block">
+                    <pre>import cv2, numpy as np
+from FreeAeonFractal.FAImageFourier import CFAImageFourier
+
+rgb_image = cv2.cvtColor(cv2.imread('./images/face.png'), cv2.COLOR_BGR2RGB)
+fourier = CFAImageFourier(rgb_image)  # 支持灰度图和RGB图
+
+raw_mag, raw_phase = fourier.get_raw_spectrum()
+raw_mag_disp, raw_phase_disp = fourier.get_display_spectrum(alpha=1.5)
+
+# 创建自定义频率掩码（示例：保留奇数频率分量）
+h, w = raw_mag[0].shape
+Y, X = np.ogrid[:h, :w]
+mask = ((X % 2 == 1) & (Y % 2 == 1)).astype(np.uint8)
+
+customized_mag_list   = raw_mag   * mask
+customized_phase_list = raw_phase * mask
+customized_mag_disp, customized_phase_disp = fourier.get_display_spectrum(
+    alpha=1.5, magnitude=customized_mag_list, phase=customized_phase_list)
+
+full_reconstructed   = fourier.get_reconstruct()
+masked_reconstructed = fourier.extract_by_freq_mask(mask)
+
+fourier.plot(raw_mag_disp, raw_phase_disp,
+             customized_mag_disp, customized_phase_disp,
+             full_reconstructed, masked_reconstructed)
+print(masked_reconstructed)</pre>
+                </div>
+
+                <h3>mode=series — 序列多重分形谱</h3>
+                <div class="code-block">
+                    <pre>import numpy as np
+from FreeAeonFractal.FASeriesMFS import CFASeriesMFS
+
+x = np.cumsum(np.random.randn(5000))   # 随机游走示例数据
+mfs = CFASeriesMFS(x)
+df_mfs = mfs.get_mfs()
+mfs.plot(df_mfs)
+print(df_mfs)</pre>
                 </div>
             </section>
 
             <section class="section">
                 <h2>文档导航</h2>
-                <p>点击下方链接查看各模块的详细文档：</p>
-                <ul style="line-height: 2;">
-                    <li><a href="多重分形谱分析-CFAImageMFS.html">多重分形谱分析 - CFAImageMFS</a></li>
-                    <li><a href="序列多重分形谱-CFASeriesMFS.html">序列多重分形谱 - CFASeriesMFS</a></li>
-                    <li><a href="分形维度分析-CFAImageFD.html">分形维度分析 - CFAImageFD</a></li>
-                    <li><a href="空隙度分析-CFAImageLAC.html">空隙度分析 - CFAImageLAC</a></li>
-                    <li><a href="傅里叶分析-CFAImageFourier.html">傅里叶分析 - CFAImageFourier</a></li>
-                    <li><a href="图像工具-CFAImage.html">图像工具 - CFAImage</a></li>
-                    <li><a href="可视化工具-CFAVisual.html">可视化工具 - CFAVisual</a></li>
-                    <li><a href="分形样本生成-CFASample.html">分形样本生成 - CFASample</a></li>
-                    <li><a href="GPU加速版本.html">GPU加速版本</a></li>
-                </ul>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>🎯 多重分形谱</h4>
+                        <p>固定ROI归一化的2D图像MFS分析</p>
+                        <a href="多重分形谱分析-CFAImageMFS.html">CFAImageMFS →</a>
+                    </div>
+                    <div class="feature-card">
+                        <h4>📈 序列多重分形</h4>
+                        <p>1D时间序列MFDFA分析</p>
+                        <a href="序列多重分形谱-CFASeriesMFS.html">CFASeriesMFS →</a>
+                    </div>
+                    <div class="feature-card">
+                        <h4>📏 分形维度</h4>
+                        <p>BC、DBC、SDBC三种方法</p>
+                        <a href="分形维度分析-CFAImageFD.html">CFAImageFD →</a>
+                    </div>
+                    <div class="feature-card">
+                        <h4>🔍 空隙度分析</h4>
+                        <p>空间异质性量化</p>
+                        <a href="空隙度分析-CFAImageLAC.html">CFAImageLAC →</a>
+                    </div>
+                    <div class="feature-card">
+                        <h4>🌊 傅里叶分析</h4>
+                        <p>频域滤波和重构</p>
+                        <a href="傅里叶分析-CFAImageFourier.html">CFAImageFourier →</a>
+                    </div>
+                    <div class="feature-card">
+                        <h4>🛠 图像工具</h4>
+                        <p>分块、二值化、基于q的ROI提取</p>
+                        <a href="图像工具-CFAImage.html">CFAImage →</a>
+                    </div>
+                    <div class="feature-card">
+                        <h4>📊 可视化工具</h4>
+                        <p>1D/2D/3D点集和图像显示</p>
+                        <a href="可视化工具-CFAVisual.html">CFAVisual →</a>
+                    </div>
+                    <div class="feature-card">
+                        <h4>🌀 分形样本生成</h4>
+                        <p>康托集、谢尔宾斯基、巴恩斯利蕨、门格海绵</p>
+                        <a href="分形样本生成-CFASample.html">CFASample →</a>
+                    </div>
+                    <div class="feature-card">
+                        <h4>⚡ GPU加速</h4>
+                        <p>所有模块3-20倍速度提升</p>
+                        <a href="GPU加速版本.html">GPU →</a>
+                    </div>
+                </div>
             </section>
         </main>
 
         <footer>
-            <p>© 2025 FreeAeon-Fractal. 保留所有权利。</p>
+            <p>&copy; 2025 FreeAeon-Fractal. 保留所有权利。</p>
             <p>
                 <a href="https://github.com/jim-xie-cn/FreeAeon-Fractal" target="_blank">GitHub</a> |
                 <a href="https://pypi.org/project/FreeAeon-Fractal/" target="_blank">PyPI</a>
