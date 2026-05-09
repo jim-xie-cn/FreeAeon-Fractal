@@ -4,81 +4,68 @@
 
 The `CFAVisual` class provides visualization tools for fractal point sets and images. Main application scenarios include:
 
-- **Fractal Point Set Display**: Visualize 1D, 2D, and 3D fractal point sets
-- **Fractal Pattern Verification**: Verify generated fractal patterns
-- **Teaching Demonstrations**: Demonstrate basic concepts of fractal geometry
-- **Data Visualization**: Display point clouds and image data
+- **Fractal Teaching**: Visualize 1D/2D/3D fractal point sets
+- **Research Verification**: Display generated fractals to validate IFS parameters
+- **Image Display**: Show 2D analysis results side by side
+- **3D Point Cloud**: Visualize 3D fractal structures
 
 ## Usage Examples
 
-### 1D Point Set Visualization
+### 1D Point Visualization (Cantor Set)
 
 ```python
-import numpy as np
+import matplotlib.pyplot as plt
 from FreeAeonFractal.FAVisual import CFAVisual
 from FreeAeonFractal.FASample import CFASample
-import matplotlib.pyplot as plt
 
-# Generate Cantor Set
+# Generate Cantor Set points
 points_1d = CFASample.get_Cantor_Set(iterations=256)
 
-# Visualize 1D point set
-plt.figure(figsize=(10, 2))
-CFAVisual.plot_1d_points(points_1d)
-plt.title('Cantor Set (1D)')
+fig, ax = plt.subplots(figsize=(10, 2))
+CFAVisual.plot_1d_points(points_1d, ax=ax)
+ax.set_title("Cantor Set")
 plt.show()
 ```
 
-### 2D Point Set Visualization
+### 2D Point Visualization (Sierpinski Triangle)
 
 ```python
-# Generate Sierpinski Triangle
+import matplotlib.pyplot as plt
+from FreeAeonFractal.FAVisual import CFAVisual
+from FreeAeonFractal.FASample import CFASample
+
 points_2d = CFASample.get_Sierpinski_Triangle(iterations=256)
 
-# Visualize 2D point set
-plt.figure(figsize=(8, 8))
-CFAVisual.plot_2d_points(points_2d)
-plt.title('Sierpinski Triangle (2D)')
-plt.axis('equal')
+fig, ax = plt.subplots(figsize=(6, 6))
+CFAVisual.plot_2d_points(points_2d, ax=ax)
+ax.set_title("Sierpinski Triangle")
 plt.show()
 ```
 
-### 3D Point Set Visualization
+### 3D Point Visualization (Menger Sponge)
 
 ```python
-from mpl_toolkits.mplot3d import Axes3D
+import matplotlib.pyplot as plt
+from FreeAeonFractal.FAVisual import CFAVisual
+from FreeAeonFractal.FASample import CFASample
 
-# Generate Menger Sponge
 points_3d = CFASample.get_Menger_Sponge(iterations=10240)
 
-# Visualize 3D point set
-fig = plt.figure(figsize=(10, 10))
+fig = plt.figure(figsize=(8, 8))
 ax = fig.add_subplot(111, projection='3d')
-CFAVisual.plot_3d_points(points_3d, ax)
-ax.set_title('Menger Sponge (3D)')
+CFAVisual.plot_3d_points(points_3d, ax=ax)
+ax.set_title("Menger Sponge")
 plt.show()
 ```
 
-### Image Visualization
+### 2D Image Display
 
 ```python
 import cv2
+from FreeAeonFractal.FAVisual import CFAVisual
 
-# Load image
-gray_image = cv2.imread('./images/fractal.png', cv2.IMREAD_GRAYSCALE)
-
-# 2D image display
-plt.figure(figsize=(8, 8))
-CFAVisual.plot_2d_image(gray_image, cmap='gray')
-plt.title('Fractal Image')
-plt.show()
-
-# 3D surface display
-fig = plt.figure(figsize=(10, 8))
-ax = fig.add_subplot(111, projection='3d')
-CFAVisual.plot_3d_image(gray_image, ax=ax)
-plt.title('Image as 3D Surface')
-plt.show()
+image = cv2.imread('./images/fractal.png', cv2.IMREAD_GRAYSCALE)
+CFAVisual.plot_2d_image(image, cmap='gray')
 ```
 
 ### Installation
@@ -91,63 +78,59 @@ pip install FreeAeon-Fractal
 
 ### CFAVisual
 
-**Description**: Utility class providing static methods for visualizing fractal point sets and images.
+**Description**: Static utility class for displaying fractal point sets (1D, 2D, 3D) and images. All methods accept an optional `ax` parameter for subplot integration.
 
-All methods are static, called using `CFAVisual.method_name()`.
+#### Methods
 
-#### Static Methods
+##### plot_1d_points(points, ax=plt)
 
-##### 1. plot_1d_points(points, ax=plt)
-
-**Description**: Display 1D point set (e.g., Cantor Set).
+**Description**: Display 1D points on a horizontal scatter plot (y-axis hidden).
 
 **Parameters**:
-- `points` (numpy.ndarray): 1D point array, shape (N,) or (N, 1)
-- `ax` (matplotlib axis): Matplotlib axis object, default is plt
+- `points` (ndarray): 1D array of point coordinates
+- `ax`: Matplotlib axis or `plt` (default: `plt`)
 
-**Display Features**:
-- Points plotted on horizontal line at y=0
-- y-axis hidden
-- Fixed point size (s=1)
+**Use Case**: Cantor Set and other 1D fractal structures.
 
-##### 2. plot_2d_points(points, ax=plt)
+##### plot_2d_points(points, ax=plt)
 
-**Description**: Display 2D point set (e.g., Sierpinski Triangle, Barnsley Fern).
+**Description**: Display 2D points as a scatter plot.
 
 **Parameters**:
-- `points` (numpy.ndarray): 2D point array, shape (N, 2)
-- `ax` (matplotlib axis): Matplotlib axis object
+- `points` (ndarray): (N, 2) array of (x, y) coordinates
+- `ax`: Matplotlib axis or `plt`
 
-**Display Features**:
-- Red point markers
-- Point size: s=1
-- Scatter plot display
+**Use Case**: Sierpinski Triangle, Barnsley Fern, and other 2D IFS fractals.
 
-##### 3. plot_3d_points(points, ax=None)
+##### plot_3d_points(points, ax=None)
 
-**Description**: Display 3D point set (e.g., Menger Sponge).
+**Description**: Display 3D points as a 3D scatter plot.
 
 **Parameters**:
-- `points` (numpy.ndarray): 3D point array, shape (N, 3)
-- `ax` (matplotlib 3D axis): 3D axis object. If None, automatically created
+- `points` (ndarray): (N, 3) array of (x, y, z) coordinates
+- `ax`: 3D Matplotlib axis (if None, a new figure is created)
 
-##### 4. plot_2d_image(image, cmap='gray', ax=plt)
+**Use Case**: Menger Sponge and other 3D fractals.
 
-**Description**: Display 2D image.
+##### plot_2d_image(image, cmap='gray', ax=plt)
 
-**Parameters**:
-- `image` (numpy.ndarray): 2D image array
-- `cmap` (str): Colormap, default 'gray'
-- `ax` (matplotlib axis): Matplotlib axis object
-
-##### 5. plot_3d_image(img, ax=plt)
-
-**Description**: Display image as 3D surface plot.
+**Description**: Display a 2D image using `imshow`.
 
 **Parameters**:
-- `img` (numpy.ndarray): 2D image array
-- `ax` (matplotlib 3D axis): 3D axis object
+- `image` (ndarray): 2D grayscale or 3D color image
+- `cmap` (str): Colormap (default: `'gray'`)
+- `ax`: Matplotlib axis or `plt`
 
-## References
+##### plot_3d_image(img, ax=plt)
 
-- Mandelbrot, B. B. (1982). The Fractal Geometry of Nature.
+**Description**: Display a 3D point cloud from a structured (N, 4) array where the 4th column is the value for coloring.
+
+**Parameters**:
+- `img` (ndarray): (N, 3) or (N, 4) array; columns are (x, y, z[, value])
+- `ax`: Matplotlib axis with 3D projection
+
+## Important Notes
+
+1. **Axes Parameter**: All methods accept `ax=plt` (uses pyplot directly) or an explicit axis object for subplot integration
+2. **Point Density**: For dense fractals with >100K points, consider downsampling before display
+3. **3D Projection**: `plot_3d_points` requires a 3D axis (`projection='3d'`); it creates one automatically if `ax=None`

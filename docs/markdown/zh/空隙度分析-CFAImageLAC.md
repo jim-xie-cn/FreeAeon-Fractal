@@ -2,17 +2,17 @@
 
 ## 应用场景
 
-`CFAImageLAC` 类用于计算2D图像的空隙度，是量化空间分布异质性的重要工具。主要应用场景包括：
+`CFAImageLAC` 类用于量化2D图像的空间异质性和间隙结构。主要应用场景包括：
 
-- **纹理分析**：量化纹理中的间隙和空洞特征
-- **景观生态学**：分析植被覆盖的空间分布
-- **材料科学**：研究材料的孔隙结构
-- **医学图像**：分析组织分布均匀性
-- **城市规划**：研究建筑物的空间分布
+- **生态学**：量化栖息地破碎化和间隙分布
+- **材料科学**：表征多孔结构和内部几何形态
+- **医学图像**：分析组织均匀性和病变分布
+- **城市规划**：研究土地利用的空间分布模式
+- **地质学**：量化岩石裂隙和孔隙分布
 
 ## 使用示例
 
-### 基本用法
+### 基础用法
 
 ```python
 import cv2
@@ -20,238 +20,158 @@ from FreeAeonFractal.FAImageLAC import CFAImageLAC
 from FreeAeonFractal.FAImage import CFAImage
 
 # 读取图像
-rgb_image = cv2.imread('./images/fractal.png')
-gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
+gray_image = cv2.imread('./images/fractal.png', cv2.IMREAD_GRAYSCALE)
 
-# 创建空隙度分析对象
-lacunarity = CFAImageLAC(
-    gray_image,
-    max_scales=100,
-    with_progress=True,
-    partition_mode="gliding"  # 或 "non-overlapping"
-)
-
-# 计算空隙度
-lac_result = lacunarity.get_lacunarity(
-    corp_type=-1,
-    use_binary_mass=False,
-    include_zero=True
-)
-
-# 拟合空隙度曲线
-fit_result = lacunarity.fit_lacunarity(lac_result)
-
-# 输出结果
-print("空隙度值:", lac_result["lacunarity"])
-print("拟合斜率:", fit_result["slope"])
-print("拟合R²:", fit_result["r_value"]**2)
-
-# 可视化
-lacunarity.plot(lac_result, fit_result)
-```
-
-### 二值图像分析
-
-```python
-# 使用Otsu自动二值化
+# 二值化
 bin_image, threshold = CFAImage.otsu_binarize(gray_image)
 
-# 二值图像的空隙度
-lacunarity_bin = CFAImageLAC(bin_image, partition_mode="gliding")
-lac_bin = lacunarity_bin.get_lacunarity(use_binary_mass=True)
-fit_bin = lacunarity_bin.fit_lacunarity(lac_bin)
+# 滑动盒空隙度分析（默认）
+calc = CFAImageLAC(bin_image, partition_mode="gliding")
+lac_result = calc.get_lacunarity(use_binary_mass=True, include_zero=True)
+fit_result = calc.fit_lacunarity(lac_result)
 
-print("二值图像空隙度:", lac_bin["lacunarity"])
+print("Lambda(r):", lac_result['lacunarity'])
+print("斜率 (beta):", fit_result['slope'])
+print("R²:", fit_result['r_value']**2)
+
+# 可视化
+calc.plot(lac_result, fit_result)
+```
+
+### 非重叠模式
+
+```python
+calc_nonoverlap = CFAImageLAC(gray_image, partition_mode="non-overlapping")
+lac_nonoverlap = calc_nonoverlap.get_lacunarity()
+fit_nonoverlap = calc_nonoverlap.fit_lacunarity(lac_nonoverlap)
+```
+
+### GPU加速版本
+
+```python
+from FreeAeonFractal.FAImageLACGPU import CFAImageLACGPU
+
+calc_gpu = CFAImageLACGPU(bin_image, device='cuda')
+lac_result = calc_gpu.get_lacunarity()
 ```
 
 ### 批量处理
 
 ```python
-import glob, cv2
+import cv2, glob
 from FreeAeonFractal.FAImageLAC import CFAImageLAC
 
 images = [cv2.imread(f, cv2.IMREAD_GRAYSCALE) for f in glob.glob('./images/*.png')]
 
-# 批量空隙度（CPU支持不同形状图像）
-lac_results = CFAImageLAC.get_batch_lacunarity(images, max_scales=100)
-fit_results = CFAImageLAC.fit_batch_lacunarity(lac_results)
+batch_results = CFAImageLAC.get_batch_lacunarity(
+    images,
+    partition_mode="gliding",
+    use_binary_mass=True,
+    with_progress=True
+)
 
-for fit in fit_results:
-    print("斜率:", fit["slope"], "R²:", fit["r_value"]**2)
-```
-
-### 安装
-
-```bash
-pip install FreeAeon-Fractal
+batch_fits = CFAImageLAC.fit_batch_lacunarity(batch_results)
+for fit in batch_fits:
+    print("斜率:", fit['slope'])
 ```
 
 ## 类说明
 
 ### CFAImageLAC
 
-**描述**：用于计算2D图像空隙度的类，支持两种box分区策略。滑动box模式使用积分图像（累积面积表）进行高效计算。
+**描述**：单张2D图像的空隙度计算类。支持滑动盒（重叠）和非重叠盒两种分区模式。批量处理请使用静态方法 `get_batch_lacunarity` / `fit_batch_lacunarity`。
 
 #### 初始化参数
 
 | 参数 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `image` | numpy.ndarray | 必填 | 输入图像（灰度或二值） |
-| `max_size` | int | None | 最大box大小（默认：图像最小边长） |
-| `max_scales` | int | 100 | 最大尺度数量 |
+| `image` | numpy.ndarray | 必填 | 输入2D单通道图像 |
+| `max_size` | int | None | 最大盒子尺寸（默认为图像最小维度） |
+| `max_scales` | int | 100 | 目标尺度数量 |
 | `with_progress` | bool | True | 是否显示进度条 |
-| `scales_mode` | str | "powers" | 尺度生成模式（"powers"或"logspace"） |
-| `partition_mode` | str | "gliding" | 分区模式（"gliding"或"non-overlapping"） |
-| `min_size` | int | 2 | 最小box大小 |
-
-**scales_mode** 选项：
-- `"powers"`：2的幂次尺度（2, 4, 8, 16, ...）
-- `"logspace"`：对数均匀分布尺度
-
-**partition_mode** 选项：
-- `"gliding"`：滑动窗口（重叠），使用积分图像高效计算
-- `"non-overlapping"`：非重叠固定块
+| `scales_mode` | str | `"powers"` | 尺度生成方式：`"powers"`（2,4,8,...）或 `"logspace"`（几何间距） |
+| `partition_mode` | str | `"gliding"` | 盒子策略：`"gliding"` 或 `"non-overlapping"` |
+| `min_size` | int | 2 | 最小盒子尺寸 |
 
 #### 主要方法
 
 ##### 1. get_lacunarity(corp_type=-1, use_binary_mass=False, include_zero=True)
 
-**描述**：计算每个尺度下的空隙度。
+**描述**：计算 `self.scales` 中每个盒子尺寸的 Λ(r)。
 
 **参数**：
-- `corp_type`（int）：图像裁剪方式（仅非重叠模式）
-  - `-1`：自动裁剪
-  - `0`：不处理
-  - `1`：填充
-- `use_binary_mass`（bool）：是否使用二值质量
-  - `True`：仅计数非零像素
-  - `False`：使用实际像素值
-- `include_zero`（bool）：是否包含零质量box
+- `corp_type` (int)：裁剪策略（用于非重叠模式）
+- `use_binary_mass` (bool)：将图像视为二值（任何正值像素→1）再计算质量
+- `include_zero` (bool)：若为False，则排除质量为0的空盒子
 
-**返回值**（dict）：
+**返回值** (dict)：
 ```python
 {
-    'scales': list,        # 尺度列表
-    'lacunarity': list,    # 各尺度下的空隙度值
-    'mass_stats': list     # 质量统计信息列表
+    'scales': list,       # 使用的盒子尺寸
+    'lacunarity': list,   # Lambda(r) 值
+    'mass_stats': list    # 每个尺度：scale, num_boxes, mean_mass, var_mass, lambda
 }
 ```
 
-`mass_stats` 中每个元素包含：
-```python
-{
-    'scale': int,          # 尺度
-    'num_boxes': int,      # box数量
-    'mean_mass': float,    # 平均质量
-    'var_mass': float,     # 质量方差
-    'lambda': float        # 空隙度值
-}
-```
+**空隙度公式**：`Λ(r) = E[M²] / E[M]² = 1 + Var(M) / Mean(M)²`
 
 ##### 2. fit_lacunarity(lac_result, transform="log", fit_range=None)
 
-**描述**：对空隙度进行幂律拟合。
+**描述**：对空隙度曲线进行对数-对数线性回归拟合。
 
 **参数**：
-- `lac_result`（dict）：`get_lacunarity()` 的返回结果
-- `transform`（str）：变换模式
-  - `"log"`：标准对数-对数拟合，斜率 = -β（Allain & Cloitre）
-  - `"log_minus_1"`：拟合 log(Λ-1) vs log(r)
-- `fit_range`（tuple或None）：可选的 `(min_scale, max_scale)` 限制拟合范围
+- `transform` (str)：
+  - `"log"`：拟合 log(Λ) vs log(r)，标准分形分析方式，斜率 = −β
+  - `"log_minus_1"`：拟合 log(Λ−1) vs log(r)，忽略均匀区域（遗留模式）
+- `fit_range` (tuple 或 None)：`(r_min, r_max)` 限制回归范围
 
-**返回值**（dict）：
-```python
-{
-    'slope': float,          # 拟合斜率
-    'intercept': float,      # 拟合截距
-    'r_value': float,        # 相关系数
-    'p_value': float,        # p值
-    'std_err': float,        # 标准误差
-    'log_scales': list,      # 使用的对数尺度
-    'log_lac': list          # 使用的对数空隙度值
-}
-```
+**返回值** (dict)：slope, intercept, r_value, p_value, std_err等
 
-##### 3. get_batch_lacunarity(images, ...) [静态方法]
+##### 3. plot(lac_result, fit_result=None, ...)
 
-**描述**：对多个图像进行批量空隙度计算。CPU版本支持不同形状的图像。
+**描述**：以双对数坐标可视化 Λ(r) 曲线及可选的线性拟合面板。
 
-##### 4. fit_batch_lacunarity(lac_results, ...) [静态方法]
+##### 4. get_batch_lacunarity(images, ...) [静态方法]
 
-**描述**：批量拟合空隙度结果。
+**描述**：批量空隙度计算。当所有图像形状相同且为滑动模式时，积分图像在批次上向量化处理，效率最高。
 
-##### 5. plot(lac_result, fit_result=None, ax=None, show=True, title="Lacunarity", label=None)
+##### 5. fit_batch_lacunarity(lac_results, ...) [静态方法]
 
-**描述**：可视化空隙度曲线和拟合结果。
+**描述**：对 `get_batch_lacunarity` 返回的每个结果应用相同的拟合。
 
-**参数**：
-- `lac_result`（dict）：空隙度结果
-- `fit_result`（dict）：拟合结果（可选）
-- `ax`：Matplotlib轴对象（可选）
-- `show`（bool）：是否立即显示
-- `title`（str）：图表标题
-- `label`（str）：曲线标签
-
-## 理论背景
+## 算法说明
 
 ### 空隙度定义
 
-空隙度 Λ(r) 定义为box质量的二阶矩与一阶矩平方之比：
-
 ```
-Λ(r) = E[M²(r)] / E[M(r)]²
+Λ(r) = E[M²] / E[M]² = 1 + Var(M) / Mean(M)²
 ```
 
-其中：
-- M(r)：尺度r下的box质量
-- E[·]：期望值
+下限为1（零方差 = 均匀分布），Λ越大表示空间异质性越强。
 
-### 物理含义
+### 滑动盒法
 
-- **Λ = 1**：完全均匀分布
-- **Λ > 1**：存在间隙，分布不均匀
-- **Λ越大**：间隙越多，聚集越强
-
-### 标度律
-
-空隙度通常遵循幂律：
+每个 (r×r) 窗口在图像上滑动。积分图像（累积面积表）在尺度循环**外**计算一次，通过切片算术在每个尺度以 O(H×W) 时间提取所有盒质量：
 
 ```
-Λ(r) ∝ r^(-β)     （对数变换，Allain & Cloitre）
+M(y, x) = S[y+r, x+r] - S[y, x+r] - S[y+r, x] + S[y, x]
 ```
 
-其中 β 是空隙度指数。
+### 拟合
 
-## 注意事项
+对于自相似分形：`Λ(r) ~ r^{-β}`，β = D − E（分形维度减嵌入维度）。
 
-1. **分区模式选择**：
-   - `"gliding"`：推荐用于一般分析，结果更平滑，使用积分图像实现O(1)逐像素计算
-   - `"non-overlapping"`：速度更快，适合大图像
+标准拟合（`transform="log"`）对 `log Λ(r)` vs `log r` 进行回归，报告斜率 = −β。
 
-2. **质量模式**：
-   - `use_binary_mass=True`：二值图像或只关心占用情况
-   - `use_binary_mass=False`：灰度图像，考虑强度信息
+## 重要说明
 
-3. **尺度模式**：
-   - `"powers"`：尺度点更少，计算更快
-   - `"logspace"`：尺度点更多，结果更精细
+1. **分区模式**：`"gliding"` 统计上更稳健（每个尺度更多样本），通过积分图像技巧保持高效；`"non-overlapping"` 适合需要样本独立性的场景
 
-4. **零值处理**：
-   - `include_zero=True`：包含所有box
-   - `include_zero=False`：仅考虑非零box
+2. **二值 vs 灰度空隙度**：`use_binary_mass=True` 用于经典二值空隙度（Allain & Cloitre 1991）；默认（False）使用原始灰度强度作为质量
 
-5. **结果解释**：
-   - 空隙度值范围：[1, +∞)
-   - 斜率β：量化尺度依赖性
-   - R² 接近1：幂律拟合良好
-
-6. **性能优化**：
-   - 使用 `partition_mode="non-overlapping"` 加速
-   - 减少 `max_scales` 值
-   - 使用 `scales_mode="powers"`
-   - GPU版本（`CFAImageLACGPU`）适合大规模批处理（要求图像形状相同）
+3. **结果解读**：Λ=1表示完全均匀；Λ>1表示存在空隙和聚集；负斜率β表示尺度相关的间隙闭合
 
 ## 参考文献
 
-- Plotnick, R. E., et al. (1996). Lacunarity analysis: A general technique for the analysis of spatial patterns. *Physical Review E*.
-- Allain, C., & Cloitre, M. (1991). Characterizing the lacunarity of random and deterministic fractal sets. *Physical Review A*.
+- Allain, C., & Cloitre, M. (1991). *Physical Review A*.
+- Plotnick, R. E., et al. (1996). *Physical Review E*.

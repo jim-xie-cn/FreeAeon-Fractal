@@ -1,6 +1,6 @@
 # FreeAeon-Fractal
 
-**The first GPU-accelerated** version of the image-based **multifractal analysis package** for computing Multifractal Spectra, Fractal Dimensions, Local Multifractal $\alpha$-map, Fractal Lacunarity and Fourier Spectra of images or series.  🔗 [More](https://github.com/jim-xie-cn/FreeAeon-Fractal/wiki)
+**The first GPU-accelerated** version of the image-based **multifractal analysis package** for computing Multifractal Spectra, Fractal Dimensions, Local Multifractal α-map, Fractal Lacunarity and Fourier Spectra of images or series.  🔗 [More](https://github.com/jim-xie-cn/FreeAeon-Fractal/wiki)
 
 ### Key Features
 
@@ -78,7 +78,7 @@ Example:
 
 ![Fractal Dimension Input](https://github.com/jim-xie-cn/FreeAeon-Fractal/raw/main/images/fd.png)
 
-### Calculate the **Local Multifractal $\alpha$-map** of an image
+### Calculate the **Local Multifractal α-map** of an image
 
 ```bash
 python demo.py --mode alpha --image ./images/face.png
@@ -86,7 +86,7 @@ python demo.py --mode alpha --image ./images/face.png
 
 Example:
 
-![Local Multifractal $\alpha$-map Input](https://github.com/jim-xie-cn/FreeAeon-Fractal/raw/main/images/alpha.png)
+![Local Multifractal α-map Input](https://github.com/jim-xie-cn/FreeAeon-Fractal/raw/main/images/alpha.png)
 
 
 ### Lacunarity analysis of an image
@@ -125,7 +125,7 @@ Example:
 - `--mode`: Analysis mode:  
   - `fd` – Fractal Dimension  
   - `mfs` – Multifractal Spectrum (default)
-  - `alpha` – Local Multifractal $\alpha$-map
+  - `alpha` – Local Multifractal α-map
   - `lacunarity` - Lacunarity analysis
   - `fourier` - Fourier analysis
   - `series` - Multifractal Spectrum for Series analysis
@@ -161,7 +161,7 @@ FreeAeon-Fractal/
 │   ├── FAImageMFS.py     # 2D multifractal spectrum
 │   ├── FAImageMFSGPU.py  # 2D multifractal spectrum (GPU)
 │   ├── FASeriesMFS.py    # 1D multifractal spectrum
-│   ├── FAImageFD.py      # Fractal dimension
+│   ├── FAImageFD.py      # Fractal dimension (BC/DBC/SDBC)
 │   ├── FAImageFDGPU.py   # Fractal dimension (GPU)
 │   ├── FAImageLAC.py     # Lacunarity
 │   ├── FAImageLACGPU.py  # Lacunarity (GPU)

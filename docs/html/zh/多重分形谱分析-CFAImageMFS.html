@@ -6,377 +6,138 @@
     <title>多重分形谱分析 - CFAImageMFS</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            line-height: 1.8;
-            color: #333;
-            background: #f5f7fa;
-            padding: 20px;
-        }
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-        header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-        }
+        body { font-family: 'Microsoft YaHei', '微软雅黑', sans-serif; line-height: 1.8; color: #333; background: #f5f7fa; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }
+        header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; }
         header h1 { font-size: 2em; margin-bottom: 10px; }
-        header p { opacity: 0.9; }
-        nav {
-            background: #f8f9fa;
-            padding: 15px 30px;
-            border-bottom: 1px solid #e9ecef;
-        }
-        nav a {
-            color: #667eea;
-            text-decoration: none;
-            margin-right: 20px;
-            font-weight: 500;
-        }
-        nav a:hover { color: #764ba2; }
+        nav { background: #f8f9fa; padding: 15px 30px; border-bottom: 1px solid #e9ecef; }
+        nav a { color: #667eea; text-decoration: none; margin-right: 20px; font-weight: 500; }
         main { padding: 40px; }
-        h2 {
-            color: #667eea;
-            font-size: 1.8em;
-            margin-top: 40px;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #667eea;
-        }
-        h3 {
-            color: #764ba2;
-            font-size: 1.4em;
-            margin-top: 30px;
-            margin-bottom: 15px;
-        }
-        h4 {
-            color: #555;
-            font-size: 1.1em;
-            margin-top: 20px;
-            margin-bottom: 10px;
-        }
-        .code-block {
-            background: #1e1e1e;
-            color: #d4d4d4;
-            padding: 20px;
-            border-radius: 5px;
-            overflow-x: auto;
-            margin: 15px 0;
-            font-family: 'Courier New', monospace;
-            font-size: 0.9em;
-        }
-        .code-inline {
-            background: #f0f0f0;
-            padding: 2px 6px;
-            border-radius: 3px;
-            font-family: 'Courier New', monospace;
-            font-size: 0.9em;
-            color: #c7254e;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 20px 0;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        th, td {
-            padding: 12px 15px;
-            text-align: left;
-            border-bottom: 1px solid #e9ecef;
-        }
-        th {
-            background: #667eea;
-            color: white;
-            font-weight: 600;
-        }
+        h2 { color: #667eea; font-size: 1.8em; margin-top: 40px; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #667eea; }
+        h3 { color: #764ba2; font-size: 1.4em; margin-top: 30px; margin-bottom: 15px; }
+        h4 { color: #555; font-size: 1.1em; margin-top: 20px; margin-bottom: 10px; }
+        .code-block { background: #1e1e1e; color: #d4d4d4; padding: 20px; border-radius: 5px; overflow-x: auto; margin: 15px 0; font-family: 'Courier New', monospace; font-size: 0.9em; white-space: pre; }
+        .code-inline { background: #f0f0f0; padding: 2px 6px; border-radius: 3px; font-family: 'Courier New', monospace; font-size: 0.9em; color: #c7254e; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        th, td { padding: 12px 15px; text-align: left; border-bottom: 1px solid #e9ecef; }
+        th { background: #667eea; color: white; font-weight: 600; }
         tr:hover { background: #f8f9fa; }
-        .note {
-            background: #e7f3ff;
-            border-left: 4px solid #2196F3;
-            padding: 15px;
-            margin: 20px 0;
-            border-radius: 4px;
-        }
-        .badge {
-            display: inline-block;
-            padding: 4px 10px;
-            background: #667eea;
-            color: white;
-            border-radius: 12px;
-            font-size: 0.85em;
-            margin-right: 5px;
-        }
         ul, ol { margin-left: 30px; margin-bottom: 15px; }
         li { margin-bottom: 8px; }
         a { color: #667eea; text-decoration: none; }
-        a:hover { text-decoration: underline; }
-        .section { margin-bottom: 30px; }
-        footer {
-            background: #2c3e50;
-            color: white;
-            padding: 20px;
-            text-align: center;
-            font-size: 0.9em;
-        }
+        footer { background: #2c3e50; color: white; padding: 20px; text-align: center; font-size: 0.9em; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>多重分形谱分析 - CFAImageMFS</h1>
-            <p>2D图像多重分形谱分析</p>
-        </header>
-
-        <nav>
-            <a href="index.html">← 返回首页</a>
-
-        </nav>
-
-        <main>
+<div class="container">
+    <header>
+        <h1>多重分形谱分析 - CFAImageMFS</h1>
+        <p>基于固定ROI归一化的2D图像盒计数多重分形分析</p>
+    </header>
+    <nav><a href="index.html">← 返回首页</a></nav>
+    <main>
 
 <h2>应用场景</h2>
-
-<code class="code-inline">CFAImageMFS</code> 类用于计算2D灰度图像的多重分形谱（Multifractal Spectrum），是分析图像复杂度和异质性的高级工具。主要应用场景包括：
-
 <ul>
 <li><strong>纹理分析</strong>：量化图像纹理的多尺度特性</li>
-<li><strong>医学图像</strong>：分析组织结构的异质性</li>
+<li><strong>医学图像</strong>：分析组织结构异质性</li>
 <li><strong>材料科学</strong>：研究材料表面的多重分形特征</li>
 <li><strong>金融分析</strong>：分析价格波动的多重分形特性</li>
-<li><strong>地球科学</strong>：研究地形和地貌的多尺度特征</li>
+<li><strong>地球科学</strong>：研究地形地貌的多尺度特征</li>
 </ul>
 
-<h2>调用示例</h2>
+<h2>使用示例</h2>
 
 <h3>基础用法</h3>
-
-<div class="code-block">import cv2
-import numpy as np
+<div class="code-block">import cv2, numpy as np
 from FreeAeonFractal.FAImageMFS import CFAImageMFS
-<p># 读取并转换为灰度图像</p>
+
 rgb_image = cv2.imread('./images/face.png')
 gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
-<p># 创建多重分形谱分析对象</p>
-q_list = np.linspace(-5, 5, 26)
-MFS = CFAImageMFS(gray_image, q_list=q_list)
-<p># 计算多重分形谱</p>
+
+MFS = CFAImageMFS(gray_image, q_list=np.linspace(-5, 5, 51))
 df_mass, df_fit, df_spec = MFS.get_mfs()
-<p># 查看结果</p>
-print(df_spec)
-<p># 可视化结果</p>
+print(df_spec[['q', 'alpha', 'f_alpha']].head(10))
 MFS.plot(df_mass, df_fit, df_spec)</div>
 
 <h3>GPU加速版本</h3>
+<div class="code-block">from FreeAeonFractal.FAImageMFSGPU import CFAImageMFSGPU as CFAImageMFS
 
-<div class="code-block"># 使用GPU加速版本
-from FreeAeonFractal.FAImageMFSGPU import CFAImageMFSGPU as CFAImageMFS
-<p># 其余代码相同</p>
-MFS = CFAImageMFS(gray_image, q_list=np.linspace(-5, 5, 26))
-df_mass, df_fit, df_spec = MFS.get_mfs()</div>
+MFS = CFAImageMFS(gray_image, q_list=np.linspace(-5, 5, 51))
+df_mass, df_fit, df_spec = MFS.get_mfs()
+MFS.plot(df_mass, df_fit, df_spec)</div>
 
-<h3>局部Holder指数图（逐像素奇异度）</h3>
-
-<div class="code-block">from FreeAeonFractal.FAImageMFS import CFAImageMFS
-<p>MFS = CFAImageMFS(gray_image)</p>
-alpha_map = MFS.compute_alpha_map(scales=None, roi_mode="center", empty_policy="nan")
-<p>CFAImageMFS.plot_alpha_map(alpha_map)</div></p>
+<h3>局部奇异度图</h3>
+<div class="code-block">MFS = CFAImageMFS(gray_image)
+alpha_map, info = MFS.compute_alpha_map(scales=None, roi_mode="center", empty_policy="nan")
+CFAImageMFS.plot_alpha_map(alpha_map)</div>
 
 <h3>批量处理</h3>
-
-<div class="code-block">import glob, cv2
+<div class="code-block">import glob, cv2, numpy as np
 from FreeAeonFractal.FAImageMFS import CFAImageMFS
-<p>images = [cv2.imread(f, cv2.IMREAD_GRAYSCALE) for f in glob.glob('./images/*.png')]</p>
+
+images = [cv2.imread(f, cv2.IMREAD_GRAYSCALE) for f in glob.glob('./images/*.png')]
 results = CFAImageMFS.get_batch_mfs(images, q_list=np.linspace(-5, 5, 26))
 for df_mass, df_fit, df_spec in results:
-    print(df_fit[['q','tau','Dq']].head())</div>
-
-<h3>安装</h3>
-
-<div class="code-block">pip install FreeAeon-Fractal</div>
+    print(df_fit[['q', 'tau', 'Dq']].head())</div>
 
 <h2>类说明</h2>
 
 <h3>CFAImageMFS</h3>
 
-<strong>描述</strong>：基于盒计数方法计算2D灰度图像多重分形谱的类。
-
 <h4>初始化参数</h4>
 <table>
 <tr><th>参数</th><th>类型</th><th>默认值</th><th>说明</th></tr>
-<tr><td><code class="code-inline">image</code></td><td>numpy.ndarray</td><td>必需</td><td>输入灰度图像（2D数组）</td></tr>
-<tr><td><code class="code-inline">corp_type</code></td><td>int</td><td>-1</td><td>图像裁剪类型（-1:裁剪, 0:严格匹配, 1:填充）</td></tr>
+<tr><td><code class="code-inline">image</code></td><td>numpy.ndarray</td><td>必填</td><td>输入2D灰度图像</td></tr>
+<tr><td><code class="code-inline">corp_type</code></td><td>int</td><td>-1</td><td>裁剪方式（-1:裁剪, 0:严格, 1:填充）</td></tr>
 <tr><td><code class="code-inline">q_list</code></td><td>array-like</td><td>linspace(-5,5,51)</td><td>q值列表</td></tr>
 <tr><td><code class="code-inline">with_progress</code></td><td>bool</td><td>True</td><td>是否显示进度条</td></tr>
-<tr><td><code class="code-inline">bg_threshold</code></td><td>float</td><td>0.01</td><td>背景阈值（低于此值的像素被屏蔽）</td></tr>
-<tr><td><code class="code-inline">bg_reverse</code></td><td>bool</td><td>False</td><td>是否反转背景阈值</td></tr>
-<tr><td><code class="code-inline">bg_otsu</code></td><td>bool</td><td>False</td><td>是否使用Otsu阈值化检测背景</td></tr>
-<tr><td><code class="code-inline">mu_floor</code></td><td>float</td><td>1e-12</td><td>最小概率下限（向后兼容保留）</td></tr>
+<tr><td><code class="code-inline">bg_threshold</code></td><td>float</td><td>0.01</td><td>背景阈值（归一化后）</td></tr>
+<tr><td><code class="code-inline">bg_otsu</code></td><td>bool</td><td>False</td><td>对原始图像使用Otsu法</td></tr>
 </table>
 
-<h4>主要方法</h4>
-<p>##### 1. get_mass_table(max_size=None, max_scales=80, min_box=2, roi_mode="center")</p>
+<h4>get_mass_table(max_size, max_scales=80, min_box=2, roi_mode="center")</h4>
+<p>计算各尺度配分函数表。返回DataFrame，列：<code class="code-inline">scale, eps, q, value, kind</code>（kind='logMq'/'N'/'S'）</p>
 
-<strong>描述</strong>：计算所有尺度和q值下的配分函数表。
+<h4>fit_tau_and_D1(df_mass, min_points=6, ...)</h4>
+<p>线性回归拟合τ(q)和D(q)。返回DataFrame，列：<code class="code-inline">q, tau, Dq, D1, r_value, n_points</code>等</p>
 
-<strong>返回值</strong>：DataFrame，列 <code class="code-inline">scale, eps, q, value, kind</code>
-<ul>
-<li><code class="code-inline">kind</code> ∈ <code class="code-inline">{'logMq', 'N', 'S'}</code> — 对数配分函数、盒子计数、Shannon熵</li>
-</ul>
+<h4>alpha_falpha_from_tau(df_fit, spline_k=3, exclude_q1=True, spline_s=0)</h4>
+<p>通过τ(q)的样条导数（Legendre变换）计算α(q)和f(α)。</p>
 
-<p>##### 2. fit_tau_and_D1(df_mass, min_points=6, ...)</p>
+<h4>get_mfs(max_size, max_scales=80, min_points=6, ...)</h4>
+<p>完整分析流水线。返回 <code class="code-inline">(df_mass, df_fit, df_spec)</code>。</p>
 
-<strong>描述</strong>：从质量表拟合τ(q)和D(q)。
+<h4>compute_alpha_map(scales=None, roi_mode="center", empty_policy="nan")</h4>
+<p>逐像素局部Hölder指数，流式OLS（嵌套网格优化）。返回 <code class="code-inline">(alpha_map, info)</code>。</p>
 
-<strong>返回值</strong>（DataFrame）：列 <code class="code-inline">q, tau, Dq, D1, intercept, r_value, p_value, std_err, n_points</code>
+<h4>plot(df_mass, df_fit, df_spec)</h4>
+<p>2×3子图：log M(q,ε)热图、f(α) vs α、τ(q)、D(q)、α(q)、f(α) vs q</p>
 
-<strong>注意</strong>：q=0行使用log(N)拟合；q=1行使用Shannon熵(S)拟合；其他q使用logMq拟合。df_fit中始终包含强制的q=0和q=1行。
-<p>##### 3. alpha_falpha_from_tau(df_fit, spline_k=3, exclude_q1=True, spline_s=0)</p>
-
-<strong>描述</strong>：通过对τ(q)的样条微分计算α(q)和f(α)。
-
-<strong>参数</strong>：
-<ul>
-<li><code class="code-inline">spline_k</code> (int): 样条阶数（默认3）</li>
-<li><code class="code-inline">exclude_q1</code> (bool): 是否从样条中排除q=1（避免不连续性）</li>
-<li><code class="code-inline">spline_s</code> (float): 样条平滑因子（0=精确插值）</li>
-</ul>
-
-<strong>返回值</strong>：多重分形谱DataFrame，列 <code class="code-inline">q, tau, Dq, alpha, f_alpha</code>
-<p>##### 4. get_mfs(max_size=None, max_scales=80, min_points=6, min_box=2, ...)</p>
-
-<strong>描述</strong>：完整的多重分形谱分析流程，返回质量表、拟合结果和谱参数。
-
-<strong>返回值</strong> (tuple):
-<div class="code-block">(df_mass, df_fit, df_spec)</div>
-
-<ul>
-<li><code class="code-inline">df_mass</code>: 质量表 DataFrame，包含列：</li>
-</ul>
-  - <code class="code-inline">scale</code>: 盒子尺寸
-  - <code class="code-inline">eps</code>: 归一化尺度
-  - <code class="code-inline">q</code>: q值
-  - <code class="code-inline">value</code>: 根据kind不同含义不同
-  - <code class="code-inline">kind</code>: 值类型（'logMq', 'N', 'S'）
-
-<ul>
-<li><code class="code-inline">df_fit</code>: 拟合结果 DataFrame，包含列：</li>
-</ul>
-  - <code class="code-inline">q</code>: q值
-  - <code class="code-inline">tau</code>: τ(q) 质量指数
-  - <code class="code-inline">Dq</code>: D(q) 广义维度
-  - <code class="code-inline">D1</code>: D1 信息维度（仅q=1时）
-  - <code class="code-inline">intercept</code>: 拟合截距
-  - <code class="code-inline">r_value</code>: 相关系数
-  - <code class="code-inline">p_value</code>: p值
-  - <code class="code-inline">std_err</code>: 标准误差
-  - <code class="code-inline">n_points</code>: 拟合点数
-
-<ul>
-<li><code class="code-inline">df_spec</code>: 多重分形谱 DataFrame，包含列：</li>
-</ul>
-  - <code class="code-inline">q</code>: q值
-  - <code class="code-inline">tau</code>: τ(q)
-  - <code class="code-inline">Dq</code>: D(q)
-  - <code class="code-inline">alpha</code>: α(q) 奇异性强度
-  - <code class="code-inline">f_alpha</code>: f(α) 多重分形谱
-<p>##### 5. compute_alpha_map(scales=None, roi_mode="center", empty_policy="nan")</p>
-
-<strong>描述</strong>：通过流式OLS结合嵌套网格优化，计算逐像素的局部Holder指数α。
-
-<strong>返回值</strong>：局部α值的2D numpy数组。
-<p>##### 6. compute_alpha_map_batch(images, ...) [静态方法]</p>
-
-<strong>描述</strong>：批量计算alpha图。
-<p>##### 7. plot(df_mass, df_fit, df_spec)</p>
-
-<strong>描述</strong>：可视化多重分形谱分析结果，包含6个子图：
-1. log M(q, ε) 热图
-2. f(α) vs α 多重分形谱
-3. τ(q) vs q
-4. D(q) vs q 广义维度
-5. α vs q
-6. f(α) vs q
+<h4>get_batch_mfs(img_list, ...) [静态]</h4>
+<p>批量CPU多重分形谱，与CFAImageMFSGPU.get_batch_mfs API兼容。</p>
 
 <h2>理论背景</h2>
+<div class="code-block">μᵢ(ε) = mass_i / total_mass       # 盒概率
+M(q, ε) = Σᵢ μᵢ^q                 # 配分函数
+τ(q) = lim log M(q,ε) / log ε    # 质量指数
+D(q) = τ(q) / (q-1), q≠1         # 广义维度
+α(q) = dτ(q)/dq                   # 奇异性强度（样条导数）
+f(α) = q·α - τ(q)                 # 多重分形谱</div>
 
-<h3>多重分形谱</h3>
-<p>多重分形谱描述了图像在不同尺度下的统计特性。核心参数包括：</p>
+<h2>重要说明</h2>
+<ol>
+<li>图像自动归一化到[0,1]；使用 <code class="code-inline">bg_threshold</code> 或 <code class="code-inline">bg_otsu=True</code> 去除背景</li>
+<li>推荐q范围：−5到5，20-51个点</li>
+<li>f(α)曲线越宽 → 多重分形性越强；D(q)随q单调递减 → 多重分形数据</li>
+<li>使用 <code class="code-inline">CFAImageMFSGPU</code> 可获得5-20×加速</li>
+</ol>
 
-<h4>1. 配分函数 (Partition Function)</h4>
-<div class="code-block">M(q, ε) = Σ μᵢ^q</div>
-其中 μᵢ 是第i个盒子的归一化质量。
-
-<h4>2. 质量指数 τ(q)</h4>
-<div class="code-block">τ(q) = lim(ε→0) log M(q, ε) / log ε</div>
-
-<h4>3. 广义维度 D(q)</h4>
-<div class="code-block">D(q) = τ(q) / (q - 1), q ≠ 1
-D(1) = lim(ε→0) Σ μᵢ log μᵢ / log ε  (信息维度)</div>
-<p>特殊值：</p>
-<ul>
-<li>D(0): 容量维度</li>
-<li>D(1): 信息维度</li>
-<li>D(2): 关联维度</li>
-</ul>
-
-<h4>4. 多重分形谱 f(α)</h4>
-<div class="code-block">α(q) = dτ(q)/dq  (奇异性强度)
-f(α) = qα - τ(q)  (多重分形谱)</div>
-
-<h2>重要提示</h2>
-<p>1. <strong>图像预处理</strong>：</p>
-   - 输入必须是2D灰度图像
-   - 图像会自动归一化到 [0, 1]
-   - 可使用 <code class="code-inline">bg_threshold</code> 去除背景；<code class="code-inline">bg_otsu=True</code> 自动检测背景
-<p>2. <strong>q值选择</strong>：</p>
-   - 负q值对稀疏区域敏感
-   - 正q值对密集区域敏感
-   - 建议范围：-5 到 5
-   - 点数建议：20-50个
-<p>3. <strong>尺度参数</strong>：</p>
-   - <code class="code-inline">max_scales</code> 影响采样密度，建议60-80
-   - <code class="code-inline">min_box</code> 不要小于2
-   - 使用 <code class="code-inline">roi_mode="center"</code> 的固定ROI避免边界效应
-<p>4. <strong>结果解释</strong>：</p>
-   - f(α) 曲线越宽，多重分形性越强
-   - Δα = α_max - α_min 量化异质性
-   - D(q) 单调递减表示多重分形
-   - r_value 接近1表示良好拟合
-<p>5. <strong>性能优化</strong>：</p>
-   - 使用GPU版本（<code class="code-inline">CFAImageMFSGPU</code>）可显著加速
-   - GPU版本使用 <code class="code-inline">q_chunk</code> 和 <code class="code-inline">img_chunk</code> 控制显存用量
-   - 默认数据类型：单图像float64，批处理float32
-
-<h2>常见问题</h2>
-
-<h3>Q: D(0) > 2 怎么办？</h3>
-A: 可以设置 <code class="code-inline">cap_d0_at_2=True</code> 限制D(0)≤2，或检查图像预处理是否正确。
-
-<h3>Q: 如何判断是否为多重分形？</h3>
-A: 检查 D(q) 是否随q单调变化，或者 f(α) 是否为凸函数且有一定宽度。
-
-<h3>Q: 计算结果不稳定？</h3>
-A: 增加 <code class="code-inline">max_scales</code>，使用 <code class="code-inline">use_middle_scales=True</code>，或调整 <code class="code-inline">fit_scale_frac</code>。
-
-<h2>参考文献</h2>
-
-<ul>
-<li>Chhabra, A., &amp; Jensen, R. V. (1989). Direct determination of the f(α) singularity spectrum. Physical Review Letters.</li>
-<li>Evertsz, C. J., &amp; Mandelbrot, B. B. (1992). Multifractal measures. Chaos and Fractals.</li>
-</ul>
-
-        </main>
-
-        <footer>
-            <p>© 2025 FreeAeon-Fractal. 保留所有权利</p>
-            <p><a href="https://github.com/jim-xie-cn/FreeAeon-Fractal" target="_blank" style="color: #667eea;">GitHub</a></p>
-        </footer>
-    </div>
+    </main>
+    <footer>
+        <p>© 2025 FreeAeon-Fractal. 保留所有权利</p>
+        <p><a href="https://github.com/jim-xie-cn/FreeAeon-Fractal" target="_blank" style="color: #667eea;">GitHub</a></p>
+    </footer>
+</div>
 </body>
 </html>

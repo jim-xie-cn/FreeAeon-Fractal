@@ -22,6 +22,7 @@ from FreeAeonFractal.FAImage import CFAImage
 # Read image
 rgb_image = cv2.imread('./images/fractal.png')
 gray_image = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2GRAY)
+bin_image = (gray_image < 64).astype('uint8')
 
 # For BC method, need binary image
 bin_image, threshold = CFAImage.otsu_binarize(gray_image)
@@ -60,9 +61,19 @@ from FreeAeonFractal.FAImageFD import CFAImageFD
 images = [cv2.imread(f, cv2.IMREAD_GRAYSCALE) for f in glob.glob('./images/*.png')]
 
 # Batch box-counting
-results = CFAImageFD.get_batch_bc(images)
-for r in results:
+results_bc = CFAImageFD.get_batch_bc(images)
+results_dbc = CFAImageFD.get_batch_dbc(images)
+results_sdbc = CFAImageFD.get_batch_sdbc(images)
+
+for r in results_bc:
     print("BC FD:", r['fd'])
+```
+
+### Restrict Fit Range
+
+```python
+# Only use middle scales for fitting (avoids sigmoid tails)
+fd_bc = CFAImageFD(bin_image, max_scales=30).get_bc_fd(fit_range=(4, 64))
 ```
 
 ### Installation
@@ -81,9 +92,9 @@ pip install FreeAeon-Fractal
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `image` | numpy.ndarray | Required | Input image (single channel) |
+| `image` | numpy.ndarray | Required | Input image (single channel 2D array) |
 | `max_size` | int | None | Maximum box size (default: minimum image dimension) |
-| `max_scales` | int | 30 | Maximum number of scales |
+| `max_scales` | int | 30 | Target number of distinct scales |
 | `with_progress` | bool | True | Whether to show progress bar |
 | `min_size` | int | 2 | Minimum box size |
 
@@ -91,23 +102,23 @@ pip install FreeAeon-Fractal
 
 ##### 1. get_bc_fd(corp_type=-1, fit_range=None)
 
-**Description**: Calculate fractal dimension using Box-Counting (BC) method.
+**Description**: Calculate fractal dimension using Box-Counting (BC) method. Any positive pixel counts as occupied.
 
 **Parameters**:
 - `corp_type` (int): Image cropping method
-  - `-1`: Auto crop to multiples of box size
-  - `0`: No processing (requires image dimensions to be multiples of box size)
-  - `1`: Padding
+  - `-1`: Auto crop to multiples of box size (default)
+  - `0`: No processing (requires image dimensions to be exact multiples)
+  - `1`: Zero-pad to multiples
 - `fit_range` (tuple or None): Optional `(min_scale, max_scale)` to restrict log-log fit range
 
 **Return Value** (dict):
 ```python
 {
     'fd': float,              # Fractal dimension value
-    'scales': list,           # Scale list
+    'scales': list,           # Used scale list
     'counts': list,           # Box count list
-    'log_scales': list,       # Logarithmic scales
-    'log_counts': list,       # Logarithmic counts
+    'log_scales': list,       # log(1/r) values used in fit
+    'log_counts': list,       # log(N(r)) values used in fit
     'intercept': float,       # Fit intercept
     'r_value': float,         # Correlation coefficient
     'p_value': float,         # p-value
@@ -115,41 +126,45 @@ pip install FreeAeon-Fractal
 }
 ```
 
-**Use Case**: Suitable for binary images, calculating the dimension of occupied space.
+**Use Case**: Suitable for binary images; counts the boxes needed to cover the foreground.
 
 ##### 2. get_dbc_fd(corp_type=-1, fit_range=None)
 
-**Description**: Calculate fractal dimension using Differential Box-Counting (DBC) method (Sarkar & Chaudhuri 1994). Uses `n_r = ceil(I_max/h) - ceil(I_min/h) + 1`.
+**Description**: Calculate fractal dimension using Differential Box-Counting (DBC) method (Sarkar & Chaudhuri 1994).
+
+Formula per box: `n_r = ceil(I_max / h) - ceil(I_min / h) + 1`, where `h = s * H / G_max`.
 
 **Parameters**: Same as `get_bc_fd`
 
 **Return Value**: Same as `get_bc_fd`
 
-**Use Case**: Suitable for grayscale images, considering grayscale information in fractal dimension calculation.
+**Use Case**: Suitable for grayscale images; treats the image as a 3D surface and measures its height variation.
 
 ##### 3. get_sdbc_fd(corp_type=-1, fit_range=None)
 
-**Description**: Calculate fractal dimension using Shifted DBC (SDBC) method (Chen 1995). Uses `n_r = floor((I_max - I_min)/h) + 1`.
+**Description**: Calculate fractal dimension using Shifted DBC (SDBC) method (Chen et al. 1995).
+
+Formula per box: `n_r = floor((I_max - I_min) / h) + 1`. Aligns each box's baseline to I_min, avoiding the boundary-crossing overcount of plain DBC.
 
 **Parameters**: Same as `get_bc_fd`
 
 **Return Value**: Same as `get_bc_fd`
 
-**Use Case**: SDBC is a simplified version of DBC, faster computation, suitable for grayscale images.
+**Use Case**: Improved version of DBC for grayscale images with better accuracy at small scales.
 
 ##### 4. get_fd(scale_list, box_count_list)
 
-**Description**: Utility method to perform log-log fit on custom scale and count data.
+**Description**: Utility method to perform log-log linear regression on custom scale and count data.
 
 **Parameters**:
-- `scale_list`: List of scale values
-- `box_count_list`: Corresponding box counts
+- `scale_list`: List of scale values (r)
+- `box_count_list`: Corresponding box counts N(r)
 
 **Return Value**: Same dict structure as `get_bc_fd`
 
-##### 5. plot(raw_img, gray_img, bin_img, fd_bc, fd_dbc, fd_sdbc)
+##### 5. plot(raw_img, gray_img, bin_img, fd_bc, fd_dbc, fd_sdbc) [static]
 
-**Description**: Static method to visualize original image, grayscale image, binary image, and fitting results of three fractal dimensions.
+**Description**: Visualize original image, grayscale image, binary image, and fitting results of three fractal dimensions in a 2×3 subplot grid.
 
 **Parameters**:
 - `raw_img`: Original RGB image
@@ -159,69 +174,85 @@ pip install FreeAeon-Fractal
 - `fd_dbc`: DBC method result dictionary
 - `fd_sdbc`: SDBC method result dictionary
 
-##### 6. get_batch_bc / get_batch_dbc / get_batch_sdbc(images, ...)
+##### 6. get_batch_bc / get_batch_dbc / get_batch_sdbc(images, ...) [static]
 
-**Description**: Static methods for batch processing of multiple images.
+**Description**: Static methods for batch processing of multiple images. Scale generation is shared across the batch to avoid redundant work.
 
 **Parameters**:
-- `images` (list): List of input images
-- Additional keyword arguments passed to the corresponding single-image method
+- `images` (list of ndarray): List of 2D input images
+- `max_size` (int): Maximum box size
+- `max_scales` (int): Target number of scales
+- `min_size` (int): Minimum box size
+- `corp_type` (int): Cropping strategy
+- `fit_range` (tuple or None): Fit range restriction
+- `with_progress` (bool): Show progress bar
 
-**Return Value**: List of result dictionaries
+**Return Value**: List of result dictionaries (one per image)
 
 ## Algorithm Description
 
 ### BC (Box-Counting) Method
-The box-counting method calculates fractal dimension by counting the number of non-empty boxes needed to cover the image at different scales. Formula:
+
+The box-counting method calculates fractal dimension by counting non-empty boxes at different scales. Formula:
 
 ```
 D = lim(ε→0) log(N(ε)) / log(1/ε)
 ```
 
-Where N(ε) is the number of boxes at scale ε.
+Where N(ε) is the number of non-empty boxes at scale ε.
 
 ### DBC (Differential Box-Counting) Method
-DBC considers grayscale height information, treating the image as a 3D surface. The height of each box is:
+
+DBC treats the grayscale image as a 3D surface and counts the box height steps:
 
 ```
-n_r = ceil(I_max / h) - ceil(I_min / h) + 1
+h = s × H / G_max
+n_r(i,j) = ceil(I_max / h) - ceil(I_min / h) + 1
 ```
 
-Where `h = max_val / (image_size / r)` is the height of a grayscale unit.
+Where `H` is the image size (max dimension) and `G_max` is the 99th percentile intensity.
 
-### SDBC (Simplified DBC) Method
-Shifted DBC uses a simplified height calculation:
+### SDBC (Shifted DBC) Method
+
+SDBC shifts each box's baseline to I_min before counting:
 
 ```
-n_r = floor((I_max - I_min) / h) + 1
+n_r(i,j) = floor((I_max - I_min) / h) + 1
 ```
 
-This avoids the rounding artefact in the original DBC formula.
+This avoids the "+1" boundary offset in the DBC formula, reducing systematic overestimation at small scales.
+
+### Scale Generation
+
+Scales are geometrically spaced in `[min_size, max_size]` using `make_scales()`. Unlike `np.logspace(..., dtype=int)` which collapses many values to the same integer, the implementation generates floats, rounds, deduplicates, and sorts — ensuring the requested count of **distinct** integer scales.
+
+### Log-Log Regression
+
+Scales with N=0 are dropped from the regression instead of being replaced with epsilon (which would anchor the fit artificially). The `fit_range` parameter allows restricting to the power-law regime by excluding the sigmoid tails.
 
 ## Important Notes
 
 1. **Image Preprocessing**:
-   - BC method requires binary images, recommend using Otsu auto-thresholding
-   - DBC and SDBC methods are suitable for grayscale images
+   - BC method requires binary images; use `CFAImage.otsu_binarize()` or manual thresholding
+   - DBC and SDBC methods accept grayscale images directly
 
 2. **Scale Selection**:
-   - `max_size` affects the scale range of analysis
-   - `max_scales` affects sampling density, recommend default value 30
+   - `max_size` limits the scale range; set to image size for full range
+   - `max_scales=30` is a good default; increase for smoother log-log curves
    - Use `fit_range` to exclude unreliable small/large scales
 
 3. **Result Interpretation**:
-   - Fractal dimension range typically 1-2 (for 2D images)
-   - Larger values indicate more complex images
-   - `r_value` close to 1 indicates good power-law fit
+   - Fractal dimension is typically 1–2 for 2D images
+   - Larger values indicate more complex, space-filling images
+   - `r_value` close to ±1 indicates good power-law fit
 
 4. **Performance Optimization**:
-   - For large images, can downsample first
-   - Set `with_progress=False` to improve computation speed
-   - Use GPU version (`CFAImageFDGPU`) for batch processing
+   - Set `with_progress=False` to suppress the tqdm bar
+   - Use GPU version (`CFAImageFDGPU`) for large images or batch processing
    - Note: GPU version sets `p_value=None` (not computed)
 
 ## References
 
-- Mandelbrot, B. B. (1982). The Fractal Geometry of Nature.
+- Mandelbrot, B. B. (1982). *The Fractal Geometry of Nature*. Freeman.
 - Sarkar, N., & Chaudhuri, B. B. (1994). An efficient differential box-counting approach to compute fractal dimension of image. *IEEE Transactions on Systems, Man, and Cybernetics*.
 - Chen, W. S., et al. (1995). Efficient fractal coding of images based on differential box counting. *Pattern Recognition*.
