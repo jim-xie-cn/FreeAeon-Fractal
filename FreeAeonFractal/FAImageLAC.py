@@ -389,12 +389,12 @@ class CFAImageLAC:
         it = (tqdm(images, desc="Batch lacunarity")
               if with_progress else images)
         for im in it:
-            obj = CFAImageLacunarity(im, max_size=max_size,
-                                     max_scales=max_scales,
-                                     scales_mode=scales_mode,
-                                     partition_mode=partition_mode,
-                                     min_size=min_size,
-                                     with_progress=False)
+            obj = CFAImageLAC(im, max_size=max_size,
+                              max_scales=max_scales,
+                              scales_mode=scales_mode,
+                              partition_mode=partition_mode,
+                              min_size=min_size,
+                              with_progress=False)
             results.append(obj.get_lacunarity(
                 use_binary_mass=use_binary_mass,
                 include_zero=include_zero))

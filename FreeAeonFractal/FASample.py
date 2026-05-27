@@ -19,10 +19,10 @@ g_p_Sierpinski_Triangle = np.array([0.33, 0.33, 0.34])
 
 #Barnsley Fern
 g_m_Barnsley_Fern = np.array([[[+0.00,+0.00,+0.00],[+0.00,+0.16,+0.00]],
-                  [[+0.85,+0.04,+0.00],[+0.04,+0.85,+1.60]],
-                  [[+0.20,-0.26,+0.50],[+0.23,+0.22,+1.60]],
+                  [[+0.85,+0.04,+0.00],[-0.04,+0.85,+1.60]],
+                  [[+0.20,-0.26,+0.00],[+0.23,+0.22,+1.60]],
                   [[-0.15,+0.28,+0.00],[+0.26,+0.24,+0.44]]])
-g_p_Barnsley_Fern = np.array([0.25, 0.25, 0.25,0.25])
+g_p_Barnsley_Fern = np.array([0.01, 0.85, 0.07, 0.07])
 
 #4D test
 g_m_4 = np.array([[[+0.50,+0.00,+0.00,+0.00,+0.20],[+0.00,+0.50,+0.00,+0.00,+0.30],[+0.00,+0.50,+0.50,+0.00,+0.00],[+0.00,+0.50,+0.50,+0.00,+0.00]],
@@ -64,6 +64,7 @@ class CFASample(object):
         return CFASample.generate(init_point,iterations,g_m_Sierpinski_Triangle,g_p_Sierpinski_Triangle)
         
     '''Barnsley Fern which dimension is 1.67'''
+    @staticmethod
     def get_Barnsley_Fern(init_point = np.array([0.0, 0.0]), iterations = 4096):
         return CFASample.generate(init_point,iterations,g_m_Barnsley_Fern,g_p_Barnsley_Fern)
 

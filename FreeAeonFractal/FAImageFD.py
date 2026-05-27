@@ -250,7 +250,7 @@ class CFAImageFD(object):
         """
         Differential Box Counting (Sarkar & Chaudhuri 1994).
 
-        For each block of side s, compute box height h = s * H / G_max,
+        For each block of side s, compute box height h = s * G_max / H,
         then n_r(i,j) = ceil(I_max / h) - ceil(I_min / h) + 1.
         N_r = sum n_r(i,j).
         """
@@ -268,7 +268,7 @@ class CFAImageFD(object):
                                                 corp_type=corp_type)
             if box_min.size == 0:
                 continue
-            h = float(size) * H / G_max
+            h = float(size) * G_max / H
             n_r = (np.ceil(box_max / h) - np.ceil(box_min / h) + 1.0)
             np.clip(n_r, 1.0, None, out=n_r)
             box_count = int(n_r.sum())
@@ -301,7 +301,7 @@ class CFAImageFD(object):
                                                 corp_type=corp_type)
             if box_min.size == 0:
                 continue
-            h = float(size) * H / G_max
+            h = float(size) * G_max / H
             delta = np.clip(box_max - box_min, 0.0, None)
             n_r = np.floor(delta / h) + 1.0
             box_count = int(n_r.sum())
@@ -477,7 +477,7 @@ def _batch_run(images: Sequence[np.ndarray], method: str,
                 bmin, bmax = _blocks_min_max(img, size, corp_type=corp_type)
                 if bmin.size == 0:
                     continue
-                h_box = float(size) * H_norm / G_max[i]
+                h_box = float(size) * G_max[i] / H_norm
                 if method == "dbc":
                     n_r = (np.ceil(bmax / h_box)
                            - np.ceil(bmin / h_box) + 1.0)
@@ -526,7 +526,7 @@ def main():
     print(f"BC FD   = {fd_bc['fd']:.4f}")
     print(f"DBC FD  = {fd_dbc['fd']:.4f}")
     print(f"SDBC FD = {fd_sdbc['fd']:.4f}")
-    CFAImageFD.plot(raw_image, bin_image, fd_bc, fd_dbc, fd_sdbc)
+    CFAImageFD.plot(raw_image, raw_image, bin_image, fd_bc, fd_dbc, fd_sdbc)
 
 
 if __name__ == "__main__":

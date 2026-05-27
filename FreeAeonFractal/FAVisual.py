@@ -37,8 +37,7 @@ class CFAVisual(object):
     def plot_3d_image(img,ax = plt):
         x,y,z = img[:,0],img[:,1],img[:,2]
         if len(img.shape) == 3:
-            value = x
-            value[True] = 1
+            value = np.ones_like(x)
         else:
             value = img[:,3]
         scatter = ax.scatter(x, y, z, value*10, marker='.', cmap='viridis')
