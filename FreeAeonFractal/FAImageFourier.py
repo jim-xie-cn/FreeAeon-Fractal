@@ -188,15 +188,7 @@ class CFAImageFourier(object):
         """
         def enhance_contrast(image, beta=0, min_scale=1, max_scale=1.8):
             std = np.std(image)
-            max_std = 160.0  
-            scale = max_scale - (std / max_std) * (max_scale - min_scale)
-            scale = np.clip(scale, min_scale, max_scale)
-            enhanced = cv2.convertScaleAbs(image, alpha=scale, beta=beta)
-            return enhanced
-        
-        def enhance_contrast(image, beta=0, min_scale=1, max_scale=1.8):
-            std = np.std(image)
-            max_std = 160.0  
+            max_std = 160.0
             scale = max_scale - (std / max_std) * (max_scale - min_scale)
             scale = np.clip(scale, min_scale, max_scale)
             enhanced = cv2.convertScaleAbs(image, alpha=scale, beta=beta)

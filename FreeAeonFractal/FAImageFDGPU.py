@@ -396,7 +396,7 @@ def _single_minmax_fit(img: torch.Tensor, scales: List[int],
         blocks = _blocks_NHW(proc, size)                         # (1,nb,s*s)
         I_min = blocks.amin(dim=2)                               # (1,nb)
         I_max = blocks.amax(dim=2)                               # (1,nb)
-        h_box = float(size) * H_norm / float(G_max.item())
+        h_box = float(size) * float(G_max.item()) / H_norm
         if method == "dbc":
             n_r = (torch.ceil(I_max / h_box)
                    - torch.ceil(I_min / h_box) + 1.0).clamp_min(1.0)
@@ -499,8 +499,8 @@ def _batch_run_gpu(images: Sequence[np.ndarray], method: str,
                 blocks = _blocks_NHW(proc, size)                  # (b,nb,s*s)
                 I_min = blocks.amin(dim=2)                        # (b,nb)
                 I_max = blocks.amax(dim=2)                        # (b,nb)
-                h_box = (float(size) * H_norm
-                         / G_max).reshape(b, 1)                   # (b, 1)
+                h_box = (float(size) * G_max
+                         / H_norm).reshape(b, 1)                   # (b, 1)
                 if method == "dbc":
                     n_r = (torch.ceil(I_max / h_box)
                            - torch.ceil(I_min / h_box) + 1.0

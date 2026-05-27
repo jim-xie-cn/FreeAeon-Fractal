@@ -668,8 +668,8 @@ class CFAImageMFS:
         else:
             axs[0, 1].set_title("f(alpha): (no data)")
 
-        if df_spec is not None and not df_spec.empty:
-            sns.lineplot(data=df_spec, x="q", y="tau", ax=axs[0, 2])
+        if df_fit is not None and not df_fit.empty:
+            sns.lineplot(data=df_fit, x="q", y="tau", ax=axs[0, 2])
 
             axs[0, 2].set_xlabel("$q$")
             axs[0, 2].set_ylabel(r"$\tau(q)$")
@@ -680,8 +680,8 @@ class CFAImageMFS:
         else:
             axs[0, 2].set_title("tau(q): (no data)")
 
-        if df_spec is not None and not df_spec.empty:
-            sns.lineplot(data=df_spec, x="q", y="Dq", ax=axs[1, 0])
+        if df_fit is not None and not df_fit.empty:
+            sns.lineplot(data=df_fit, x="q", y="Dq", ax=axs[1, 0])
             axs[1, 0].set_xlabel("$q$")
             axs[1, 0].set_ylabel(r"$D(q)$")
             axs[1, 0].set_title(r"$D(q)$ vs $q$ (with $D_1$ at q=1)")
