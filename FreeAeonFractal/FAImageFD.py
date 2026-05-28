@@ -168,7 +168,9 @@ def _blocks_occupied(img2d: np.ndarray, size: int,
 # Linear regression on log-log points, with empty-row handling
 # ============================================================
 def _auto_select_fit_range(s_valid: np.ndarray, n_valid: np.ndarray,
-                            min_points: int = 5
+                            min_points: int = 5,
+                            slope_floor: Optional[float] = None,
+                            slope_ceiling: Optional[float] = None
                             ) -> Optional[Tuple[float, float]]:
     """
     Find the most "linear" sub-window of the log-log curve.
@@ -190,14 +192,34 @@ def _auto_select_fit_range(s_valid: np.ndarray, n_valid: np.ndarray,
     by only 0.7%). The (1-R²) divisor is clamped to 1e-6 to avoid
     overflow on perfect fits.
 
+    Physical-bound filtering
+    ------------------------
+    For DBC/SDBC on natural images the small-scale segment is often
+    perfectly linear with slope ≈ 2 because the boxes are too small
+    for any pixel-range variation to register (n_r collapses to 1 per
+    block). That segment IS the most linear part of the curve, but
+    its slope is the DEGENERATE BC limit, not the true DBC dimension
+    (which lies in [2, 3]). To prevent auto-selection from picking
+    such a degenerate window, callers can pass ``slope_floor`` /
+    ``slope_ceiling`` to restrict candidate windows to those whose
+    fitted slope lies in the physically meaningful range.
+
     Parameters
     ----------
     s_valid, n_valid : 1D arrays of positive finite values, same length
     min_points : minimum number of points in the chosen window
+    slope_floor : float or None
+        Minimum acceptable slope of the fitted window. Use 2.0 for
+        DBC/SDBC; None for BC (no floor) or unconstrained selection.
+    slope_ceiling : float or None
+        Maximum acceptable slope (rarely needed; pass 2.0 for BC to
+        reject super-D=2 fits if you know the binary input is purely
+        2D-filling).
 
     Returns
     -------
-    (s_lo, s_hi) tuple or None if not enough valid points.
+    (s_lo, s_hi) tuple or None if not enough valid points or no window
+    satisfies the slope bounds.
     """
     if s_valid.size < min_points:
         return None
@@ -211,7 +233,8 @@ def _auto_select_fit_range(s_valid: np.ndarray, n_valid: np.ndarray,
     n_pts = x.size
 
     best_score = -np.inf
-    best_lo, best_hi = float(s_sorted[0]), float(s_sorted[-1])
+    best_lo: Optional[float] = None
+    best_hi: Optional[float] = None
     for i in range(0, n_pts - min_points + 1):
         for j in range(i + min_points, n_pts + 1):
             xs = x[i:j]
@@ -224,6 +247,13 @@ def _auto_select_fit_range(s_valid: np.ndarray, n_valid: np.ndarray,
             ss_xy = float(np.sum((xs - x_mean) * (ys - y_mean)))
             if ss_xx <= 0 or ss_yy <= 0:
                 continue
+            slope = ss_xy / ss_xx
+            # Physical-bound filter: drop windows whose slope is
+            # outside the user-requested range entirely.
+            if slope_floor is not None and slope < slope_floor:
+                continue
+            if slope_ceiling is not None and slope > slope_ceiling:
+                continue
             r2 = (ss_xy * ss_xy) / (ss_xx * ss_yy)
             # F-statistic: R²/(1-R²) · (n-2). Clamp 1-R² to 1e-6 to
             # cap perfect fits; multiply by length surrogate for
@@ -233,13 +263,17 @@ def _auto_select_fit_range(s_valid: np.ndarray, n_valid: np.ndarray,
                 best_score = score
                 best_lo = float(s_sorted[i])
                 best_hi = float(s_sorted[j - 1])
+    if best_lo is None or best_hi is None:
+        return None
     return (best_lo, best_hi)
 
 
 def _fit_log_log(scales: np.ndarray, counts: np.ndarray,
                  fit_range: Optional[Tuple[float, float]] = None,
                  auto_fit_range: bool = False,
-                 auto_fit_min_points: int = 5) -> dict:
+                 auto_fit_min_points: int = 5,
+                 auto_slope_floor: Optional[float] = None,
+                 auto_slope_ceiling: Optional[float] = None) -> dict:
     """
     Fit log N(r) vs log(1/r). Drops scales with N=0 instead of replacing
     them with eps (which would anchor the fit at log(eps)).
@@ -276,7 +310,10 @@ def _fit_log_log(scales: np.ndarray, counts: np.ndarray,
     # an explicit fit_range. Explicit user input always overrides.
     if auto_fit_range and fit_range is None:
         auto_range = _auto_select_fit_range(
-            s_valid, n_valid, min_points=auto_fit_min_points)
+            s_valid, n_valid,
+            min_points=auto_fit_min_points,
+            slope_floor=auto_slope_floor,
+            slope_ceiling=auto_slope_ceiling)
         if auto_range is not None:
             fit_range = auto_range
 
@@ -348,12 +385,16 @@ class CFAImageFD(object):
     def get_fd(self, scale_list, box_count_list,
                fit_range: Optional[Tuple[float, float]] = None,
                auto_fit_range: bool = False,
-               auto_fit_min_points: int = 5):
+               auto_fit_min_points: int = 5,
+               auto_slope_floor: Optional[float] = None,
+               auto_slope_ceiling: Optional[float] = None):
         return _fit_log_log(np.asarray(scale_list),
                             np.asarray(box_count_list),
                             fit_range=fit_range,
                             auto_fit_range=auto_fit_range,
-                            auto_fit_min_points=auto_fit_min_points)
+                            auto_fit_min_points=auto_fit_min_points,
+                            auto_slope_floor=auto_slope_floor,
+                            auto_slope_ceiling=auto_slope_ceiling)
 
     # ============================================================
     # Single-image methods
@@ -361,14 +402,22 @@ class CFAImageFD(object):
     def get_bc_fd(self, corp_type: int = -1,
                   fit_range: Optional[Tuple[float, float]] = None,
                   auto_fit_range: bool = False,
-                  auto_fit_min_points: int = 5):
+                  auto_fit_min_points: int = 5,
+                  auto_slope_floor: Optional[float] = None,
+                  auto_slope_ceiling: Optional[float] = None):
         """Box-counting on a binary image. Any positive pixel = occupied.
 
         ``auto_fit_range``: when True and ``fit_range`` is None, the
         most-linear sub-window of the log-log curve is selected
-        automatically (maximises R²×√length). The chosen window is
+        automatically (F-statistic scoring). The chosen window is
         returned in the result dict under ``"fit_range_used"``. An
         explicit ``fit_range`` always overrides auto-selection.
+
+        ``auto_slope_floor`` / ``auto_slope_ceiling``: physical bounds
+        on the chosen window's slope. BC theory gives D ∈ [0, 2], so
+        you can pass ``auto_slope_ceiling=2.0`` to reject windows that
+        give D > 2 (which is a fitting artifact for binary input).
+        Defaults to None for backward compatibility.
         """
         scale_list, count_list = [], []
         it = (tqdm(self.m_scales, desc="Calculating by BC")
@@ -380,14 +429,29 @@ class CFAImageFD(object):
         return _fit_log_log(np.array(scale_list), np.array(count_list),
                             fit_range=fit_range,
                             auto_fit_range=auto_fit_range,
-                            auto_fit_min_points=auto_fit_min_points)
+                            auto_fit_min_points=auto_fit_min_points,
+                            auto_slope_floor=auto_slope_floor,
+                            auto_slope_ceiling=auto_slope_ceiling)
 
     def get_dbc_fd(self, corp_type: int = -1,
                    fit_range: Optional[Tuple[float, float]] = None,
                    auto_fit_range: bool = False,
-                   auto_fit_min_points: int = 5):
+                   auto_fit_min_points: int = 5,
+                   auto_slope_floor: Optional[float] = 2.0,
+                   auto_slope_ceiling: Optional[float] = None):
         """
         Differential Box Counting (Sarkar & Chaudhuri 1994).
+
+        Auto-fit physical floor
+        -----------------------
+        ``auto_slope_floor`` defaults to **2.0** because DBC theory
+        bounds D ∈ [2, 3] (surface dimension). Without this floor,
+        ``auto_fit_range=True`` would often pick the small-scale
+        BC-degenerate segment (where every block's I_max − I_min ≤ h
+        forces n_r ≡ 1, slope ≡ 2). Such windows are perfectly linear
+        but represent BC behaviour, not DBC. The floor 2.0 rejects
+        them so the auto-picker lands on the real DBC scaling region.
+        Pass ``auto_slope_floor=None`` to disable this safeguard.
 
         For each block of side s, compute box height h = s * G_max / H,
         then n_r(i,j) = ceil(I_max / h) - ceil(I_min / h) + 1.
@@ -452,12 +516,16 @@ class CFAImageFD(object):
         return _fit_log_log(np.array(scale_list), np.array(count_list),
                             fit_range=fit_range,
                             auto_fit_range=auto_fit_range,
-                            auto_fit_min_points=auto_fit_min_points)
+                            auto_fit_min_points=auto_fit_min_points,
+                            auto_slope_floor=auto_slope_floor,
+                            auto_slope_ceiling=auto_slope_ceiling)
 
     def get_sdbc_fd(self, corp_type: int = -1,
                     fit_range: Optional[Tuple[float, float]] = None,
                     auto_fit_range: bool = False,
-                    auto_fit_min_points: int = 5):
+                    auto_fit_min_points: int = 5,
+                    auto_slope_floor: Optional[float] = 2.0,
+                    auto_slope_ceiling: Optional[float] = None):
         """
         Shifted DBC (Chen et al. 1995).
 
@@ -499,7 +567,9 @@ class CFAImageFD(object):
         return _fit_log_log(np.array(scale_list), np.array(count_list),
                             fit_range=fit_range,
                             auto_fit_range=auto_fit_range,
-                            auto_fit_min_points=auto_fit_min_points)
+                            auto_fit_min_points=auto_fit_min_points,
+                            auto_slope_floor=auto_slope_floor,
+                            auto_slope_ceiling=auto_slope_ceiling)
 
     # ============================================================
     # Batch APIs
@@ -513,20 +583,27 @@ class CFAImageFD(object):
                      fit_range: Optional[Tuple[float, float]] = None,
                      auto_fit_range: bool = False,
                      auto_fit_min_points: int = 5,
+                     auto_slope_floor: Optional[float] = None,
+                     auto_slope_ceiling: Optional[float] = None,
                      with_progress: bool = True) -> List[dict]:
         """Batch BC. Each image must be 2D and binary (or any positive =
         occupied). Returns one fit-result dict per image.
 
         ``auto_fit_range`` (default False): when True and ``fit_range``
         is None, each image's log-log curve gets its OWN best-linear
-        window picked independently. The chosen window is reported per
-        image in result["fit_range_used"].
+        window picked independently (reported per image in
+        ``result["fit_range_used"]``).
+
+        ``auto_slope_floor`` / ``auto_slope_ceiling``: optional physical
+        bounds; default None (no constraint). BC theory: D ∈ [0, 2].
         """
         return _batch_run(images, "bc", corp_type=corp_type,
                           max_size=max_size, max_scales=max_scales,
                           min_size=min_size, fit_range=fit_range,
                           auto_fit_range=auto_fit_range,
                           auto_fit_min_points=auto_fit_min_points,
+                          auto_slope_floor=auto_slope_floor,
+                          auto_slope_ceiling=auto_slope_ceiling,
                           with_progress=with_progress)
 
     @staticmethod
@@ -538,15 +615,22 @@ class CFAImageFD(object):
                       fit_range: Optional[Tuple[float, float]] = None,
                       auto_fit_range: bool = False,
                       auto_fit_min_points: int = 5,
+                      auto_slope_floor: Optional[float] = 2.0,
+                      auto_slope_ceiling: Optional[float] = None,
                       with_progress: bool = True) -> List[dict]:
         """Batch DBC. Each image must be 2D grayscale.
 
-        See ``get_batch_bc`` for ``auto_fit_range`` semantics."""
+        Defaults to ``auto_slope_floor=2.0`` (DBC theoretical floor) so
+        auto-selection cannot accidentally pick the small-scale
+        BC-degenerate segment. See ``get_dbc_fd`` for the rationale.
+        """
         return _batch_run(images, "dbc", corp_type=corp_type,
                           max_size=max_size, max_scales=max_scales,
                           min_size=min_size, fit_range=fit_range,
                           auto_fit_range=auto_fit_range,
                           auto_fit_min_points=auto_fit_min_points,
+                          auto_slope_floor=auto_slope_floor,
+                          auto_slope_ceiling=auto_slope_ceiling,
                           with_progress=with_progress)
 
     @staticmethod
@@ -558,15 +642,20 @@ class CFAImageFD(object):
                        fit_range: Optional[Tuple[float, float]] = None,
                        auto_fit_range: bool = False,
                        auto_fit_min_points: int = 5,
+                       auto_slope_floor: Optional[float] = 2.0,
+                       auto_slope_ceiling: Optional[float] = None,
                        with_progress: bool = True) -> List[dict]:
         """Batch SDBC. Each image must be 2D grayscale.
 
-        See ``get_batch_bc`` for ``auto_fit_range`` semantics."""
+        Same physical-floor default as ``get_batch_dbc``.
+        """
         return _batch_run(images, "sdbc", corp_type=corp_type,
                           max_size=max_size, max_scales=max_scales,
                           min_size=min_size, fit_range=fit_range,
                           auto_fit_range=auto_fit_range,
                           auto_fit_min_points=auto_fit_min_points,
+                          auto_slope_floor=auto_slope_floor,
+                          auto_slope_ceiling=auto_slope_ceiling,
                           with_progress=with_progress)
 
     # ============================================================
@@ -640,7 +729,9 @@ def _batch_run(images: Sequence[np.ndarray], method: str,
                with_progress: bool,
                fit_range: Optional[Tuple[float, float]] = None,
                auto_fit_range: bool = False,
-               auto_fit_min_points: int = 5
+               auto_fit_min_points: int = 5,
+               auto_slope_floor: Optional[float] = None,
+               auto_slope_ceiling: Optional[float] = None
                ) -> List[dict]:
     """
     Batch driver. Iterates over images on the outer loop and shares the
@@ -704,7 +795,9 @@ def _batch_run(images: Sequence[np.ndarray], method: str,
 
     return [_fit_log_log(scale_arr, counts[i], fit_range=fit_range,
                          auto_fit_range=auto_fit_range,
-                         auto_fit_min_points=auto_fit_min_points)
+                         auto_fit_min_points=auto_fit_min_points,
+                         auto_slope_floor=auto_slope_floor,
+                         auto_slope_ceiling=auto_slope_ceiling)
             for i in range(N)]
 
 
