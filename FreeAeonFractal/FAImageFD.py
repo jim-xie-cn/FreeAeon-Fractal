@@ -15,7 +15,8 @@ What changed vs the original implementation
   number of distinct scales was far below the requested count.
 - DBC formula now follows Sarkar & Chaudhuri 1994:
        n_r(i,j) = ceil(I_max / h) - ceil(I_min / h) + 1
-  with h = s * H / G_max. The original code computed
+  with h = s * G_max / H (s is the box side in pixels, H is the image
+  side, G_max is the gray-value range). The original code computed
        ceil(delta_z / s + 1e-6)
   which silently drops the "+1" baseline of Sarkar's formula and
   systematically underestimates FD at small scales.
@@ -29,6 +30,26 @@ What changed vs the original implementation
 - New batch APIs: `CFAImageDimension.get_batch_*` accept a list of
   images and return one result dict per image, sharing scale generation
   to avoid redundant work.
+
+Production-use caveats (deliberate departures from textbook DBC/SDBC)
+---------------------------------------------------------------------
+These are engineering choices, NOT bugs. They affect cross-image
+comparability and strict literature reproducibility; see the per-method
+docstrings (`get_dbc_fd`, `get_sdbc_fd`) for the full guidance.
+
+1. G_max = np.percentile(image, 99)  (NOT G = 256 / image.max())
+   Robust against saturated outliers but makes D content-adaptive:
+   the same texture at different contrasts can yield different D.
+   For cross-image comparison, pre-normalize the input to a fixed
+   gray range before calling.
+2. H_norm = max(image.shape)         (NOT M, with M × M square)
+   For severely non-square inputs (aspect ratio >> 1), z-axis box
+   height differs from a strict S&C 1994 derivation. Center-crop the
+   input to square for rigorous use.
+3. Scales are geometrically spaced unique integers, NOT dyadic (2^k).
+   Gives more fit points but ~3-5% bias near D = 2. Pass
+   `fit_range=(small, max_size/4)` to restrict the fit to the linear
+   scaling region for the cleanest estimate.
 """
 
 import math
@@ -131,15 +152,16 @@ def _blocks_min_max(img2d: np.ndarray, size: int,
 
 def _blocks_occupied(img2d: np.ndarray, size: int,
                      corp_type: int = -1) -> int:
-    """Number of non-empty boxes (any positive pixel inside)."""
+    """Number of non-empty boxes (any positive pixel inside).
+    """
     proc = _prepare(img2d, size, corp_type=corp_type)
     h, w = proc.shape
     nY, nX = h // size, w // size
     if nY == 0 or nX == 0:
         return 0
     blocks = proc.reshape(nY, size, nX, size).transpose(0, 2, 1, 3)
-    sums = blocks.reshape(nY * nX, size * size).sum(axis=1)
-    return int((sums > 0).sum())
+    flat = blocks.reshape(nY * nX, size * size)
+    return int((flat > 0).any(axis=1).sum())
 
 
 # ============================================================
@@ -253,6 +275,42 @@ class CFAImageFD(object):
         For each block of side s, compute box height h = s * G_max / H,
         then n_r(i,j) = ceil(I_max / h) - ceil(I_min / h) + 1.
         N_r = sum n_r(i,j).
+
+        Note on G_max (deliberate departure from S&C 1994)
+        --------------------------------------------------
+        ``G_max`` here is ``np.percentile(image, 99)`` for outlier
+        robustness, NOT the fixed gray range G = 256 (or G = image.max())
+        that the original Sarkar & Chaudhuri 1994 paper uses. This makes
+        the implementation **content-adaptive**: the same texture
+        rendered at two different brightness / contrast settings will
+        yield slightly different D values, because G_max changes with
+        the input.
+
+        Practical implications
+        ----------------------
+        - Single-image analysis or batches produced by a uniform pipeline:
+          no problem. The choice of G_max is internally consistent.
+        - **Cross-image comparison** (e.g. comparing D across images with
+          different exposure / contrast): pre-normalize the input to a
+          fixed gray range BEFORE calling this method, e.g.
+              img = ((img - img.min()) * 255 /
+                     max(img.max() - img.min(), 1)).astype(np.uint8)
+          or any other fixed scheme, so G_max is comparable across
+          images.
+        - **Reproducing literature results**: replace ``G_max`` with
+          ``255`` (8-bit) or ``image.max()`` to match the strict S&C
+          1994 convention.
+
+        Non-square images: H = max(image.shape) is used, which is a
+        common engineering choice but not strictly the M × M assumption
+        of S&C 1994. For rigorous DBC, center-crop the input to square
+        first.
+
+        Non-dyadic scales: this method's default scale list is
+        geometrically spaced integers (not 2^k), which can introduce a
+        few-percent bias for images saturating BC near D = 2. Pass
+        ``fit_range=(small, max_size/4)`` to restrict the fit to the
+        linear scaling region.
         """
         scale_list, count_list = [], []
         H = float(max(self.m_image.shape))
@@ -282,10 +340,20 @@ class CFAImageFD(object):
         """
         Shifted DBC (Chen et al. 1995).
 
-        Aligns the bottom of each column-stack of boxes to I_min, so the
-        formula simplifies to
+        Aligns the bottom of each column-stack of boxes to I_min. The
+        analytic result of that geometric shift is
             n_r(i,j) = floor((I_max - I_min) / h) + 1
         which avoids the "boundary crossing" overcount of plain DBC.
+        (The formula above is not an approximation — it is exactly what
+        Chen 1995's geometric construction reduces to.)
+
+        Same G_max caveat as ``get_dbc_fd`` applies: G_max is the 99th
+        percentile of the input, NOT the fixed gray range of the
+        original paper. See ``get_dbc_fd`` docstring for the full
+        production-use guidance on:
+          - G_max choice (content-adaptive vs literature-strict),
+          - non-square image handling,
+          - non-dyadic scales and ``fit_range``.
         """
         scale_list, count_list = [], []
         H = float(max(self.m_image.shape))

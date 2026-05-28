@@ -173,13 +173,13 @@ class CFAImage(object):
         patches = []
         used_coords = set()
 
-        max_possible = (w - patch_w) * (h - patch_h)
+        max_possible = (w - patch_w + 1) * (h - patch_h + 1)
         if num_patches > max_possible:
             raise ValueError(f"too much sample count, max sample count is {max_possible}")
 
         while len(patches) < num_patches:
-            x = np.random.randint(0, w - patch_w)
-            y = np.random.randint(0, h - patch_h)
+            x = np.random.randint(0, w - patch_w + 1)
+            y = np.random.randint(0, h - patch_h + 1)
 
             if (x, y) not in used_coords:
                 used_coords.add((x, y))
