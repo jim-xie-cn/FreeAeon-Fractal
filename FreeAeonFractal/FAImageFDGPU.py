@@ -50,11 +50,60 @@ def make_scales(max_size: int, max_scales: int = 30,
 # ============================================================
 # Linear regression on log-log points (no SciPy dependency)
 # ============================================================
+def _auto_select_fit_range(s_valid: np.ndarray, n_valid: np.ndarray,
+                            min_points: int = 5
+                            ) -> Optional[Tuple[float, float]]:
+    """Mirror of FAImageFD._auto_select_fit_range; see that docstring."""
+    if s_valid.size < min_points:
+        return None
+    order = np.argsort(s_valid)
+    s_sorted = s_valid[order]
+    n_sorted = n_valid[order]
+    x = -np.log(s_sorted)
+    y = np.log(n_sorted)
+    n_pts = x.size
+
+    best_score = -np.inf
+    best_lo, best_hi = float(s_sorted[0]), float(s_sorted[-1])
+    for i in range(0, n_pts - min_points + 1):
+        for j in range(i + min_points, n_pts + 1):
+            xs = x[i:j]
+            ys = y[i:j]
+            length = j - i
+            x_mean = xs.mean()
+            y_mean = ys.mean()
+            ss_xx = float(np.sum((xs - x_mean) ** 2))
+            ss_yy = float(np.sum((ys - y_mean) ** 2))
+            ss_xy = float(np.sum((xs - x_mean) * (ys - y_mean)))
+            if ss_xx <= 0 or ss_yy <= 0:
+                continue
+            r2 = (ss_xy * ss_xy) / (ss_xx * ss_yy)
+            # F-statistic-based score: R²/(1-R²) · (n-2). See CPU file.
+            score = (r2 / max(1.0 - r2, 1e-6)) * max(length - 2, 1)
+            if score > best_score:
+                best_score = score
+                best_lo = float(s_sorted[i])
+                best_hi = float(s_sorted[j - 1])
+    return (best_lo, best_hi)
+
+
 def _fit_log_log(scales_np: np.ndarray, counts_np: np.ndarray,
-                 fit_range: Optional[Tuple[float, float]] = None) -> dict:
+                 fit_range: Optional[Tuple[float, float]] = None,
+                 auto_fit_range: bool = False,
+                 auto_fit_min_points: int = 5) -> dict:
     s = np.asarray(scales_np, dtype=np.float64)
     n = np.asarray(counts_np, dtype=np.float64)
     keep = (s > 0) & (n > 0) & np.isfinite(s) & np.isfinite(n)
+    s_valid = s[keep]
+    n_valid = n[keep]
+
+    # Auto-select window if asked and no explicit range was supplied.
+    if auto_fit_range and fit_range is None:
+        auto_range = _auto_select_fit_range(
+            s_valid, n_valid, min_points=auto_fit_min_points)
+        if auto_range is not None:
+            fit_range = auto_range
+
     if fit_range is not None:
         s_lo, s_hi = float(fit_range[0]), float(fit_range[1])
         keep &= (s >= s_lo) & (s <= s_hi)
@@ -67,6 +116,7 @@ def _fit_log_log(scales_np: np.ndarray, counts_np: np.ndarray,
             "log_scales": [], "log_counts": [], "intercept": float("nan"),
             "r_value": float("nan"), "p_value": float("nan"),
             "std_err": float("nan"),
+            "fit_range_used": fit_range,
         }
     x = -np.log(s_used)
     y = np.log(n_used)
@@ -83,6 +133,7 @@ def _fit_log_log(scales_np: np.ndarray, counts_np: np.ndarray,
             "log_scales": x.tolist(), "log_counts": y.tolist(),
             "intercept": float("nan"), "r_value": float("nan"),
             "p_value": float("nan"), "std_err": float("nan"),
+            "fit_range_used": fit_range,
         }
     slope = ss_xy / ss_xx
     intercept = y_mean - slope * x_mean
@@ -116,6 +167,7 @@ def _fit_log_log(scales_np: np.ndarray, counts_np: np.ndarray,
         "r_value": float(r_value),
         "p_value": float(p_value),
         "std_err": float(std_err),
+        "fit_range_used": fit_range,
     }
 
 
@@ -210,17 +262,23 @@ class CFAImageFDGPU:
     # API-compat wrapper
     # ------------------------------------------------------------
     def get_fd(self, scale_list, box_count_list,
-               fit_range: Optional[Tuple[float, float]] = None):
+               fit_range: Optional[Tuple[float, float]] = None,
+               auto_fit_range: bool = False,
+               auto_fit_min_points: int = 5):
         return _fit_log_log(np.asarray(scale_list),
                             np.asarray(box_count_list),
-                            fit_range=fit_range)
+                            fit_range=fit_range,
+                            auto_fit_range=auto_fit_range,
+                            auto_fit_min_points=auto_fit_min_points)
 
     # ============================================================
     # Single-image methods
     # ============================================================
     @torch.no_grad()
     def get_bc_fd(self, corp_type: int = -1,
-                  fit_range: Optional[Tuple[float, float]] = None):
+                  fit_range: Optional[Tuple[float, float]] = None,
+                  auto_fit_range: bool = False,
+                  auto_fit_min_points: int = 5):
         if self.img is None:
             raise ValueError("No image was provided to __init__")
         img = (self.img > 0).to(self.dtype)              # 0/1
@@ -238,11 +296,15 @@ class CFAImageFDGPU:
             occ = (blocks.sum(dim=2) > 0).sum(dim=1)            # (1,)
             counts[k] = float(occ.item())
         return _fit_log_log(np.array(scales, dtype=np.float64), counts,
-                            fit_range=fit_range)
+                            fit_range=fit_range,
+                            auto_fit_range=auto_fit_range,
+                            auto_fit_min_points=auto_fit_min_points)
 
     @torch.no_grad()
     def get_dbc_fd(self, corp_type: int = -1,
-                   fit_range: Optional[Tuple[float, float]] = None):
+                   fit_range: Optional[Tuple[float, float]] = None,
+                   auto_fit_range: bool = False,
+                   auto_fit_min_points: int = 5):
         """
         Differential Box Counting on GPU. Mirrors the CPU implementation
         in ``FAImageFD.CFAImageFD.get_dbc_fd``; see that docstring for
@@ -267,11 +329,15 @@ class CFAImageFDGPU:
             img, self.m_scales, corp_type=corp_type,
             method="dbc", H_norm=H_norm, G_max=G_max,
             with_progress=self.m_with_progress, fit_range=fit_range,
+            auto_fit_range=auto_fit_range,
+            auto_fit_min_points=auto_fit_min_points,
             device=self.device)
 
     @torch.no_grad()
     def get_sdbc_fd(self, corp_type: int = -1,
-                    fit_range: Optional[Tuple[float, float]] = None):
+                    fit_range: Optional[Tuple[float, float]] = None,
+                    auto_fit_range: bool = False,
+                    auto_fit_min_points: int = 5):
         """
         Shifted DBC (Chen et al. 1995) on GPU. ``n_r(i,j) =
         floor((I_max - I_min) / h) + 1`` is the exact analytic result of
@@ -289,6 +355,8 @@ class CFAImageFDGPU:
             img, self.m_scales, corp_type=corp_type,
             method="sdbc", H_norm=H_norm, G_max=G_max,
             with_progress=self.m_with_progress, fit_range=fit_range,
+            auto_fit_range=auto_fit_range,
+            auto_fit_min_points=auto_fit_min_points,
             device=self.device)
 
     # ============================================================
@@ -302,14 +370,23 @@ class CFAImageFDGPU:
                      min_size: int = 2,
                      corp_type: int = -1,
                      fit_range: Optional[Tuple[float, float]] = None,
+                     auto_fit_range: bool = False,
+                     auto_fit_min_points: int = 5,
                      device: Optional[Union[str, torch.device]] = None,
                      dtype: torch.dtype = torch.float32,
                      img_chunk: Optional[int] = None,
                      with_progress: bool = True) -> List[dict]:
-        """Batch BC. All images must share the same H, W (binary)."""
+        """Batch BC. All images must share the same H, W (binary).
+
+        ``auto_fit_range`` (default False): when True and ``fit_range``
+        is None, each image's log-log curve gets its OWN best-linear
+        window picked independently.
+        """
         return _batch_run_gpu(images, "bc", corp_type=corp_type,
                               max_size=max_size, max_scales=max_scales,
                               min_size=min_size, fit_range=fit_range,
+                              auto_fit_range=auto_fit_range,
+                              auto_fit_min_points=auto_fit_min_points,
                               device=device, dtype=dtype,
                               img_chunk=img_chunk,
                               with_progress=with_progress)
@@ -322,14 +399,20 @@ class CFAImageFDGPU:
                       min_size: int = 2,
                       corp_type: int = -1,
                       fit_range: Optional[Tuple[float, float]] = None,
+                      auto_fit_range: bool = False,
+                      auto_fit_min_points: int = 5,
                       device: Optional[Union[str, torch.device]] = None,
                       dtype: torch.dtype = torch.float32,
                       img_chunk: Optional[int] = None,
                       with_progress: bool = True) -> List[dict]:
-        """Batch DBC. All images must share the same H, W (grayscale)."""
+        """Batch DBC. All images must share the same H, W (grayscale).
+
+        See ``get_batch_bc`` for ``auto_fit_range`` semantics."""
         return _batch_run_gpu(images, "dbc", corp_type=corp_type,
                               max_size=max_size, max_scales=max_scales,
                               min_size=min_size, fit_range=fit_range,
+                              auto_fit_range=auto_fit_range,
+                              auto_fit_min_points=auto_fit_min_points,
                               device=device, dtype=dtype,
                               img_chunk=img_chunk,
                               with_progress=with_progress)
@@ -342,14 +425,20 @@ class CFAImageFDGPU:
                        min_size: int = 2,
                        corp_type: int = -1,
                        fit_range: Optional[Tuple[float, float]] = None,
+                       auto_fit_range: bool = False,
+                       auto_fit_min_points: int = 5,
                        device: Optional[Union[str, torch.device]] = None,
                        dtype: torch.dtype = torch.float32,
                        img_chunk: Optional[int] = None,
                        with_progress: bool = True) -> List[dict]:
-        """Batch SDBC. All images must share the same H, W (grayscale)."""
+        """Batch SDBC. All images must share the same H, W (grayscale).
+
+        See ``get_batch_bc`` for ``auto_fit_range`` semantics."""
         return _batch_run_gpu(images, "sdbc", corp_type=corp_type,
                               max_size=max_size, max_scales=max_scales,
                               min_size=min_size, fit_range=fit_range,
+                              auto_fit_range=auto_fit_range,
+                              auto_fit_min_points=auto_fit_min_points,
                               device=device, dtype=dtype,
                               img_chunk=img_chunk,
                               with_progress=with_progress)
@@ -418,7 +507,9 @@ def _single_minmax_fit(img: torch.Tensor, scales: List[int],
                        H_norm: float, G_max: torch.Tensor,
                        with_progress: bool,
                        fit_range: Optional[Tuple[float, float]],
-                       device: torch.device) -> dict:
+                       device: torch.device,
+                       auto_fit_range: bool = False,
+                       auto_fit_min_points: int = 5) -> dict:
     """Shared inner loop for DBC / SDBC on a single image."""
     counts = np.zeros(len(scales), dtype=np.float64)
     it = (tqdm(enumerate(scales), total=len(scales),
@@ -441,7 +532,9 @@ def _single_minmax_fit(img: torch.Tensor, scales: List[int],
             n_r = torch.floor(delta / h_box) + 1.0
         counts[k] = float(n_r.sum().item())
     return _fit_log_log(np.array(scales, dtype=np.float64), counts,
-                        fit_range=fit_range)
+                        fit_range=fit_range,
+                        auto_fit_range=auto_fit_range,
+                        auto_fit_min_points=auto_fit_min_points)
 
 
 @torch.no_grad()
@@ -452,7 +545,9 @@ def _batch_run_gpu(images: Sequence[np.ndarray], method: str,
                    device: Optional[Union[str, torch.device]],
                    dtype: torch.dtype,
                    img_chunk: Optional[int],
-                   with_progress: bool) -> List[dict]:
+                   with_progress: bool,
+                   auto_fit_range: bool = False,
+                   auto_fit_min_points: int = 5) -> List[dict]:
     if len(images) == 0:
         return []
     for i, im in enumerate(images):
@@ -552,7 +647,9 @@ def _batch_run_gpu(images: Sequence[np.ndarray], method: str,
             torch.cuda.empty_cache()
 
     scale_arr = scales.astype(np.float64)
-    return [_fit_log_log(scale_arr, counts_all[i], fit_range=fit_range)
+    return [_fit_log_log(scale_arr, counts_all[i], fit_range=fit_range,
+                         auto_fit_range=auto_fit_range,
+                         auto_fit_min_points=auto_fit_min_points)
             for i in range(N)]
 
 

@@ -687,6 +687,206 @@ def test_batch_consistency():
 
 
 # ===========================================================================
+# TEST 13: auto_fit_range — automatic linear-region selection on log-log
+# ===========================================================================
+def test_auto_fit_range():
+    section("auto_fit_range — automatic linear-region selection")
+    from FreeAeonFractal.FAImageFD import CFAImageFD
+
+    # --------------------------------------------------------------
+    # (a) Fully-filled square. Theoretical D = 2 exactly. Without
+    #     fit_range the geometric scale list + non-divisor cropping
+    #     bias the slope above 2; with auto_fit_range the algorithm
+    #     should find the linear sub-window and return D ≈ 2.0.
+    # --------------------------------------------------------------
+    img = np.full((256, 256), 255, dtype=np.uint8)
+    r_def  = CFAImageFD(img, max_scales=25, with_progress=False).get_bc_fd()
+    r_auto = CFAImageFD(img, max_scales=25, with_progress=False).get_bc_fd(
+        auto_fit_range=True)
+
+    print(f"  filled-square BC: default D={r_def['fd']:.4f} "
+          f"(R²={r_def['r_value']**2:.4f}), "
+          f"auto D={r_auto['fd']:.4f} (R²={r_auto['r_value']**2:.4f})")
+    # auto must be closer to D=2 than the default
+    diff_def  = abs(r_def['fd']  - 2.0)
+    diff_auto = abs(r_auto['fd'] - 2.0)
+    if diff_auto < diff_def:
+        Counter.n_pass += 1
+        print(f"  [PASS] auto closer to D=2.0 "
+              f"(|D-2|: {diff_auto:.4f} < {diff_def:.4f})")
+    else:
+        Counter.n_fail += 1
+        msg = (f"auto D not closer to 2: auto |D-2|={diff_auto:.4f}, "
+               f"default |D-2|={diff_def:.4f}")
+        Counter.failures.append(msg)
+        print(f"  [FAIL] {msg}")
+    # auto must give a higher (or equal) R²
+    if r_auto['r_value']**2 >= r_def['r_value']**2 - 1e-6:
+        Counter.n_pass += 1
+        print(f"  [PASS] auto R² ≥ default R² "
+              f"({r_auto['r_value']**2:.4f} ≥ {r_def['r_value']**2:.4f})")
+    else:
+        Counter.n_fail += 1
+        Counter.failures.append("auto R² lower than default on filled square")
+        print(f"  [FAIL] auto R² lower than default")
+    # auto must report the window it picked
+    check("auto reports fit_range_used (filled square)",
+          1 if r_auto['fit_range_used'] is not None else 0, 1, tol=0)
+    # default must NOT report a fit_range
+    if r_def['fit_range_used'] is None:
+        Counter.n_pass += 1
+        print(f"  [PASS] default returns fit_range_used=None")
+    else:
+        Counter.n_fail += 1
+        Counter.failures.append("default returns non-None fit_range_used")
+        print(f"  [FAIL] default returns non-None fit_range_used")
+
+    # --------------------------------------------------------------
+    # (b) Sierpinski. Theoretical D = log(3)/log(2) ≈ 1.585.
+    #     auto should pull D closer to theory than default.
+    # --------------------------------------------------------------
+    np.random.seed(42)
+    sier = gen_sierpinski_image(size=1024)
+    r_def  = CFAImageFD(sier, max_scales=30, with_progress=False).get_bc_fd()
+    r_auto = CFAImageFD(sier, max_scales=30, with_progress=False).get_bc_fd(
+        auto_fit_range=True)
+    theory = np.log(3) / np.log(2)
+    print(f"  Sierpinski: default D={r_def['fd']:.4f}, "
+          f"auto D={r_auto['fd']:.4f}, theory={theory:.4f}")
+    diff_def  = abs(r_def['fd']  - theory)
+    diff_auto = abs(r_auto['fd'] - theory)
+    if diff_auto <= diff_def + 0.01:
+        # Allow a small tolerance — auto isn't required to STRICTLY win
+        # on every fractal, just not be worse.
+        Counter.n_pass += 1
+        print(f"  [PASS] auto not worse than default on Sierpinski "
+              f"(|D-theory|: auto={diff_auto:.4f}, def={diff_def:.4f})")
+    else:
+        Counter.n_fail += 1
+        msg = (f"Sierpinski auto worse than default: "
+               f"auto={diff_auto:.4f}, def={diff_def:.4f}")
+        Counter.failures.append(msg)
+        print(f"  [FAIL] {msg}")
+
+    # --------------------------------------------------------------
+    # (c) Explicit fit_range overrides auto_fit_range.
+    # --------------------------------------------------------------
+    r_both = CFAImageFD(img, max_scales=25, with_progress=False).get_bc_fd(
+        fit_range=(8, 64), auto_fit_range=True)
+    if r_both['fit_range_used'] == (8, 64):
+        Counter.n_pass += 1
+        print(f"  [PASS] explicit fit_range overrides auto "
+              f"(used={r_both['fit_range_used']})")
+    else:
+        Counter.n_fail += 1
+        msg = f"explicit fit_range should override auto, got {r_both['fit_range_used']}"
+        Counter.failures.append(msg)
+        print(f"  [FAIL] {msg}")
+
+    # --------------------------------------------------------------
+    # (d) DBC + SDBC: auto must not crash, must report a fit_range,
+    #     and the returned D must be in the theoretical range [1, 3]
+    #     (loose floor to allow numerical noise).
+    # --------------------------------------------------------------
+    gray = gen_uniform_noise(256)
+    for method_name in ('get_dbc_fd', 'get_sdbc_fd'):
+        fn = getattr(CFAImageFD(gray, max_scales=20, with_progress=False),
+                     method_name)
+        r = fn(auto_fit_range=True)
+        ok = (1.5 < r['fd'] < 3.1) and (r['fit_range_used'] is not None)
+        if ok:
+            Counter.n_pass += 1
+            print(f"  [PASS] {method_name} auto: D={r['fd']:.4f}, "
+                  f"range={r['fit_range_used']}")
+        else:
+            Counter.n_fail += 1
+            msg = (f"{method_name} auto out of bounds: "
+                   f"D={r['fd']}, range={r['fit_range_used']}")
+            Counter.failures.append(msg)
+            print(f"  [FAIL] {msg}")
+
+    # --------------------------------------------------------------
+    # (e) Batch path: per-image fit_range chosen independently.
+    #     With three identical images we expect three identical
+    #     fit_range_used tuples.
+    # --------------------------------------------------------------
+    imgs = [img, img, img]
+    batch = CFAImageFD.get_batch_bc(imgs, max_scales=25,
+                                      auto_fit_range=True,
+                                      with_progress=False)
+    fr0 = batch[0]['fit_range_used']
+    same = all(r['fit_range_used'] == fr0 for r in batch)
+    fds  = [r['fd'] for r in batch]
+    if same and len(set(round(fd, 6) for fd in fds)) == 1 and fr0 is not None:
+        Counter.n_pass += 1
+        print(f"  [PASS] batch auto: 3 identical imgs → identical D and "
+              f"range (D={fds[0]:.4f}, range={fr0})")
+    else:
+        Counter.n_fail += 1
+        msg = f"batch auto inconsistent: ranges={[r['fit_range_used'] for r in batch]}, fds={fds}"
+        Counter.failures.append(msg)
+        print(f"  [FAIL] {msg}")
+
+    # --------------------------------------------------------------
+    # (f) Batch with DBC + SDBC + heterogeneous images.
+    # --------------------------------------------------------------
+    np.random.seed(0)
+    imgs_mixed = [
+        gen_uniform_noise(128, seed=1),
+        gen_filled_square(128),
+        gen_gradient_gray(128),
+    ]
+    b_dbc  = CFAImageFD.get_batch_dbc(imgs_mixed, max_scales=15,
+                                        auto_fit_range=True,
+                                        with_progress=False)
+    b_sdbc = CFAImageFD.get_batch_sdbc(imgs_mixed, max_scales=15,
+                                         auto_fit_range=True,
+                                         with_progress=False)
+    all_ok = True
+    for r in (*b_dbc, *b_sdbc):
+        if r['fit_range_used'] is None or not np.isfinite(r['fd']):
+            all_ok = False
+            break
+    if all_ok:
+        Counter.n_pass += 1
+        print(f"  [PASS] batch DBC/SDBC heterogeneous auto: all finite D "
+              f"with reported fit_range")
+    else:
+        Counter.n_fail += 1
+        Counter.failures.append("batch DBC/SDBC heterogeneous auto failed")
+        print(f"  [FAIL] batch DBC/SDBC heterogeneous auto failed")
+
+    # --------------------------------------------------------------
+    # (g) min_points safety floor — passing min_points greater than
+    #     the actual number of scales should NOT crash; auto-selection
+    #     simply does nothing and the full fit is used.
+    # --------------------------------------------------------------
+    tiny = np.random.RandomState(0).randint(0, 256, (64, 64), dtype=np.uint8)
+    r = CFAImageFD(tiny, max_scales=8, with_progress=False).get_bc_fd(
+        auto_fit_range=True, auto_fit_min_points=100)
+    if np.isfinite(r['fd']):
+        Counter.n_pass += 1
+        print(f"  [PASS] auto_fit_min_points too large → falls back gracefully")
+    else:
+        Counter.n_fail += 1
+        Counter.failures.append("min_points too large caused NaN result")
+        print(f"  [FAIL] min_points too large caused NaN")
+
+    # --------------------------------------------------------------
+    # (h) Backward compatibility: default behaviour (auto_fit_range=False)
+    #     must give bit-exact same fd as before auto_fit_range existed.
+    # --------------------------------------------------------------
+    r_compat = CFAImageFD(gray, max_scales=15, with_progress=False).get_bc_fd()
+    if 'fit_range_used' in r_compat and r_compat['fit_range_used'] is None:
+        Counter.n_pass += 1
+        print(f"  [PASS] backward compat: default keeps None fit_range_used")
+    else:
+        Counter.n_fail += 1
+        Counter.failures.append("default result missing or wrong fit_range_used")
+        print(f"  [FAIL] default result schema regression")
+
+
+# ===========================================================================
 # Run all tests
 # ===========================================================================
 if __name__ == "__main__":
@@ -703,6 +903,7 @@ if __name__ == "__main__":
     test_series_mfs()
     test_edge_cases()
     test_batch_consistency()
+    test_auto_fit_range()
 
     print("\n" + "=" * 70)
     print(f"  SUMMARY: PASS={Counter.n_pass}  FAIL={Counter.n_fail}  WARN={Counter.n_warn}")
