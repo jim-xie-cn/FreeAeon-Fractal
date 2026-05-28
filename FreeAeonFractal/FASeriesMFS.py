@@ -63,7 +63,7 @@ class CFASeriesMFS:
     def get_mfs(self, lag_list = None, order = 2):
         
         df_result = pd.DataFrame()
-        if lag_list == None:
+        if lag_list is None:
             lag = recommended_lag(len(self.m_data))
         else:
             lag = lag_list
@@ -105,18 +105,22 @@ class CFASeriesMFS:
         df_result['f(a)'] = pd.Series(f_alpha)
         
         Dq = np.full_like(q, np.nan)
-        non_q1_mask = (q != 1)
-        
-        Dq[non_q1_mask] = tau_q[non_q1_mask] / (q[non_q1_mask] - 1)
-        
-        # Optional: approximate D(1) at q = 1 using the average of neighboring values
-        if 1.0 in q:
-            idx_q1 = np.where(q == 1.0)[0][0]
-            # Approximate D(1) using np.gradient or interpolation
-            dq_left = Dq[idx_q1 - 1]
-            dq_right = Dq[idx_q1 + 1]
-            Dq[idx_q1] = (dq_left + dq_right) / 2 # Simple average used for approximation
-            
+        q_arr = np.asarray(q, dtype=np.float64)
+        q1_mask = np.isclose(q_arr, 1.0)
+        non_q1_mask = ~q1_mask
+
+        Dq[non_q1_mask] = tau_q[non_q1_mask] / (q_arr[non_q1_mask] - 1)
+
+        # Optional: approximate D(1) at q ≈ 1 using neighbouring values.
+        if q1_mask.any():
+            idx_q1 = int(np.where(q1_mask)[0][0])
+            if 0 < idx_q1 < len(q_arr) - 1:
+                Dq[idx_q1] = (Dq[idx_q1 - 1] + Dq[idx_q1 + 1]) / 2.0
+            elif idx_q1 == 0 and len(q_arr) > 1:
+                Dq[idx_q1] = Dq[idx_q1 + 1]
+            elif idx_q1 == len(q_arr) - 1 and len(q_arr) > 1:
+                Dq[idx_q1] = Dq[idx_q1 - 1]
+
         df_result['d(q)'] = pd.Series(Dq)
         return df_result
         

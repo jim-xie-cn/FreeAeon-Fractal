@@ -16,6 +16,11 @@ notes and references. Differences from the original GPU version:
   been removed (no GPU<->CPU sync per image), and torch.quantile is
   used directly (no roundtrip through numpy / np.quantile).
 - Image chunking via `img_chunk` to control VRAM usage.
+
+Production-use caveats: see the CPU file ``FAImageFD.py`` top-of-module
+docstring for the full list (G_max = percentile-99 vs strict S&C 1994
+G=256; H_norm = max(H, W) vs strict square M; geometric scales vs
+dyadic 2^k). All three apply identically on the GPU path.
 """
 
 import math
@@ -90,6 +95,17 @@ def _fit_log_log(scales_np: np.ndarray, counts_np: np.ndarray,
         std_err = s_err / math.sqrt(ss_xx)
     else:
         std_err = float("nan")
+    
+    if n_pts > 2 and std_err > 0 and np.isfinite(std_err):
+        try:
+            from scipy.stats import t as _t_dist
+            t_stat = slope / std_err
+            p_value = float(2.0 * (1.0 - _t_dist.cdf(abs(t_stat),
+                                                     df=n_pts - 2)))
+        except Exception:
+            p_value = float("nan")
+    else:
+        p_value = float("nan")
     return {
         "fd": float(slope),
         "scales": s_used.tolist(),
@@ -98,7 +114,7 @@ def _fit_log_log(scales_np: np.ndarray, counts_np: np.ndarray,
         "log_counts": y.tolist(),
         "intercept": float(intercept),
         "r_value": float(r_value),
-        "p_value": None,        # not computed; use scipy if needed
+        "p_value": float(p_value),
         "std_err": float(std_err),
     }
 
@@ -227,6 +243,18 @@ class CFAImageFDGPU:
     @torch.no_grad()
     def get_dbc_fd(self, corp_type: int = -1,
                    fit_range: Optional[Tuple[float, float]] = None):
+        """
+        Differential Box Counting on GPU. Mirrors the CPU implementation
+        in ``FAImageFD.CFAImageFD.get_dbc_fd``; see that docstring for
+        production-use guidance.
+
+        Brief reminder: ``G_max = torch.quantile(image, 0.99)`` (content-
+        adaptive, departs from S&C 1994's fixed G=256); pre-normalize
+        inputs for cross-image D comparability. ``H_norm`` uses
+        ``max(image.shape)`` so non-square inputs are handled
+        engineering-style, not strictly per the M×M assumption — crop to
+        square for strict reproducibility.
+        """
         if self.img is None:
             raise ValueError("No image was provided to __init__")
         # Honour the user-specified dtype (default fp32). For byte-exact
@@ -244,6 +272,14 @@ class CFAImageFDGPU:
     @torch.no_grad()
     def get_sdbc_fd(self, corp_type: int = -1,
                     fit_range: Optional[Tuple[float, float]] = None):
+        """
+        Shifted DBC (Chen et al. 1995) on GPU. ``n_r(i,j) =
+        floor((I_max - I_min) / h) + 1`` is the exact analytic result of
+        Chen's "shift vertical origin" geometric construction (not an
+        approximation). Same G_max / non-square caveats as
+        ``get_dbc_fd`` — see ``FAImageFD.CFAImageFD.get_dbc_fd`` for the
+        full production-use guidance.
+        """
         if self.img is None:
             raise ValueError("No image was provided to __init__")
         img = self.img.to(self.dtype)

@@ -198,14 +198,12 @@ class CFAImageMFS:
         if scales.size == 0:
             return pd.DataFrame()
 
-        # Temporarily replace image with fixed ROI (avoid changing other code)
         old_img = self.m_image
-        self.m_image = img_fixed
-        # ------------------------------------------------
-
         records = []
         iterator = tqdm(scales, desc="Computing per-scale μ") if self.m_with_progress else scales
         try:
+            self.m_image = img_fixed
+            # ------------------------------------------------
 
             for size in iterator:
                 size = int(size)
@@ -222,7 +220,11 @@ class CFAImageMFS:
                     continue
 
                 log_mu_all = np.log(mu_pos_all)
-                eps = float(size) / fixed_L
+                
+                eff_L = (fixed_L_int // size) * size
+                if eff_L <= 0:
+                    continue
+                eps = float(size) / float(eff_L)
 
                 # Always record N (for D0) and S (for D1) regardless of
                 # whether q=0 or q=1 is in q_list. D0 (capacity) and D1
@@ -333,6 +335,23 @@ class CFAImageMFS:
                 i1 = int(np.ceil(hi * len(all_scales)))
                 i1 = max(i1, i0 + 1)
                 middle_scales = all_scales[i0:i1]
+                
+                if len(middle_scales) < min_points and \
+                        len(all_scales) >= min_points:
+                    # Centre the window on the existing midpoint and
+                    # grow symmetrically to min_points.
+                    mid = (i0 + i1) // 2
+                    half = (min_points + 1) // 2
+                    i0 = max(0, mid - half)
+                    i1 = min(len(all_scales), i0 + min_points)
+                    i0 = max(0, i1 - min_points)
+                    middle_scales = all_scales[i0:i1]
+                    import warnings
+                    warnings.warn(
+                        f"fit_scale_frac={fit_scale_frac} collapsed window "
+                        f"below min_points={min_points}; widened to "
+                        f"{len(middle_scales)} scales.",
+                        RuntimeWarning, stacklevel=2)
             else:
                 middle_scales = all_scales
         else:
@@ -444,20 +463,35 @@ class CFAImageMFS:
                         n_used = int(x0.size)
                 else:
                     if cap_d0_at_2:
+                        # Initialise regression vars so an unexecuted
+                        # while body still produces well-defined values.
+                        slope = intercept = r_value = p_value = std_err = np.nan
                         xs, ys = x0.copy(), y0.copy()
+                        capped = False
                         while xs.size >= min_points:
                             slope, intercept, r_value, p_value, std_err = linregress(xs, ys)
                             if slope <= 2.0:
+                                capped = True
                                 break
                             idx = np.argmax(xs)  # largest x = smallest eps
                             xs = np.delete(xs, idx)
                             ys = np.delete(ys, idx)
+                        
+                        if not capped and np.isfinite(slope) and slope > 2.0:
+                            slope = 2.0
+                            # std_err / r_value no longer meaningful for
+                            # the clamped value; mark them NaN.
+                            std_err = np.nan
+                            r_value = np.nan
+                            p_value = np.nan
                         x_fit, y_fit = xs, ys
                     else:
                         x_fit, y_fit = x0, y0
 
-                    if len(x_fit) >= 2:
+                    if len(x_fit) >= 2 and not cap_d0_at_2:
                         slope, intercept, r_value, p_value, std_err = linregress(x_fit, y_fit)
+                        n_used = len(x_fit)
+                    elif cap_d0_at_2:
                         n_used = len(x_fit)
                     else:
                         slope = intercept = r_value = p_value = std_err = np.nan

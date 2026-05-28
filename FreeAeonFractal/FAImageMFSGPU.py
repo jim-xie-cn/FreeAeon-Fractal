@@ -16,25 +16,6 @@ Stored values per scale:
     kind = "logMq" -> value = log(sum mu_i^q)              (for q != 0, 1)
     kind = "N"     -> value = number of nonzero boxes      (for q == 0)
     kind = "S"     -> value = -sum mu_i * log mu_i         (for q == 1)
-
-Key fixes vs the previous batch implementation
-----------------------------------------------
-1) Bug fix: S used to be computed as -(mu * log_mu * mask).sum() with
-   log_mu = -inf for empty boxes. Since 0 * (-inf) = NaN in IEEE 754, any
-   image with empty boxes produced NaN in S. Now using torch.special.xlogy.
-2) Bug fix: get_batch_mfs originally enforced
-       scales = scales[(roi_size % scales) == 0]
-   while the single-image path did NOT, so batch and per-image runs gave
-   different scale sets and differing fits. We drop that constraint and
-   crop to (roi_size//s)*s inside the kernel for each scale (this matches
-   the CPU/single-GPU path exactly).
-3) Performance: the previous batch path appended per-(image, q, scale)
-   records in a Python triple loop, which dominated runtime for any
-   non-trivial batch and any non-trivial q grid. The new path keeps
-   everything as dense numpy arrays of shape (B, n_scales, n_q) and
-   converts to a long DataFrame once per image, vectorized.
-4) Memory safety: the q-axis expansion (B, n_blocks, n_q) can blow up VRAM
-   at small box sizes (n_blocks ~ L^2 / s^2). q is now chunked.
 """
 
 import time
@@ -292,7 +273,10 @@ class CFAImageMFSGPU:
             if mu_pos is None:
                 continue
 
-            eps = float(size) / fixed_L
+            eff_L = (fixed_L_int // size) * size
+            if eff_L <= 0:
+                continue
+            eps = float(size) / float(eff_L)
 
             N = float(mu_pos.numel())
             S = float(-(mu_pos * log_mu).sum().item())
@@ -386,6 +370,21 @@ class CFAImageMFSGPU:
                 i1 = int(np.ceil(hi * len(all_scales)))
                 i1 = max(i1, i0 + 1)
                 middle_scales = all_scales[i0:i1]
+               
+                if len(middle_scales) < min_points and \
+                        len(all_scales) >= min_points:
+                    mid = (i0 + i1) // 2
+                    half = (min_points + 1) // 2
+                    i0 = max(0, mid - half)
+                    i1 = min(len(all_scales), i0 + min_points)
+                    i0 = max(0, i1 - min_points)
+                    middle_scales = all_scales[i0:i1]
+                    import warnings
+                    warnings.warn(
+                        f"fit_scale_frac={fit_scale_frac} collapsed window "
+                        f"below min_points={min_points}; widened to "
+                        f"{len(middle_scales)} scales.",
+                        RuntimeWarning, stacklevel=2)
             else:
                 middle_scales = all_scales
         else:
@@ -496,18 +495,27 @@ class CFAImageMFSGPU:
                     if cap_d0_at_2:
                         xs, ys = x0.copy(), y0.copy()
                         slope = intercept = r_value = p_value = std_err = np.nan
+                        capped = False
                         while xs.size >= min_points:
                             slope, intercept, r_value, p_value, std_err = linregress(xs, ys)
                             if slope <= 2.0:
+                                capped = True
                                 break
                             idx = np.argmax(xs)
                             xs = np.delete(xs, idx); ys = np.delete(ys, idx)
+                        if not capped and np.isfinite(slope) and slope > 2.0:
+                            slope = 2.0
+                            std_err = np.nan
+                            r_value = np.nan
+                            p_value = np.nan
                         x_fit, y_fit = xs, ys
                     else:
                         x_fit, y_fit = x0, y0
 
-                    if len(x_fit) >= 2:
+                    if len(x_fit) >= 2 and not cap_d0_at_2:
                         slope, intercept, r_value, p_value, std_err = linregress(x_fit, y_fit)
+                        n_used = len(x_fit)
+                    elif cap_d0_at_2:
                         n_used = len(x_fit)
                     else:
                         slope = intercept = r_value = p_value = std_err = np.nan
@@ -850,7 +858,7 @@ class CFAImageMFSGPU:
                 out_S[img_lo:img_hi, si]     = S_b.detach().cpu().numpy()
                 out_logMq[img_lo:img_hi, si, :] = logMq_buf.detach().cpu().numpy()
                 if img_lo == 0:
-                    out_eps[si] = float(s) / fixed_L
+                    out_eps[si] = float(s) / float(new_L)
                     valid_scales[si] = True
 
                 del block_mass, total, safe_total, mu_lo, mu_64, mu_64_clamped, \

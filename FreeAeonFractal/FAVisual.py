@@ -33,14 +33,14 @@ class CFAVisual(object):
         ax.scatter(points[:, 0], points[:, 1], points[:, 2], c='red', marker='.',s=1)
     
     '''show 3D image'''
-    @staticmethod    
+    @staticmethod
     def plot_3d_image(img,ax = plt):
         x,y,z = img[:,0],img[:,1],img[:,2]
-        if len(img.shape) == 3:
-            value = np.ones_like(x)
-        else:
+        if img.ndim == 2 and img.shape[1] >= 4:
             value = img[:,3]
-        scatter = ax.scatter(x, y, z, value*10, marker='.', cmap='viridis')
+        else:
+            value = np.ones_like(x)
+        scatter = ax.scatter(x, y, z, s=value*10, marker='.', cmap='viridis')
 
 def main():
     pass

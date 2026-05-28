@@ -92,19 +92,22 @@ class CFAImageFourier(object):
         """
         return self.m_magnitude, self.m_phase
 
-    def get_display_spectrum(self,alpha=1.0, beta=0, magnitude = np.array([]), phase = np.array([])):
+    def get_display_spectrum(self, alpha=1.0, beta=0, magnitude=None, phase=None):
         """
         Generate enhanced visualizations of magnitude and phase for display.
-        
+
         Args:
             alpha (float): Contrast enhancement factor
             beta (float): Brightness offset
-        
+            magnitude / phase: override stored spectrum. Pass ``None`` to
+                use the stored value (which is the default).
+
         Returns:
             tuple: (magnitude images, phase images)
         """
-        tmp_magnitude =  magnitude if np.array(magnitude).any() else self.m_magnitude
-        tmp_phase =  phase if np.array(phase).any() else self.m_phase
+        
+        tmp_magnitude = self.m_magnitude if magnitude is None else magnitude
+        tmp_phase = self.m_phase if phase is None else phase
 
         display_mag = []
         display_phase = []
@@ -120,19 +123,19 @@ class CFAImageFourier(object):
 
         return display_mag, display_phase
 
-    def get_reconstruct(self, magnitude = np.array([]), phase = np.array([])):
+    def get_reconstruct(self, magnitude=None, phase=None):
         """
         Reconstruct the spatial-domain image from stored magnitude and phase.
-        
+
+        Pass ``None`` (default) to use the stored spectrum. Pass an
+        explicit array (even all-zeros) to override it.
+
         Returns:
             ndarray: Reconstructed image
         """
-        tmp_magnitude = self.m_magnitude
-        tmp_phase = self.m_phase
-        if np.array(magnitude).any():
-            tmp_magnitude = magnitude
-        if np.array(phase).any():
-            tmp_phase = phase
+        
+        tmp_magnitude = self.m_magnitude if magnitude is None else magnitude
+        tmp_phase = self.m_phase if phase is None else phase
         reconstructed_channels = []
         for mag, pha in zip(tmp_magnitude, tmp_phase):
             complex_spectrum = mag * np.exp(1j * pha)
@@ -147,25 +150,31 @@ class CFAImageFourier(object):
         else:
             return cv2.merge(reconstructed_channels)
 
-    def extract_by_freq_mask(self, mask_mag = np.array([]), mask_phase = np.array([])):
+    def extract_by_freq_mask(self, mask_mag=None, mask_phase=None):
         """
-        Use a custom binary mask (same size as frequency map) to select which frequency components to retain.
-        
+        Use a custom binary mask (same size as a frequency map) to select
+        which frequency components to retain.
+
         Args:
-            mask (ndarray): Binary mask (1: keep, 0: remove), same shape as frequency maps
-        
+            mask_mag (ndarray or None): mask multiplied into the
+                magnitude spectrum. ``None`` (default) keeps the
+                magnitude unchanged. To zero everything out, pass an
+                all-zero array explicitly.
+            mask_phase (ndarray or None): same for the phase spectrum.
+
         Returns:
-            ndarray: Reconstructed image using the masked frequency domain
+            ndarray: Reconstructed image using the masked frequency
+            domain.
         """
-        if np.array(mask_mag).any():
-            magnitude = mask_mag * self.m_magnitude
-        else:
+        if mask_mag is None:
             magnitude = self.m_magnitude
-        if np.array(mask_phase).any():
-            phase = mask_phase * self.m_phase
         else:
+            magnitude = mask_mag * np.asarray(self.m_magnitude)
+        if mask_phase is None:
             phase = self.m_phase
-        return self.get_reconstruct(magnitude = magnitude, phase = phase)
+        else:
+            phase = mask_phase * np.asarray(self.m_phase)
+        return self.get_reconstruct(magnitude=magnitude, phase=phase)
 
     def plot(self,
              raw_magnitude_disp=[],
