@@ -51,7 +51,9 @@ def make_scales(max_size: int, max_scales: int = 30,
 # Linear regression on log-log points (no SciPy dependency)
 # ============================================================
 def _auto_select_fit_range(s_valid: np.ndarray, n_valid: np.ndarray,
-                            min_points: int = 5
+                            min_points: int = 5,
+                            slope_floor: Optional[float] = None,
+                            slope_ceiling: Optional[float] = None
                             ) -> Optional[Tuple[float, float]]:
     """Mirror of FAImageFD._auto_select_fit_range; see that docstring."""
     if s_valid.size < min_points:
@@ -64,7 +66,8 @@ def _auto_select_fit_range(s_valid: np.ndarray, n_valid: np.ndarray,
     n_pts = x.size
 
     best_score = -np.inf
-    best_lo, best_hi = float(s_sorted[0]), float(s_sorted[-1])
+    best_lo: Optional[float] = None
+    best_hi: Optional[float] = None
     for i in range(0, n_pts - min_points + 1):
         for j in range(i + min_points, n_pts + 1):
             xs = x[i:j]
@@ -77,6 +80,11 @@ def _auto_select_fit_range(s_valid: np.ndarray, n_valid: np.ndarray,
             ss_xy = float(np.sum((xs - x_mean) * (ys - y_mean)))
             if ss_xx <= 0 or ss_yy <= 0:
                 continue
+            slope = ss_xy / ss_xx
+            if slope_floor is not None and slope < slope_floor:
+                continue
+            if slope_ceiling is not None and slope > slope_ceiling:
+                continue
             r2 = (ss_xy * ss_xy) / (ss_xx * ss_yy)
             # F-statistic-based score: R²/(1-R²) · (n-2). See CPU file.
             score = (r2 / max(1.0 - r2, 1e-6)) * max(length - 2, 1)
@@ -84,13 +92,17 @@ def _auto_select_fit_range(s_valid: np.ndarray, n_valid: np.ndarray,
                 best_score = score
                 best_lo = float(s_sorted[i])
                 best_hi = float(s_sorted[j - 1])
+    if best_lo is None or best_hi is None:
+        return None
     return (best_lo, best_hi)
 
 
 def _fit_log_log(scales_np: np.ndarray, counts_np: np.ndarray,
                  fit_range: Optional[Tuple[float, float]] = None,
                  auto_fit_range: bool = False,
-                 auto_fit_min_points: int = 5) -> dict:
+                 auto_fit_min_points: int = 5,
+                 auto_slope_floor: Optional[float] = None,
+                 auto_slope_ceiling: Optional[float] = None) -> dict:
     s = np.asarray(scales_np, dtype=np.float64)
     n = np.asarray(counts_np, dtype=np.float64)
     keep = (s > 0) & (n > 0) & np.isfinite(s) & np.isfinite(n)
@@ -100,7 +112,10 @@ def _fit_log_log(scales_np: np.ndarray, counts_np: np.ndarray,
     # Auto-select window if asked and no explicit range was supplied.
     if auto_fit_range and fit_range is None:
         auto_range = _auto_select_fit_range(
-            s_valid, n_valid, min_points=auto_fit_min_points)
+            s_valid, n_valid,
+            min_points=auto_fit_min_points,
+            slope_floor=auto_slope_floor,
+            slope_ceiling=auto_slope_ceiling)
         if auto_range is not None:
             fit_range = auto_range
 
@@ -264,12 +279,16 @@ class CFAImageFDGPU:
     def get_fd(self, scale_list, box_count_list,
                fit_range: Optional[Tuple[float, float]] = None,
                auto_fit_range: bool = False,
-               auto_fit_min_points: int = 5):
+               auto_fit_min_points: int = 5,
+               auto_slope_floor: Optional[float] = None,
+               auto_slope_ceiling: Optional[float] = None):
         return _fit_log_log(np.asarray(scale_list),
                             np.asarray(box_count_list),
                             fit_range=fit_range,
                             auto_fit_range=auto_fit_range,
-                            auto_fit_min_points=auto_fit_min_points)
+                            auto_fit_min_points=auto_fit_min_points,
+                            auto_slope_floor=auto_slope_floor,
+                            auto_slope_ceiling=auto_slope_ceiling)
 
     # ============================================================
     # Single-image methods
@@ -278,7 +297,9 @@ class CFAImageFDGPU:
     def get_bc_fd(self, corp_type: int = -1,
                   fit_range: Optional[Tuple[float, float]] = None,
                   auto_fit_range: bool = False,
-                  auto_fit_min_points: int = 5):
+                  auto_fit_min_points: int = 5,
+                  auto_slope_floor: Optional[float] = None,
+                  auto_slope_ceiling: Optional[float] = None):
         if self.img is None:
             raise ValueError("No image was provided to __init__")
         img = (self.img > 0).to(self.dtype)              # 0/1
@@ -298,13 +319,17 @@ class CFAImageFDGPU:
         return _fit_log_log(np.array(scales, dtype=np.float64), counts,
                             fit_range=fit_range,
                             auto_fit_range=auto_fit_range,
-                            auto_fit_min_points=auto_fit_min_points)
+                            auto_fit_min_points=auto_fit_min_points,
+                            auto_slope_floor=auto_slope_floor,
+                            auto_slope_ceiling=auto_slope_ceiling)
 
     @torch.no_grad()
     def get_dbc_fd(self, corp_type: int = -1,
                    fit_range: Optional[Tuple[float, float]] = None,
                    auto_fit_range: bool = False,
-                   auto_fit_min_points: int = 5):
+                   auto_fit_min_points: int = 5,
+                   auto_slope_floor: Optional[float] = 2.0,
+                   auto_slope_ceiling: Optional[float] = None):
         """
         Differential Box Counting on GPU. Mirrors the CPU implementation
         in ``FAImageFD.CFAImageFD.get_dbc_fd``; see that docstring for
@@ -331,13 +356,17 @@ class CFAImageFDGPU:
             with_progress=self.m_with_progress, fit_range=fit_range,
             auto_fit_range=auto_fit_range,
             auto_fit_min_points=auto_fit_min_points,
+            auto_slope_floor=auto_slope_floor,
+            auto_slope_ceiling=auto_slope_ceiling,
             device=self.device)
 
     @torch.no_grad()
     def get_sdbc_fd(self, corp_type: int = -1,
                     fit_range: Optional[Tuple[float, float]] = None,
                     auto_fit_range: bool = False,
-                    auto_fit_min_points: int = 5):
+                    auto_fit_min_points: int = 5,
+                    auto_slope_floor: Optional[float] = 2.0,
+                    auto_slope_ceiling: Optional[float] = None):
         """
         Shifted DBC (Chen et al. 1995) on GPU. ``n_r(i,j) =
         floor((I_max - I_min) / h) + 1`` is the exact analytic result of
@@ -357,6 +386,8 @@ class CFAImageFDGPU:
             with_progress=self.m_with_progress, fit_range=fit_range,
             auto_fit_range=auto_fit_range,
             auto_fit_min_points=auto_fit_min_points,
+            auto_slope_floor=auto_slope_floor,
+            auto_slope_ceiling=auto_slope_ceiling,
             device=self.device)
 
     # ============================================================
@@ -372,6 +403,8 @@ class CFAImageFDGPU:
                      fit_range: Optional[Tuple[float, float]] = None,
                      auto_fit_range: bool = False,
                      auto_fit_min_points: int = 5,
+                     auto_slope_floor: Optional[float] = None,
+                     auto_slope_ceiling: Optional[float] = None,
                      device: Optional[Union[str, torch.device]] = None,
                      dtype: torch.dtype = torch.float32,
                      img_chunk: Optional[int] = None,
@@ -380,13 +413,17 @@ class CFAImageFDGPU:
 
         ``auto_fit_range`` (default False): when True and ``fit_range``
         is None, each image's log-log curve gets its OWN best-linear
-        window picked independently.
+        window picked independently. ``auto_slope_floor`` /
+        ``auto_slope_ceiling`` default to None for BC (no physical
+        constraint).
         """
         return _batch_run_gpu(images, "bc", corp_type=corp_type,
                               max_size=max_size, max_scales=max_scales,
                               min_size=min_size, fit_range=fit_range,
                               auto_fit_range=auto_fit_range,
                               auto_fit_min_points=auto_fit_min_points,
+                              auto_slope_floor=auto_slope_floor,
+                              auto_slope_ceiling=auto_slope_ceiling,
                               device=device, dtype=dtype,
                               img_chunk=img_chunk,
                               with_progress=with_progress)
@@ -401,18 +438,23 @@ class CFAImageFDGPU:
                       fit_range: Optional[Tuple[float, float]] = None,
                       auto_fit_range: bool = False,
                       auto_fit_min_points: int = 5,
+                      auto_slope_floor: Optional[float] = 2.0,
+                      auto_slope_ceiling: Optional[float] = None,
                       device: Optional[Union[str, torch.device]] = None,
                       dtype: torch.dtype = torch.float32,
                       img_chunk: Optional[int] = None,
                       with_progress: bool = True) -> List[dict]:
         """Batch DBC. All images must share the same H, W (grayscale).
 
-        See ``get_batch_bc`` for ``auto_fit_range`` semantics."""
+        Defaults to ``auto_slope_floor=2.0`` (DBC theoretical floor).
+        Pass None to disable the safeguard."""
         return _batch_run_gpu(images, "dbc", corp_type=corp_type,
                               max_size=max_size, max_scales=max_scales,
                               min_size=min_size, fit_range=fit_range,
                               auto_fit_range=auto_fit_range,
                               auto_fit_min_points=auto_fit_min_points,
+                              auto_slope_floor=auto_slope_floor,
+                              auto_slope_ceiling=auto_slope_ceiling,
                               device=device, dtype=dtype,
                               img_chunk=img_chunk,
                               with_progress=with_progress)
@@ -427,18 +469,22 @@ class CFAImageFDGPU:
                        fit_range: Optional[Tuple[float, float]] = None,
                        auto_fit_range: bool = False,
                        auto_fit_min_points: int = 5,
+                       auto_slope_floor: Optional[float] = 2.0,
+                       auto_slope_ceiling: Optional[float] = None,
                        device: Optional[Union[str, torch.device]] = None,
                        dtype: torch.dtype = torch.float32,
                        img_chunk: Optional[int] = None,
                        with_progress: bool = True) -> List[dict]:
         """Batch SDBC. All images must share the same H, W (grayscale).
 
-        See ``get_batch_bc`` for ``auto_fit_range`` semantics."""
+        Same physical-floor default as ``get_batch_dbc``."""
         return _batch_run_gpu(images, "sdbc", corp_type=corp_type,
                               max_size=max_size, max_scales=max_scales,
                               min_size=min_size, fit_range=fit_range,
                               auto_fit_range=auto_fit_range,
                               auto_fit_min_points=auto_fit_min_points,
+                              auto_slope_floor=auto_slope_floor,
+                              auto_slope_ceiling=auto_slope_ceiling,
                               device=device, dtype=dtype,
                               img_chunk=img_chunk,
                               with_progress=with_progress)
@@ -509,7 +555,9 @@ def _single_minmax_fit(img: torch.Tensor, scales: List[int],
                        fit_range: Optional[Tuple[float, float]],
                        device: torch.device,
                        auto_fit_range: bool = False,
-                       auto_fit_min_points: int = 5) -> dict:
+                       auto_fit_min_points: int = 5,
+                       auto_slope_floor: Optional[float] = None,
+                       auto_slope_ceiling: Optional[float] = None) -> dict:
     """Shared inner loop for DBC / SDBC on a single image."""
     counts = np.zeros(len(scales), dtype=np.float64)
     it = (tqdm(enumerate(scales), total=len(scales),
@@ -534,7 +582,9 @@ def _single_minmax_fit(img: torch.Tensor, scales: List[int],
     return _fit_log_log(np.array(scales, dtype=np.float64), counts,
                         fit_range=fit_range,
                         auto_fit_range=auto_fit_range,
-                        auto_fit_min_points=auto_fit_min_points)
+                        auto_fit_min_points=auto_fit_min_points,
+                        auto_slope_floor=auto_slope_floor,
+                        auto_slope_ceiling=auto_slope_ceiling)
 
 
 @torch.no_grad()
@@ -547,7 +597,9 @@ def _batch_run_gpu(images: Sequence[np.ndarray], method: str,
                    img_chunk: Optional[int],
                    with_progress: bool,
                    auto_fit_range: bool = False,
-                   auto_fit_min_points: int = 5) -> List[dict]:
+                   auto_fit_min_points: int = 5,
+                   auto_slope_floor: Optional[float] = None,
+                   auto_slope_ceiling: Optional[float] = None) -> List[dict]:
     if len(images) == 0:
         return []
     for i, im in enumerate(images):
@@ -649,7 +701,9 @@ def _batch_run_gpu(images: Sequence[np.ndarray], method: str,
     scale_arr = scales.astype(np.float64)
     return [_fit_log_log(scale_arr, counts_all[i], fit_range=fit_range,
                          auto_fit_range=auto_fit_range,
-                         auto_fit_min_points=auto_fit_min_points)
+                         auto_fit_min_points=auto_fit_min_points,
+                         auto_slope_floor=auto_slope_floor,
+                         auto_slope_ceiling=auto_slope_ceiling)
             for i in range(N)]
 
 

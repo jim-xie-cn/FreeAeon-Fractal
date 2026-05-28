@@ -268,6 +268,12 @@ Special values:
 - **D(1)** — Information dimension
 - **D(2)** — Correlation dimension
 
+**Theoretical bound (2D measures)**: D(q) ∈ [0, 2] for any probability measure on a 2D image. D(q) is also monotonically non-increasing in q, so D(−∞) ≥ D(0) ≥ D(1) ≥ D(∞) ≥ 0.
+
+**Finite-scale caveat**: On real images at 256×256 or similar, the measured D(q) at negative q can exceed 2 by up to ~5% (e.g., D(−3) ≈ 2.10). This is a finite-scale + discrete-pixel artifact, NOT a bug — the algorithm is correct. Treat such overshoot as numerical noise; do NOT clamp the values to [0, 2] post-hoc as that distorts the Legendre transform that gives α(q) and f(α). If you need strict D(q) ≤ 2 enforcement, use a larger image or restrict the q range to [0, +∞).
+
+Unlike BC/DBC/SDBC's `auto_slope_floor=2.0` safeguard (which is enforced because DBC has a hard physical floor), MFS does NOT enforce a D(q) ≤ 2 ceiling — see the project's "production-readiness report" for the rationale.
+
 #### 5. Multifractal Spectrum f(α)
 ```
 α(q) = dτ(q)/dq    (singularity strength via spline derivative)

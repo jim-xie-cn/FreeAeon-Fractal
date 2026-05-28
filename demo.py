@@ -32,9 +32,9 @@ def demo_fd(image_path):
     max_scales = 32
     #  ---- single ----
     t0 = time.time()
-    fd_bc = CFAImageFD(bin_image,max_scales=max_scales).get_bc_fd(auto_fit_range=False,corp_type=-1)
-    fd_dbc = CFAImageFD(gray_image,max_scales=max_scales).get_dbc_fd(auto_fit_range=False,corp_type=-1)
-    fd_sdbc = CFAImageFD(gray_image,max_scales=max_scales).get_sdbc_fd(auto_fit_range=False,corp_type=-1)
+    fd_bc = CFAImageFD(bin_image,max_scales=max_scales).get_bc_fd()
+    fd_dbc = CFAImageFD(gray_image,max_scales=max_scales).get_dbc_fd()
+    fd_sdbc = CFAImageFD(gray_image,max_scales=max_scales).get_sdbc_fd()
     print(f"Single (1) img: {time.time()-t0:.3f}s")
     print("  BC:",fd_bc['fd'])
     print("  DBC:",fd_dbc['fd'])
@@ -45,9 +45,9 @@ def demo_fd(image_path):
     bin_imgs = [bin_image] * 100
     gray_imgs = [gray_image] * 100
     t0 = time.time()
-    bc_list = CFAImageFD.get_batch_bc(bin_imgs, max_scales=max_scales,with_progress=False,auto_fit_range=False)
-    dbc_list = CFAImageFD.get_batch_dbc(gray_imgs, max_scales=max_scales,with_progress=False,auto_fit_range=False)
-    sdbc_list = CFAImageFD.get_batch_sdbc(gray_imgs, max_scales=max_scales,with_progress=False,auto_fit_range=False)
+    bc_list = CFAImageFD.get_batch_bc(bin_imgs, max_scales=max_scales,with_progress=False)
+    dbc_list = CFAImageFD.get_batch_dbc(gray_imgs, max_scales=max_scales,with_progress=False)
+    sdbc_list = CFAImageFD.get_batch_sdbc(gray_imgs, max_scales=max_scales,with_progress=False)
     print(f"Batch (100 imgs): {time.time()-t0:.3f}s")
     print(f"  batch BC FD[99]   = {bc_list[99]['fd']:.4f}")
     print(f"  batch DBC FD[99]  = {dbc_list[99]['fd']:.4f}")

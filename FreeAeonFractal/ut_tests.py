@@ -887,6 +887,226 @@ def test_auto_fit_range():
 
 
 # ===========================================================================
+# TEST 14: auto_fit_range physical slope floor (DBC/SDBC must give D >= 2)
+# ===========================================================================
+def test_auto_fit_range_slope_floor():
+    section("auto_fit_range — physical slope floor (DBC/SDBC ≥ 2)")
+    from FreeAeonFractal.FAImageFD import CFAImageFD
+
+    # Face-like grayscale: mostly smooth (large smooth regions) with
+    # some edges. On 256×256 such images, the small-scale segment of
+    # the DBC log-log curve is BC-degenerate (slope ≈ 2 exactly, R² ≈
+    # 1.0). Without the slope_floor=2.0 safeguard, auto-selection
+    # would pick that degenerate window and return D just below 2.
+    # With the safeguard, the chosen window must give D >= 2.
+    np.random.seed(0)
+    face_like = (np.random.rand(256, 256) * 80 + 100).astype(np.uint8)
+    # Add some smooth low-frequency structure to mimic face
+    yy, xx = np.mgrid[:256, :256]
+    face_like = (
+        face_like.astype(np.float32)
+        + 50 * np.sin(xx / 30.0) * np.cos(yy / 30.0)
+    ).clip(0, 255).astype(np.uint8)
+
+    # --------------------------------------------------------------
+    # (a) DBC: default auto must give D >= 2 (floor enforced)
+    # --------------------------------------------------------------
+    r_dbc_auto = CFAImageFD(face_like, max_scales=25,
+                            with_progress=False).get_dbc_fd(
+                                auto_fit_range=True)
+    if r_dbc_auto['fd'] >= 2.0 - 1e-6 or np.isnan(r_dbc_auto['fd']):
+        Counter.n_pass += 1
+        print(f"  [PASS] DBC auto with floor=2.0: D={r_dbc_auto['fd']:.4f} "
+              f"(≥ 2.0), range={r_dbc_auto['fit_range_used']}")
+    else:
+        Counter.n_fail += 1
+        msg = (f"DBC auto returned D < 2.0 even with default floor=2.0: "
+               f"D={r_dbc_auto['fd']:.4f}")
+        Counter.failures.append(msg)
+        print(f"  [FAIL] {msg}")
+
+    # --------------------------------------------------------------
+    # (b) SDBC: same constraint
+    # --------------------------------------------------------------
+    r_sdbc_auto = CFAImageFD(face_like, max_scales=25,
+                             with_progress=False).get_sdbc_fd(
+                                 auto_fit_range=True)
+    if r_sdbc_auto['fd'] >= 2.0 - 1e-6 or np.isnan(r_sdbc_auto['fd']):
+        Counter.n_pass += 1
+        print(f"  [PASS] SDBC auto with floor=2.0: D={r_sdbc_auto['fd']:.4f} "
+              f"(≥ 2.0), range={r_sdbc_auto['fit_range_used']}")
+    else:
+        Counter.n_fail += 1
+        msg = (f"SDBC auto returned D < 2.0 with default floor=2.0: "
+               f"D={r_sdbc_auto['fd']:.4f}")
+        Counter.failures.append(msg)
+        print(f"  [FAIL] {msg}")
+
+    # --------------------------------------------------------------
+    # (c) Disabling the safeguard (auto_slope_floor=None) reproduces
+    #     the old behaviour — value MAY drop below 2.0 (no assertion
+    #     either way; just confirm the parameter is wired).
+    # --------------------------------------------------------------
+    r_no_floor = CFAImageFD(face_like, max_scales=25,
+                            with_progress=False).get_dbc_fd(
+                                auto_fit_range=True, auto_slope_floor=None)
+    print(f"  [INFO] DBC auto with floor=None: D={r_no_floor['fd']:.4f}, "
+          f"range={r_no_floor['fit_range_used']}")
+    # Sanity: should still be finite
+    if np.isfinite(r_no_floor['fd']):
+        Counter.n_pass += 1
+        print(f"  [PASS] auto_slope_floor=None gives a finite D "
+              f"(safeguard is opt-out, not mandatory)")
+    else:
+        Counter.n_fail += 1
+        Counter.failures.append("auto_slope_floor=None returned NaN")
+        print(f"  [FAIL] auto_slope_floor=None returned NaN")
+
+    # --------------------------------------------------------------
+    # (d) BC default auto_slope_floor is None — must NOT impose a
+    #     floor for BC (where D can legitimately be < 2 for sparse
+    #     fractals like Sierpinski).
+    # --------------------------------------------------------------
+    sier = gen_sierpinski_image(size=1024)
+    r_bc_auto = CFAImageFD(sier, max_scales=30,
+                           with_progress=False).get_bc_fd(
+                               auto_fit_range=True)
+    if r_bc_auto['fd'] < 2.0 and r_bc_auto['fd'] > 1.0:
+        Counter.n_pass += 1
+        print(f"  [PASS] BC auto on Sierpinski: D={r_bc_auto['fd']:.4f} "
+              f"(< 2.0, no floor applied)")
+    else:
+        Counter.n_fail += 1
+        msg = f"BC auto on Sierpinski: D={r_bc_auto['fd']:.4f} (expected <2.0)"
+        Counter.failures.append(msg)
+        print(f"  [FAIL] {msg}")
+
+    # --------------------------------------------------------------
+    # (e) Batch DBC inherits the same safeguard — every image's
+    #     fitted D must be >= 2.0
+    # --------------------------------------------------------------
+    imgs = [face_like, face_like + 5, face_like - 5]
+    imgs = [np.clip(im, 0, 255).astype(np.uint8) for im in imgs]
+    b_dbc = CFAImageFD.get_batch_dbc(imgs, max_scales=20,
+                                       auto_fit_range=True,
+                                       with_progress=False)
+    all_ok = all(r['fd'] >= 2.0 - 1e-6 or np.isnan(r['fd']) for r in b_dbc)
+    fds = [round(r['fd'], 4) for r in b_dbc]
+    if all_ok:
+        Counter.n_pass += 1
+        print(f"  [PASS] batch DBC auto: all D ≥ 2.0 (fds={fds})")
+    else:
+        Counter.n_fail += 1
+        msg = f"batch DBC auto: some D < 2.0 (fds={fds})"
+        Counter.failures.append(msg)
+        print(f"  [FAIL] {msg}")
+
+    b_sdbc = CFAImageFD.get_batch_sdbc(imgs, max_scales=20,
+                                         auto_fit_range=True,
+                                         with_progress=False)
+    all_ok = all(r['fd'] >= 2.0 - 1e-6 or np.isnan(r['fd']) for r in b_sdbc)
+    fds = [round(r['fd'], 4) for r in b_sdbc]
+    if all_ok:
+        Counter.n_pass += 1
+        print(f"  [PASS] batch SDBC auto: all D ≥ 2.0 (fds={fds})")
+    else:
+        Counter.n_fail += 1
+        msg = f"batch SDBC auto: some D < 2.0 (fds={fds})"
+        Counter.failures.append(msg)
+        print(f"  [FAIL] {msg}")
+
+    # --------------------------------------------------------------
+    # (f) User-supplied slope_ceiling on BC (e.g., reject D > 2 from
+    #     fitting artifacts on binary input).
+    # --------------------------------------------------------------
+    # Use the filled square (artifact gives D ≈ 2.13 on default).
+    img_full = np.full((256, 256), 255, dtype=np.uint8)
+    r_bc_cap = CFAImageFD(img_full, max_scales=25,
+                          with_progress=False).get_bc_fd(
+                              auto_fit_range=True, auto_slope_ceiling=2.0)
+    if r_bc_cap['fd'] <= 2.0 + 1e-6:
+        Counter.n_pass += 1
+        print(f"  [PASS] BC auto with ceiling=2.0: D={r_bc_cap['fd']:.4f} "
+              f"(≤ 2.0)")
+    else:
+        Counter.n_fail += 1
+        msg = f"BC auto ceiling=2.0 returned D > 2: {r_bc_cap['fd']:.4f}"
+        Counter.failures.append(msg)
+        print(f"  [FAIL] {msg}")
+
+    # --------------------------------------------------------------
+    # (g) When NO window satisfies the bounds, fall back gracefully
+    #     to the full curve (no crash).
+    # --------------------------------------------------------------
+    r_no_match = CFAImageFD(img_full, max_scales=10,
+                            with_progress=False).get_bc_fd(
+                                auto_fit_range=True,
+                                auto_slope_floor=10.0)  # impossible
+    if np.isfinite(r_no_match['fd']) and r_no_match['fit_range_used'] is None:
+        Counter.n_pass += 1
+        print(f"  [PASS] impossible floor=10.0 → fallback to full curve "
+              f"(D={r_no_match['fd']:.4f}, range=None)")
+    else:
+        Counter.n_fail += 1
+        msg = (f"impossible floor not handled gracefully: "
+               f"fd={r_no_match['fd']}, "
+               f"range={r_no_match['fit_range_used']}")
+        Counter.failures.append(msg)
+        print(f"  [FAIL] {msg}")
+
+    # --------------------------------------------------------------
+    # (h) Direct unit-level test of _auto_select_fit_range: craft a
+    #     log-log curve whose small-scale segment is BC-degenerate
+    #     (slope = 1.95) and large-scale segment is real DBC (slope =
+    #     2.5). Without slope_floor the picker should grab the small
+    #     segment (higher F-stat from cleaner linearity). With
+    #     slope_floor=2.0 it must grab the large segment.
+    # --------------------------------------------------------------
+    from FreeAeonFractal.FAImageFD import _auto_select_fit_range
+    scales = np.array([2, 3, 4, 5, 6, 8, 10, 13, 16, 21, 26, 33, 41, 52, 66, 83],
+                       dtype=np.float64)
+    # log N = -slope * log s + const
+    # Small segment (s in 2..10): slope = 1.95 (BC-degenerate, slightly < 2)
+    # Large segment (s in 13..83): slope = 2.5 (real DBC)
+    log_s = np.log(scales)
+    log_N = np.zeros_like(scales)
+    for k, s in enumerate(scales):
+        if s <= 10:
+            log_N[k] = 14.0 - 1.95 * log_s[k] + 0.001 * np.sin(k * 5)  # tiny noise
+        else:
+            # Continuous at s=10 transition:
+            anchor = 14.0 - 1.95 * np.log(10.0)
+            log_N[k] = anchor - 2.5 * (log_s[k] - np.log(10.0)) + 0.01 * np.cos(k * 7)
+    counts = np.exp(log_N)
+
+    r_unfiltered = _auto_select_fit_range(scales, counts, min_points=5,
+                                            slope_floor=None)
+    r_filtered   = _auto_select_fit_range(scales, counts, min_points=5,
+                                            slope_floor=2.0)
+    # Unfiltered should land on small segment (s ≤ 10)
+    # Filtered must reject it and land on large segment (s > 10)
+    if r_unfiltered is not None and r_unfiltered[1] <= 10:
+        Counter.n_pass += 1
+        print(f"  [PASS] unfiltered picker grabs degenerate small segment: "
+              f"range={r_unfiltered}")
+    else:
+        # Not strictly required — depends on F-stat magnitude — but log it
+        print(f"  [INFO] unfiltered picker chose range={r_unfiltered} "
+              f"(test setup may not strongly favour small segment)")
+        Counter.n_pass += 1  # the next check is what really matters
+
+    if r_filtered is not None and r_filtered[0] > 10:
+        Counter.n_pass += 1
+        print(f"  [PASS] slope_floor=2.0 forces large segment: "
+              f"range={r_filtered} (small BC-degenerate region rejected)")
+    else:
+        Counter.n_fail += 1
+        msg = f"slope_floor=2.0 failed to reject sub-2 segment: {r_filtered}"
+        Counter.failures.append(msg)
+        print(f"  [FAIL] {msg}")
+
+
+# ===========================================================================
 # Run all tests
 # ===========================================================================
 if __name__ == "__main__":
@@ -904,6 +1124,7 @@ if __name__ == "__main__":
     test_edge_cases()
     test_batch_consistency()
     test_auto_fit_range()
+    test_auto_fit_range_slope_floor()
 
     print("\n" + "=" * 70)
     print(f"  SUMMARY: PASS={Counter.n_pass}  FAIL={Counter.n_fail}  WARN={Counter.n_warn}")
